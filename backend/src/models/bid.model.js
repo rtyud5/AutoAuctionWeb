@@ -1,0 +1,1 @@
+/*Data mâu thuẫn vs user vì user là lớn nhất, chung nhất */
