@@ -1,0 +1,18 @@
+<% layout("layouts/main") %>
+<section>
+  <h1>Online Auction System</h1>
+  <p>Danh sách phiên đấu giá sắp kết thúc:</p>
+  <div class="auction-grid">
+    <% if (auctions && auctions.length) { %>
+      <% auctions.forEach(a => { %>
+        <div class="auction-card">
+          <h3><a href="/auctions/<%= a.id %>"><%= a.title %></a></h3>
+          <p>Giá hiện tại: <%= a.current_price || 0 %> VNĐ</p>
+          <p>Kết thúc: <%= a.end_time %></p>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p>Chưa có phiên đấu giá demo. Thêm dữ liệu trong MySQL để hiển thị.</p>
+    <% } %>
+  </div>
+</section>

@@ -6,7 +6,9 @@ Hệ thống đề nghị giá hợp lệ (giá hiện tại + bước giá do n
 Hệ thống yêu cầu xác nhận
 */
 
-const biddingSystem = {
+import db from "../config/db.js";
+
+export const Autobidrule_Model = {
   bidder: {
     id: "",             // ID người mua (bidder)
     name: "",           // Tên người mua

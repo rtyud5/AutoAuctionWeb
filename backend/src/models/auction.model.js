@@ -10,8 +10,11 @@ Nếu 2 bidder ra cùng mức giá, bidder ra giá trước được
 ghi nhận là người-ra-giá-cao-nhất
  */
 
+import db from "../config/db.js";
+
 /* Thông tin sản phẩm đấu giá */
-const auctionItem = {
+
+export const Auction_Model = {
   id: "",              // Mã định danh sản phẩm đấu giá
   name: "",            // Tên sản phẩm (vd: "iPhone 11")
   startingPrice: 0,    // Giá khởi điểm (vd: 10000000)

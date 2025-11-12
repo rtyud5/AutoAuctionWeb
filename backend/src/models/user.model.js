@@ -5,7 +5,10 @@ Họ tên
 Địa chỉ
 Email
 */
-const userProfile = {
+
+import db from "../config/db.js";
+
+export const User_Model = {
   userId: "",       // ID người dùng
   password: "",     // Mật khẩu (nên lưu hashed)
   fullName: "",     // Họ tên

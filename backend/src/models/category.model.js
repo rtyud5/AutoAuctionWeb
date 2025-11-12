@@ -6,7 +6,9 @@ Thời trang ➠ Giày
 Thời trang ➠ Đồng hồ
 */
 
-const categories = [
+import db from "../config/db.js";
+
+export const Category_Model = [
   {
     id: "",           // ID danh mục cha
     name: "Điện tử",  // Tên danh mục cha

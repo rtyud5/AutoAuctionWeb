@@ -3,7 +3,9 @@ Lịch sử các câu hỏi và câu trả lời
 của những người tham gia đấu giá & người bán
 */
 
-const qaHistory = [
+import db from "../config/db.js";
+
+export const Answer_Model = [
   {
     id: "", // Mã định danh câu hỏi
     bidder: { 

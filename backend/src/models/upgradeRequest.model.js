@@ -4,7 +4,9 @@ Bidder gửi yêu cầu xin được upgrage thành seller
 Ban quản trị sẽ duyệt yêu cầu này
 */
 
-const upgradeRequest = {
+import db from "../config/db.js";
+
+export const Upgraderequest_Model = {
   requestId: "",        // Mã yêu cầu
   bidId: "",         // ID của bidder gửi yêu cầu
   bidName: "",       // Tên của bidder
@@ -14,3 +16,4 @@ const upgradeRequest = {
   approvedBy: "",       // ID người quản trị duyệt (nếu có)
   approvedDate: "",     // Ngày duyệt (nếu có)
 };
+

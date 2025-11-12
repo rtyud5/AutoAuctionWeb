@@ -1,6 +1,9 @@
 /*Lưu tên người đặt, thời gian đấu giá(ngày, 
 tháng,năm và giờ phút), giá, tên sản phẩm */
-const bidRecord = {
+
+import db from "../config/db.js";
+
+export const Order_Model = {
   bidderName: "",   // Tên người đặt giá
   bidTime: {        // Thời gian đấu giá
     day: 0,         // Ngày
