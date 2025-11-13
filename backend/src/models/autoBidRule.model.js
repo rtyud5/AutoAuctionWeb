@@ -7,33 +7,10 @@ Hệ thống yêu cầu xác nhận
 */
 
 const biddingSystem = {
-  bidder: {
-    id: "",             // ID người mua (bidder)
-    name: "",           // Tên người mua
-    totalRatings: 0,    // Tổng số lượt được đánh giá
-    positiveRatings: 0, // Số lượt được đánh giá tích cực (+)
-    negativeRatings: 0, // Số lượt được đánh giá tiêu cực (−)
-    scorePercent: 0,    // Điểm phần trăm (positiveRatings / totalRatings * 100)
-    isAllowedToBid: false, // Có được phép ra giá hay không (true/false)
-  },
-
-  seller: {
-    id: "",             // ID người bán
-    name: "",           // Tên người bán
-    allowUnratedBidders: false, // Người bán có cho phép bidder chưa được đánh giá tham gia không
-  },
-
-  auctionItem: {
-    id: "",             // Mã sản phẩm đấu giá
-    name: "",           // Tên sản phẩm
-    currentPrice: 0,    // Giá hiện tại
-    bidStep: 0,         // Bước giá
-    suggestedBid: 0,    // Giá hệ thống đề nghị (currentPrice + bidStep)
-  },
-
-  confirmation: {
-    required: true,     // Có yêu cầu xác nhận trước khi gửi giá không
-    confirmed: false,   // Trạng thái người mua đã xác nhận chưa
-    timestamp: "",      // Thời điểm xác nhận
-  },
+ id:"",
+ auction_id:"",
+ bidder_id:"",
+ max_amount,
+ is_active:true,
+ created_at:"",
 };

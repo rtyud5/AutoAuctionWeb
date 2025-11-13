@@ -6,33 +6,11 @@ Thời trang ➠ Giày
 Thời trang ➠ Đồng hồ
 */
 
-const categories = [
-  {
-    id: "",           // ID danh mục cha
-    name: "Điện tử",  // Tên danh mục cha
-    subcategories: [  // Danh mục con thuộc danh mục cha này
-      {
-        id: "",       // ID danh mục con
-        name: "Điện thoại di động", // Tên danh mục con
-      },
-      {
-        id: "",
-        name: "Máy tính xách tay",
-      },
-    ],
-  },
-  {
-    id: "",
-    name: "Thời trang",
-    subcategories: [
-      {
-        id: "",
-        name: "Giày",
-      },
-      {
-        id: "",
-        name: "Đồng hồ",
-      },
-    ],
-  },
-];
+const categories = {
+    id:"",
+    name:"",
+    slug:"",
+    parent_id:NULL,
+    is_active,
+    sort_order:"",
+};
