@@ -5,20 +5,10 @@ của những người tham gia đấu giá & người bán
 
 import db from "../config/db.js";
 
-export const Answer_Model = [
-  {
-    id: "", // Mã định danh câu hỏi
-    bidder: { 
-      id: "",    // ID người hỏi (người tham gia đấu giá) 
-      name: "",  // Tên người hỏi
-    },
-    seller: {
-      id: "",    // ID người bán
-      name: "",  // Tên người bán
-    },
-    answer: {
-      content: "",    // Nội dung trả lời (nếu có)
-      timestamp: "",  // Thời điểm trả lời
-    },
-  },
-];
+const qaHistory = {
+  id:"",
+  question_id:"",
+  seller_id:"",
+  content:"",
+  created_at:"",
+}

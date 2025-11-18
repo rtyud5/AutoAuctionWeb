@@ -12,25 +12,42 @@ Mô tả chi tiết sản phẩm*/
 
 import db from "../config/db.js";
 
-export const Product_Model = {
-  id: "",                     // Mã sản phẩm đấu giá
-  name: "",                   // Tên sản phẩm
-  mainImage: "",              // Ảnh đại diện (size lớn)
-  subImages: ["", "", ""],    // Các ảnh phụ (ít nhất 3 ảnh)
-  currentPrice: 0,            // Giá hiện tại
-  buyNowPrice: null,          // Giá mua ngay (nếu có, có thể null)
-  seller: {                   // Thông tin người bán
-    id: "",
-    name: "",
-    ratingScore: 0,           // Điểm đánh giá (0–100 hoặc theo thang điểm)
-  },
-  highestBidder: {            // Người đặt giá cao nhất hiện tại
-    id: "",
-    name: "",
-    ratingScore: 0,
-  },
-  postedAt: "",               // Thời điểm đăng (ISO 8601)
-  endsAt: "",                 // Thời điểm kết thúc (ISO 8601)
-  relativeEndTime: "",        // Dạng thời gian tương đối nếu còn < 3 ngày (vd: "2 ngày nữa", "10 phút nữa")
-  description: "",            // Mô tả chi tiết sản phẩm
+const auctionProduct = {
+  id: "",                    
+  seller_id: "",    
+  category_id:"",
+  title:"",
+  short_description:"",
+  full_description:"",
+  thumbnail:"",
+  status:{PENDING, APPROVED, REJECTED, BANNED},
+  created_at:"",
 };
+/*
+id
+
+
+seller_id (FK users.id)
+
+
+category_id
+
+
+title
+
+
+short_description
+
+
+full_description
+
+
+thumbnail
+
+
+status (PENDING, APPROVED, REJECTED, BANNED)
+
+
+created_at
+
+*/

@@ -6,10 +6,10 @@ Giá hiện tại
 
 import db from "../config/db.js";
 
-export const Watchlist_Model = {
-  productId: "", // ID sản phẩm
-  name: "", // Tên sản phẩm
-  mainImage: "", // Ảnh đại diện sản phẩm
-  currentPrice: 0, // Giá hiện tại
+const productSummary = {
+  id:"",
+  user_id:"",
+  auction_id:"",
+  created_at:"",
 };
 
