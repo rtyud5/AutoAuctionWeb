@@ -1,0 +1,9 @@
+<% layout("layouts/main") %>
+<h1><%= auction.title %></h1>
+<p>Giá hiện tại: <%= auction.current_price %> VNĐ</p>
+<p>Mô tả: <%= auction.description || "Chưa có mô tả" %></p>
+<form method="post" action="/auctions/<%= auction.id %>/bid">
+  <label>Giá bid của bạn</label>
+  <input type="number" name="amount" required />
+  <button type="submit">Đặt giá</button>
+</form>

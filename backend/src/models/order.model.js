@@ -1,5 +1,8 @@
 /*Lưu tên người đặt, thời gian đấu giá(ngày, 
 tháng,năm và giờ phút), giá, tên sản phẩm */
+
+import db from "../config/db.js";
+
 const bidRecord = {
   id:"",
   auction_id:"",

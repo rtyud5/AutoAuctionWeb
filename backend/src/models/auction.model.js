@@ -1,3 +1,7 @@
+import db from "../config/db.js";
+
+/* Thông tin sản phẩm đấu giá */
+
 /*Thông tin sản phẩm đấu giá
 iPhone 11
 Giá khởi điểm 10tr

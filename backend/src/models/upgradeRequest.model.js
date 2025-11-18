@@ -4,6 +4,8 @@ Bidder gửi yêu cầu xin được upgrage thành seller
 Ban quản trị sẽ duyệt yêu cầu này
 */
 
+import db from "../config/db.js";
+
 const upgradeRequest = {
   id:"",
   user_id:"",
@@ -13,3 +15,4 @@ const upgradeRequest = {
   created_at:"",
   updated_at:"",
 };
+

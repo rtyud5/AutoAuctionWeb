@@ -10,6 +10,8 @@ Thời điểm kết thúc
 Nếu thời điểm kết thúc ít hơn 3 ngày thì thể hiện theo định dạng tương đối (relative time - 3 ngày nữa, 10 phút nữa, …)
 Mô tả chi tiết sản phẩm*/
 
+import db from "../config/db.js";
+
 const auctionProduct = {
   id: "",                    
   seller_id: "",    

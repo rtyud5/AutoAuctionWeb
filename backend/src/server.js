@@ -1,31 +1,21 @@
-require("dotenv").config();
-const app = require("./src/app");
-const sequelize = require("./src/config/db");
+import app from "./app.js";
+import dotenv from "dotenv";
+import db from "./config/db.js";
 
-const PORT = process.env.PORT || 3000;
+dotenv.config();
 
+const PORT = process.env.PORT || 4000;
+
+// Test DB connection once on start (optional)
 (async () => {
   try {
-    console.log("🌱 Starting server with config:", {
-      DB_HOST: process.env.DB_HOST,
-      DB_PORT: process.env.DB_PORT,
-      DB_NAME: process.env.DB_NAME,
-      DB_USER: process.env.DB_USER ? "(set)" : "(missing)",
-    });
-
-    await sequelize.authenticate();
-    console.log("✅ Connected to MySQL");
-
-    // Dev only: sync models tự động (chưa có model cũng không sao)
-    await sequelize.sync();
-    console.log("✅ Models synced");
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error("❌ Failed to start server:");
-    console.error(err);
-    process.exit(1);
+    await db.query("SELECT 1");
+    console.log("✅ Connected to MySQL database");
+  } catch (e) {
+    console.error("❌ Database connection failed:", e.message);
   }
 })();
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

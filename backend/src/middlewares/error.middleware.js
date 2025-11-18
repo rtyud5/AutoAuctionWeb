@@ -1,8 +1,7 @@
-module.exports = (err, req, res, next) => {
-  console.error("🔥 Error middleware caught:", err);
-  const status = err.status || 500;
-  res.status(status).json({
-    success: false,
-    message: err.message || "Internal Server Error",
-  });
+export const errorHandler = (err, req, res, next) => {
+  console.error(err);
+  if (req.xhr || req.path.startsWith("/api")) {
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+  res.status(500).render("error/500", { message: "Internal server error" });
 };

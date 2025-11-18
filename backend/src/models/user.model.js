@@ -5,6 +5,9 @@ Họ tên
 Địa chỉ
 Email
 */
+
+import db from "../config/db.js";
+
 const userProfile = {
   userId: "",       // ID người dùng
   fullName: "",     // Họ tên
@@ -28,7 +31,3 @@ positive_count (số đánh giá +)
 negative_count (số đánh giá -)
 created_at
 */
-
-
-
-

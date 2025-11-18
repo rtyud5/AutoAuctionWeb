@@ -1,3 +1,5 @@
+import db from "../config/db.js";
+
 /*
 Hệ thống kiểm tra điểm đánh giá (+/±) hơn 80% thì mới cho phép ra giá
 Bidder được đánh giá 10 lần, có 8+ và 2-, vậy điểm của bidder này là 8/10 ~ 80%, được phép tham gia đấu giá sản phẩm

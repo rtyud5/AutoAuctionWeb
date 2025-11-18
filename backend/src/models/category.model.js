@@ -1,3 +1,5 @@
+import db from "../config/db.js";
+
 /*
 Có 2 cấp danh mục
 Điện tử ➠ Điện thoại di động
