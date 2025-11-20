@@ -1,21 +1,27 @@
+// src/server.js
 import app from "./app.js";
 import dotenv from "dotenv";
-import db from "./config/db.js";
+import sequelize, { testConnection } from "./config/db.js";
+
+import "./models/index.js";
 
 dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// Test DB connection once on start (optional)
-(async () => {
+const startServer = async () => {
   try {
-    await db.query("SELECT 1");
-    console.log("✅ Connected to MySQL database");
-  } catch (e) {
-    console.error("❌ Database connection failed:", e.message);
-  }
-})();
+    await testConnection();
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+    await sequelize.sync({ alter: true });
+    console.log("✅ Sequelize models synchronized with database");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  } catch (e) {
+    console.error("❌ Failed to start server:", e.message);
+  }
+};
+
+startServer();

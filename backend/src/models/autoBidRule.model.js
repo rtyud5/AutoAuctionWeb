@@ -1,18 +1,65 @@
-import db from "../config/db.js";
+// Cấu hình auto-bid cho bidder trên một phiên đấu giá
+
+import { DataTypes } from "sequelize";
+import sequelize from "../config/db.js";
 
 /*
-Hệ thống kiểm tra điểm đánh giá (+/±) hơn 80% thì mới cho phép ra giá
-Bidder được đánh giá 10 lần, có 8+ và 2-, vậy điểm của bidder này là 8/10 ~ 80%, được phép tham gia đấu giá sản phẩm
-Bidder chưa từng được đánh giá được phép ra giá sản phẩm trong trường hợp người bán cho phép
-Hệ thống đề nghị giá hợp lệ (giá hiện tại + bước giá do người bán thiết lập)
-Hệ thống yêu cầu xác nhận
+Nghiệp vụ (tóm tắt từ comment):
+
+- Hệ thống có thể áp dụng rule:
+  + Chỉ cho phép bidder có điểm đánh giá >= 80% tham gia đấu giá.
+  + Bidder chưa từng được đánh giá có thể được tham gia nếu người bán cho phép.
+- Ở đây, model này lưu:
+  + auction_id: phiên đấu giá
+  + bidder_id: người tham gia
+  + max_amount: số tiền tối đa bidder sẵn sàng trả (auto-bid trần)
+  + is_active: auto-bid đang bật/tắt
+
+Các rule % rating, kiểm tra điều kiện... sẽ xử lý ở service/controller,
+model chỉ lưu cấu hình auto-bid.
 */
 
-const biddingSystem = {
- id:"",
- auction_id:"",
- bidder_id:"",
- max_amount,
- is_active:true,
- created_at:"",
-};
+const AutoBidRule = sequelize.define(
+  "AutoBidRule",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      comment: "Khóa chính cấu hình auto-bid",
+    },
+
+    auction_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      comment: "ID phiên đấu giá (FK auctions.id)",
+    },
+
+    bidder_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      comment: "ID người tham gia đấu giá (FK users.id)",
+    },
+
+    max_amount: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      comment: "Số tiền tối đa bidder sẵn sàng trả (VND)",
+    },
+
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      comment: "Auto-bid đang bật hay tắt",
+    },
+    // created_at / updated_at sẽ do timestamps + underscored sinh ra
+  },
+  {
+    tableName: "auto_bid_rules", // tên bảng trong DB
+    timestamps: true,            // có createdAt, updatedAt
+    underscored: true,           // => created_at, updated_at
+  }
+);
+
+export default AutoBidRule;

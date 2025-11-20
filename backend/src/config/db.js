@@ -1,16 +1,34 @@
-import mysql from "mysql2/promise";
+// backend/src/config/db.js
+import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+// Tạo instance Sequelize kết nối tới Railway
+const sequelize = new Sequelize(
+  process.env.DB_NAME,   // railway
+  process.env.DB_USER,   // root
+  process.env.DB_PASS,   // password trong .env
+  {
+    host: process.env.DB_HOST,  // shinkansen.proxy.rlwy.net
+    port: process.env.DB_PORT || 3306,
+    dialect: "mysql",
+    logging: false, // đổi thành true nếu muốn xem câu SQL log ra console
+  }
+);
 
-export default pool;
+// Hàm test kết nối (gọi trong server.js)
+export const testConnection = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("✅ Connected to MySQL database via Sequelize");
+  } catch (error) {
+    console.error("❌ Database connection failed:", error.message);
+    throw error;
+  }
+};
+
+// ⚠️ Export default = sequelize
+// => Các chỗ đang dùng `import db from "../config/db.js"`
+//    và gọi `db.query("SELECT ...")` vẫn dùng được
+export default sequelize;
