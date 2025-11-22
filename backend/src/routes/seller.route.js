@@ -1,15 +1,12 @@
-const express = require('express');
-const { check, validationResult } = require('express-validator');
+import express from 'express';
+import { check, validationResult } from 'express-validator';
+
+import sellerController from '../controllers/seller.controller.js';
+import auth from '../middleware/auth.middleware.js';
+import isAdmin from '../middleware/admin.middleware.js';
+import isSeller from '../middleware/seller.middleware.js';
 
 const router = express.Router();
-
-// Controllers
-const sellerController = require('../controllers/seller.controller');
-
-// Middlewares
-const auth = require('../middleware/auth.middleware'); // xác thực token
-const isAdmin = require('../middleware/admin.middleware'); // kiểm tra role admin
-const isSeller = require('../middleware/seller.middleware'); // optional: kiểm tra role seller
 
 // helper xử lý kết quả validation
 const validate = (req, res, next) => {
@@ -178,4 +175,4 @@ router.post(
   sellerController.answerQuestion
 );
 
-module.exports = router;
+export default router;

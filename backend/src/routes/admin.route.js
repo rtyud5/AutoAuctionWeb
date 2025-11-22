@@ -1,14 +1,14 @@
-const express = require('express');
-const { check, validationResult } = require('express-validator');
+import express from 'express';
+import { check, validationResult } from 'express-validator';
 
 const router = express.Router();
 
 // Controllers
-const adminController = require('../controllers/admin.controller');
+import adminController from '../controllers/admin.controller.js';
 
 // Middlewares
-const auth = require('../middleware/auth.middleware');
-const isAdmin = require('../middleware/admin.middleware');
+import auth from '../middleware/auth.middleware.js';
+import isAdmin from '../middleware/admin.middleware.js';
 
 // Validation result handler
 const validate = (req, res, next) => {
@@ -118,4 +118,4 @@ router.post('/upgrade-requests/:id/reject', adminController.rejectUpgradeRequest
 // Stats / dashboard
 router.get('/stats', adminController.getStats);
 
-module.exports = router;
+export default router;

@@ -5,6 +5,11 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import pageRoutes from "./routes/page.route.js";
 import apiRoutes from "./routes/api.route.js";
+import authRoutes from "./routes/auth.route.js";
+import bidderRoutes from "./routes/bidder.route.js";
+import sellerRoutes from "./routes/seller.route.js";
+import adminRoutes from "./routes/admin.route.js";
+import orderRoutes from "./routes/order.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 
 dotenv.config();
@@ -37,6 +42,22 @@ app.use(cookieParser());
 // Routes
 app.use("/", pageRoutes);
 app.use("/api", apiRoutes);
+
+// auth routes (login/register/logout API)
+app.use("/auth", authRoutes);
+
+// bidder/user routes (contains /me, watchlist, bids, bid endpoints)
+// mount on root so routes like /me and /auctions/:id/bid work as expected
+app.use("/", bidderRoutes);
+
+// seller routes (mounted under /seller)
+app.use("/seller", sellerRoutes);
+
+// admin routes (mounted under /admin)
+app.use("/admin", adminRoutes);
+
+// orders & chat (mounted under /orders)
+app.use("/orders", orderRoutes);
 
 // 404
 app.use((req, res) => {

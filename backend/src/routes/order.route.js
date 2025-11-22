@@ -1,15 +1,12 @@
-const express = require('express');
-const { check, validationResult } = require('express-validator');
+import express from 'express';
+import { check, validationResult } from 'express-validator';
+
+import orderController from '../controllers/order.controller.js';
+import auth from '../middleware/auth.middleware.js';
+import isAdmin from '../middleware/admin.middleware.js';
+import isSeller from '../middleware/seller.middleware.js';
 
 const router = express.Router();
-
-// Controller
-const orderController = require('../controllers/order.controller');
-
-// Middlewares
-const auth = require('../middleware/auth.middleware');
-const isAdmin = require('../middleware/admin.middleware');
-const isSeller = require('../middleware/seller.middleware');
 
 // Validation result handler
 const validate = (req, res, next) => {
@@ -140,4 +137,4 @@ router.delete('/:id', auth, isAdmin, orderController.deleteOrder);
 // Optional: payment gateway webhook (public endpoint; secure inside controller)
 router.post('/webhook', express.raw({ type: 'application/json' }), orderController.paymentWebhook);
 
-module.exports = router;
+export default router;
