@@ -39,13 +39,7 @@ router.post(
   authController.login
 );
 
-// Refresh token (optional)
-router.post('/refresh', authController.refreshToken);
-
 // Logout
 router.post('/logout', auth, authController.logout);
-
-// Get current user
-router.get('/me', auth, authController.getProfile);
 
 module.exports = router;

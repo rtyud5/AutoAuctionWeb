@@ -19,14 +19,19 @@ const validate = (req, res, next) => {
 
 /*
   Admin routes (all protected by auth + isAdmin)
-  - Users: list, get, update role, delete
+  - Users: list, get, update role, delete, lock/unlock
   - Sellers: list, get, delete
   - Products: list, get, delete
-  - Auctions: list, get, update status
+  - Auctions: list, get, update status, (optional remove offending)
+  - Categories: list, create, update, delete
+  - Upgrade requests: list, approve, reject
   - Stats: basic site metrics
 */
 
 router.use(auth, isAdmin);
+
+// Admin dashboard
+router.get('/', adminController.dashboard);
 
 // Users
 router.get('/users', adminController.listUsers);
@@ -45,6 +50,10 @@ router.put(
 );
 router.delete('/users/:id', adminController.deleteUser);
 
+// Lock / Unlock user
+router.post('/users/:id/lock', adminController.lockUser);
+router.post('/users/:id/unlock', adminController.unlockUser);
+
 // Sellers
 router.get('/sellers', adminController.listSellers);
 router.get('/sellers/:id', adminController.getSellerById);
@@ -55,7 +64,7 @@ router.get('/products', adminController.listProducts);
 router.get('/products/:id', adminController.getProductById);
 router.delete('/products/:id', adminController.deleteProduct);
 
-// Auctions
+// Auctions (including optional moderation actions)
 router.get('/auctions', adminController.listAuctions);
 router.get('/auctions/:id', adminController.getAuctionById);
 router.patch(
@@ -70,6 +79,41 @@ router.patch(
   validate,
   adminController.updateAuctionStatus
 );
+// Optional: remove/disable offending auction
+router.post('/auctions/:id/remove', adminController.removeAuction);
+
+// Categories management
+router.get('/categories', adminController.listCategories);
+
+router.post(
+  '/categories',
+  [
+    check('name').notEmpty().withMessage('Category name is required'),
+    check('slug').optional().isString(),
+    check('parent_id').optional().isInt().withMessage('parent_id must be integer'),
+  ],
+  validate,
+  adminController.createCategory
+);
+
+router.post(
+  '/categories/:id/update',
+  [
+    check('name').optional().notEmpty().withMessage('Category name cannot be empty'),
+    check('slug').optional().isString(),
+    check('parent_id').optional().isInt().withMessage('parent_id must be integer'),
+  ],
+  validate,
+  adminController.updateCategory
+);
+
+router.post('/categories/:id/delete', adminController.deleteCategory);
+
+// Upgrade requests
+router.get('/upgrade-requests', adminController.listUpgradeRequests);
+
+router.post('/upgrade-requests/:id/approve', adminController.approveUpgradeRequest);
+router.post('/upgrade-requests/:id/reject', adminController.rejectUpgradeRequest);
 
 // Stats / dashboard
 router.get('/stats', adminController.getStats);

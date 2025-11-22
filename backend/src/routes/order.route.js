@@ -9,6 +9,7 @@ const orderController = require('../controllers/order.controller');
 // Middlewares
 const auth = require('../middleware/auth.middleware');
 const isAdmin = require('../middleware/admin.middleware');
+const isSeller = require('../middleware/seller.middleware');
 
 // Validation result handler
 const validate = (req, res, next) => {
@@ -26,6 +27,7 @@ const validate = (req, res, next) => {
   - PATCH  /:id/status  => update order status (admin)
   - DELETE /:id         => delete order (admin)
   - POST   /webhook     => optional payment gateway webhook (public)
+  + Additional order lifecycle & chat routes (F)
 */
 
 // Create order (user)
@@ -46,8 +48,72 @@ router.post(
 // List current user's orders
 router.get('/my', auth, orderController.listMyOrders);
 
-// Get order by id (controller should enforce owner/admin)
+// Order view (buyer & seller)
 router.get('/:id', auth, orderController.getOrderById);
+
+/*
+  F. Orders lifecycle & chat
+  - POST /orders/:id/buyer-submit     (buyer sends payment info + address)
+  - POST /orders/:id/seller-confirm   (seller confirms payment + add tracking)
+  - POST /orders/:id/buyer-confirm    (buyer confirms delivery -> COMPLETED)
+  - POST /orders/:id/rate             (buyer & seller rate each other)
+  - GET  /orders/:id/chat             (get chat for order)
+  - POST /orders/:id/chat             (post message)
+*/
+
+// Buyer submits payment/shipping details
+router.post(
+  '/:id/buyer-submit',
+  auth,
+  [
+    check('paymentInfo').notEmpty().withMessage('paymentInfo is required'),
+    check('shippingAddress').notEmpty().withMessage('shippingAddress is required'),
+  ],
+  validate,
+  orderController.buyerSubmit
+);
+
+// Seller confirms payment and adds tracking (seller only)
+router.post(
+  '/:id/seller-confirm',
+  auth,
+  isSeller,
+  [
+    check('trackingNumber').optional().isString(),
+    check('notes').optional().isString(),
+  ],
+  validate,
+  orderController.sellerConfirm
+);
+
+// Buyer confirms receipt -> mark COMPLETED
+router.post('/:id/buyer-confirm', auth, orderController.buyerConfirm);
+
+// Rating (buyer or seller rate counterparty)
+// body: { rating: int 1-5, comment?: string, targetUserId?: number }
+router.post(
+  '/:id/rate',
+  auth,
+  [
+    check('rating').isInt({ min: 1, max: 5 }).withMessage('rating 1-5 is required'),
+    check('comment').optional().isString(),
+    check('targetUserId').optional().isInt(),
+  ],
+  validate,
+  orderController.rateOrder
+);
+
+// Order chat - list messages
+router.get('/:id/chat', auth, orderController.getOrderChat);
+
+// Order chat - post message
+router.post(
+  '/:id/chat',
+  auth,
+  [check('message').notEmpty().withMessage('message is required')],
+  validate,
+  orderController.postOrderChat
+);
 
 // Admin: list all orders
 router.get('/', auth, isAdmin, orderController.listAllOrders);

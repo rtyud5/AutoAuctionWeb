@@ -94,5 +94,88 @@ router.get('/', auth, isAdmin, sellerController.getSellers);
 router.get('/:id', auth, isAdmin, sellerController.getSellerById);
 router.delete('/:id', auth, isAdmin, sellerController.deleteSeller);
 
-// ...existing code...
+/* --- Thêm routes theo yêu cầu D. Seller --- */
+
+/**
+ * GET /seller/dashboard
+ */
+router.get('/dashboard', auth, isSeller, sellerController.dashboard);
+
+/**
+ * GET /seller/auctions
+ */
+router.get('/auctions', auth, isSeller, sellerController.listAuctions);
+
+/**
+ * GET /seller/auctions/new
+ */
+router.get('/auctions/new', auth, isSeller, sellerController.newAuctionForm);
+
+/**
+ * POST /seller/auctions
+ * - chọn product / nhập thông tin
+ * - tạo products + auctions
+ */
+router.post(
+  '/auctions',
+  auth,
+  isSeller,
+  [
+    check('title').notEmpty().withMessage('Title is required'),
+    check('startingPrice').isFloat({ gt: 0 }).withMessage('Starting price must be > 0'),
+    check('endDate').optional().isISO8601().withMessage('endDate must be a valid date'),
+    check('productId').optional().isInt().withMessage('productId must be integer when provided'),
+  ],
+  validate,
+  sellerController.createAuction
+);
+
+/**
+ * GET /seller/auctions/:id/edit
+ */
+router.get('/auctions/:id/edit', auth, isSeller, sellerController.editAuctionForm);
+
+/**
+ * POST /seller/auctions/:id/update
+ */
+router.post(
+  '/auctions/:id/update',
+  auth,
+  isSeller,
+  [
+    check('title').optional().notEmpty(),
+    check('startingPrice').optional().isFloat({ gt: 0 }),
+    check('endDate').optional().isISO8601(),
+  ],
+  validate,
+  sellerController.updateAuction
+);
+
+/**
+ * POST /seller/auctions/:id/block-bidder
+ * Body: { bidderId: number, reason?: string }
+ * - thêm vào blocked_bidders
+ */
+router.post(
+  '/auctions/:id/block-bidder',
+  auth,
+  isSeller,
+  [check('bidderId').isInt().withMessage('bidderId is required')],
+  validate,
+  sellerController.blockBidder
+);
+
+/**
+ * POST /questions/:id/answer
+ * Seller trả lời câu hỏi (tạo answers)
+ */
+router.post(
+  '/questions/:id/answer',
+  auth,
+  isSeller,
+  [check('answer').notEmpty().withMessage('Answer is required')],
+  validate,
+  sellerController.answerQuestion
+);
+
 module.exports = router;

@@ -7,8 +7,19 @@ router.get("/", async (req, res) => {
   // demo: fetch some auctions
   let auctions = [];
   try {
-    const [rows] = await db.query("SELECT id, title, current_price, end_time FROM auctions ORDER BY end_time ASC LIMIT 8");
-    auctions = rows;
+    // Top 5 ending soon
+    const [endingSoon] = await db.query(
+      "SELECT id, title, current_price, end_time FROM auctions WHERE end_time > NOW() ORDER BY end_time ASC LIMIT 5"
+    );
+    // Top 5 highest price
+    const [highestPrice] = await db.query(
+      "SELECT id, title, current_price, end_time FROM auctions ORDER BY current_price DESC LIMIT 5"
+    );
+    // Top 5 most bids (assumes bids_count column or computed)
+    const [mostBids] = await db.query(
+      "SELECT a.id, a.title, a.current_price, a.end_time, COALESCE(a.bids_count, (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id)) AS bids_count FROM auctions a ORDER BY bids_count DESC LIMIT 5"
+    );
+    auctions = { endingSoon, highestPrice, mostBids };
   } catch (e) {
     console.error(e);
   }
@@ -36,4 +47,4 @@ router.get("/auctions/:id", async (req, res) => {
   res.render("auction/detail", { title: auction.title, auction });
 });
 
-export default router;
+module.exports = router;
