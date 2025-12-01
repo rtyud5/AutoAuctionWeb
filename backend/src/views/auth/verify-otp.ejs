@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xác minh OTP</title>
+    <link rel="stylesheet" href="/css/style.css" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .otp-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 60px 0;
+        }
+
+        .otp-card {
+            width: 960px;
+            background: #fff;
+            border-radius: 22px;
+            padding: 70px 20px;
+            box-shadow: rgba(0,0,0,0.05) 0 4px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .otp-inner {
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .otp-illustration {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            margin: 0 auto 26px auto;
+            background: radial-gradient(circle at top, #e0f7ff 0, #c0ecff 45%, #f4f4ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: #555;
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .otp-subtitle {
+            font-size: 13px;
+            color: #777;
+            margin-bottom: 22px;
+        }
+
+        .otp-inputs {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .otp-inputs input[type="text"] {
+            width: 42px;
+            height: 42px;
+            text-align: center;
+            font-size: 22px;
+            border: none;
+            border-bottom: 2px solid #287bff;
+            outline: none;
+        }
+
+        .otp-resend {
+            font-size: 12px;
+            color: #b0b0b0;
+            margin-bottom: 22px;
+        }
+
+        .otp-resend a {
+            color: #287bff;
+            text-decoration: none;
+        }
+
+        .otp-resend a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-verify {
+            width: 220px;
+            padding: 13px 0;
+            border: none;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #287bff, #3b59ff);
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .btn-verify:hover {
+            filter: brightness(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <%- include("../partials/navbar"); %>
+
+    <div class="otp-wrapper">
+        <div class="otp-card">
+            <div class="otp-inner">
+
+                <div class="otp-illustration">
+                    Hình OTP<br />theo Figma
+                </div>
+
+                <h2>Xác minh OTP</h2>
+                <p class="otp-subtitle">
+                    Nhập mã OTP được gửi đến email của bạn
+                </p>
+
+                <form action="/auth/verify-otp" method="POST" id="otpForm">
+                    <!-- input ẩn gửi full OTP -->
+                    <input type="hidden" name="otp" id="otpValue" />
+
+                    <div class="otp-inputs">
+                        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="otp-digit" />
+                        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="otp-digit" />
+                        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="otp-digit" />
+                        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="otp-digit" />
+                    </div>
+
+                    <p class="otp-resend">
+                        Bạn chưa nhận được OTP?
+                        <a href="#">Gửi lại OTP</a>
+                    </p>
+
+                    <button type="submit" class="btn-verify">Verify</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inputs = document.querySelectorAll('.otp-digit');
+        const otpForm = document.getElementById('otpForm');
+        const otpValue = document.getElementById('otpValue');
+
+        // Tự động chuyển sang ô tiếp theo
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                if (input.value && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+        });
+
+        otpForm.addEventListener('submit', (e) => {
+            let code = '';
+            inputs.forEach(i => code += (i.value || ''));
+            otpValue.value = code;
+            // có thể thêm validate length 4 nếu cần
+            if (code.length < inputs.length) {
+                e.preventDefault();
+                alert('Vui lòng nhập đầy đủ mã OTP.');
+            }
+        });
+    </script>
+</body>
+</html>

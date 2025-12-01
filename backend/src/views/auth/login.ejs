@@ -1,9 +1,171 @@
-<% layout("layouts/main") %>
-<h1>Đăng nhập</h1>
-<form method="post" action="/auth/login">
-  <label>Email</label>
-  <input type="email" name="email" required />
-  <label>Mật khẩu</label>
-  <input type="password" name="password" required />
-  <button type="submit">Đăng nhập</button>
-</form>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập</title>
+    <link rel="stylesheet" href="/css/style.css" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #b6e4ef;
+            margin: 0;
+            padding: 0;
+        }
+
+        .login-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 70px 0;
+        }
+
+        .login-card {
+            width: 520px;
+            background: white;
+            border-radius: 20px;
+            padding: 45px 55px;
+            box-shadow: rgba(0,0,0,0.05) 0 4px 20px;
+        }
+
+        .login-card h2 {
+            margin-bottom: 25px;
+            font-size: 26px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            font-size: 14px;
+            display: block;
+            margin-bottom: 6px;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            outline: none;
+            font-size: 15px;
+        }
+
+        input:focus {
+            border-color: #00b4d8;
+        }
+
+        .text-muted {
+            font-size: 12px;
+            color: #777;
+            margin-top: -10px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .check-row input {
+            width: auto;
+            margin-top: 3px;
+        }
+
+        .check-row span {
+            font-size: 13px;
+            color: #444;
+            line-height: 1.5;
+        }
+
+        .btn-submit {
+            width: 140px;
+            padding: 12px 0;
+            margin-top: 18px;
+            font-size: 15px;
+            border-radius: 30px;
+            background: #d7d7d7;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-submit:hover {
+            background: #c2c2c2;
+        }
+
+        .register-line {
+            text-align: left;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .register-line a {
+            margin-left: 8px;
+            color: #00a8e8;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .register-line a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include("../partials/navbar"); %>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <h2>Đăng nhập</h2>
+
+            <form action="/auth/login" method="POST">
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" name="password" required />
+                </div>
+
+                <div class="check-row">
+                    <input type="checkbox" checked />
+                    <span>
+                        Bằng cách tạo tài khoản, tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi
+                    </span>
+                </div>
+
+                <div class="check-row">
+                    <input type="checkbox" checked />
+                    <span>
+                        Tôi đồng ý nhận tin nhắn SMS và email về cập nhật mới, sự kiện và chương trình khuyến mãi.
+                    </span>
+                </div>
+
+                <button type="submit" class="btn-submit">Sign in</button>
+
+                <p class="register-line">
+                    Bạn chưa có tài khoản?
+                    <a href="/register">Đăng ký</a>
+                </p>
+
+            </form>
+
+        </div>
+    </div>
+
+</body>
+</html>

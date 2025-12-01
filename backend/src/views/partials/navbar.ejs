@@ -1,10 +1,72 @@
-<header class="navbar">
-  <div class="nav-left">
-    <a href="/" class="logo">BidHub</a>
-  </div>
-  <nav class="nav-right">
-    <a href="/auctions">Đấu giá</a>
-    <a href="/login">Đăng nhập</a>
-    <a href="/register">Đăng ký</a>
-  </nav>
-</header>
+<nav style="
+    width: 100%;
+    height: 65px;
+    background: #00C2D1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    font-family: 'Inter', sans-serif;
+">
+    <!-- Left: Logo + Menu -->
+    <div style="display: flex; align-items: center; gap: 28px;">
+        
+        <!-- Logo -->
+        <a href="/" style="text-decoration: none;">
+            <img src="/images/logo.png" alt="logo" style="height: 38px;">
+        </a>
+
+        <!-- Menu -->
+        <div style="display: flex; align-items: center; gap: 14px; font-size: 15px;">
+            <a href="/" style="color: white; text-decoration: none;">Trang chủ</a>
+
+            <div style="position: relative;">
+                <a href="#" style="color: white; text-decoration: none;">
+                    danh sách danh mục ▼
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Search + Auth -->
+    <div style="display: flex; align-items: center; gap: 20px;">
+
+        <!-- Search box -->
+        <div style="
+            position: relative;
+            background: rgba(255,255,255,0.4);
+            padding: 6px 16px;
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            width: 330px;
+        ">
+            <input 
+                type="text" 
+                placeholder="Search..."
+                style="
+                    width: 100%;
+                    border: none;
+                    outline: none;
+                    background: transparent;
+                    font-size: 14px;
+                    color: #044;
+                "
+            />
+            <img 
+                src="https://cdn-icons-png.flaticon.com/128/622/622669.png"
+                alt="search"
+                style="height: 20px; margin-left: 8px; opacity: 0.7;"
+            >
+        </div>
+
+        <!-- Auth buttons -->
+        <a href="/login" style="color: white; text-decoration: none; font-size: 15px;">
+            Sign In
+        </a>
+
+        <a href="/register" style="color: white; text-decoration: none; font-size: 15px;">
+            register
+        </a>
+    </div>
+</nav>
