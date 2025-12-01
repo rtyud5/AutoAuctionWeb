@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import db from '../config/db.js';
-import auth from '../middleware/auth.middleware.js';
+import auth from '../middlewares/auth.middleware.js';
 
 // import controller
 import bidderController from '../controllers/bidder.controller.js';

@@ -2,9 +2,9 @@ import express from 'express';
 import { check, validationResult } from 'express-validator';
 
 import orderController from '../controllers/order.controller.js';
-import auth from '../middleware/auth.middleware.js';
-import isAdmin from '../middleware/admin.middleware.js';
-import isSeller from '../middleware/seller.middleware.js';
+import auth from '../middlewares/auth.middleware.js';
+import isAdmin from '../middlewares/admin.middleware.js';
+import isSeller from '../middlewares/seller.middleware.js';
 
 const router = express.Router();
 

@@ -7,8 +7,8 @@ const router = express.Router();
 import adminController from '../controllers/admin.controller.js';
 
 // Middlewares
-import auth from '../middleware/auth.middleware.js';
-import isAdmin from '../middleware/admin.middleware.js';
+import auth from '../middlewares/auth.middleware.js';
+import isAdmin from '../middlewares/admin.middleware.js';
 
 // Validation result handler
 const validate = (req, res, next) => {
