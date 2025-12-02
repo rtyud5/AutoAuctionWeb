@@ -2,12 +2,22 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title><%= title || "Online Auction" %></title>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: { extend: { colors: { teal: { 400: "#06b6d4" } } } }
+      };
+    </script>
+
     <link rel="stylesheet" href="/css/main.css" />
   </head>
-  <body>
+  <body class="min-h-screen flex flex-col bg-gray-50 text-slate-800">
     <%- include("../partials/navbar") %>
-    <main class="container">
+    <main class="container mx-auto px-4">
       <%- body %>
     </main>
     <%- include("../partials/footer") %>

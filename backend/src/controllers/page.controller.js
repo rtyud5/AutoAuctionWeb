@@ -35,9 +35,23 @@ const showAuction = async (req, res) => {
   }
 };
 
+const listAuctions = async (req, res) => {
+  let rows = [];
+  try {
+    const [result] = await db.query(
+      "SELECT id, title, current_price, end_time, image FROM auctions WHERE end_time > NOW() ORDER BY end_time ASC"
+    );
+    rows = result;
+  } catch (e) {
+    console.error("listAuctions DB error:", e);
+  }
+  return res.render("home/list", { title: "Danh sách", auctions: rows });
+};
+
 export default {
   index,
   loginView,
   registerView,
-  showAuction
+  showAuction,
+  listAuctions
 };
