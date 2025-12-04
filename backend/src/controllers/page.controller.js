@@ -35,18 +35,57 @@ const showAuction = async (req, res) => {
   }
 };
 
-const listAuctions = async (req, res) => {
+const listByCategory = async (req, res, category, view) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = 9;
+  const offset = (page - 1) * limit;
+
   let rows = [];
+  let total = 0;
   try {
-    const [result] = await db.query(
-      "SELECT id, title, current_price, end_time, image FROM auctions WHERE end_time > NOW() ORDER BY end_time ASC"
+    // Count total
+    const countResult = await db.query(
+      "SELECT COUNT(*) as count FROM auctions WHERE category = ? AND end_time > NOW()",
+      [category]
     );
-    rows = result;
+    total = countResult[0]?.count || 0;
+
+    // Fetch paginated data
+    const result = await db.query(
+      "SELECT id, title, current_price, end_time, image, top_bidder, is_new FROM auctions WHERE category = ? AND end_time > NOW() ORDER BY end_time ASC LIMIT ? OFFSET ?",
+      [category, limit, offset]
+    );
+    rows = Array.isArray(result) ? result : [];
   } catch (e) {
-    console.error("listAuctions DB error:", e);
+    console.error(`❌ listByCategory (${category}) DB error:`, e.message, e.code);
+    rows = [];
+    total = 0;
   }
-  return res.render("home/list", { title: "Danh sách", auctions: rows });
+
+  const title = category === 'electronics' ? 'Điện tử' : category === 'fashion' ? 'Thời trang' : 'Danh sách';
+  const totalPages = Math.ceil(total / limit) || 1;
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push({
+      num: i,
+      url: `?page=${i}`,
+      current: i === page
+    });
+  }
+
+  const pagination = {
+    pages,
+    prev: page > 1 ? `?page=${page - 1}` : null,
+    next: page < totalPages ? `?page=${page + 1}` : null,
+    currentPage: page,
+    totalPages
+  };
+
+  return res.render(view, { title, auctions: rows, category, pagination });
 };
+
+const listElectronics = (req, res) => listByCategory(req, res, 'electronics', 'categories/electronics');
+const listFashion = (req, res) => listByCategory(req, res, 'fashion', 'categories/fashion');
 
 const profileView = (req, res) => {
   const user = req.user || {
@@ -203,7 +242,8 @@ export default {
   loginView,
   registerView,
   showAuction,
-  listAuctions, 
+  listElectronics,
+  listFashion,
   profileView,
   reviewView,
   profileProductView,

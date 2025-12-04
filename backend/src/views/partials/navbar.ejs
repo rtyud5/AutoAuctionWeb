@@ -20,10 +20,23 @@
         <div style="display: flex; align-items: center; gap: 14px; font-size: 15px;">
             <a href="/" style="color: white; text-decoration: none;">Trang chủ</a>
 
+            <!-- Category dropdown -->
             <div style="position: relative;">
-                <a href="/list" style="color: white; text-decoration: none;">
-                    danh sách danh mục ▼
-                </a>
+                <button id="catToggle" type="button" aria-expanded="false" aria-controls="catPanel"
+                  style="background:transparent;border:none;color:white;cursor:pointer;font-size:15px;padding:0;display:flex;align-items:center;gap:6px;">
+                    <span>danh sách danh mục</span>
+                    <span id="catArrow" aria-hidden="true" style="display:inline-block;font-size:20px;line-height:1;transform:translateY(1px);transition:transform .18s;transform-origin:center;">▾</span>
+                </button>
+
+                <!-- dropdown panel (hidden by default) -->
+                <div id="catPanel" class="hidden absolute top-9 left-0 min-w-[160px] bg-blue-100 text-blue-800 rounded-lg shadow-md overflow-hidden z-60">
+                    <a href="/electronics" class="block px-4 py-3 border-b border-blue-200 hover:bg-blue-200">
+                        Điện tử
+                    </a>
+                    <a href="/fashion" class="block px-4 py-3 hover:bg-blue-200">
+                        Thời trang
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -130,29 +143,148 @@
 </nav>
 
 <script>
-    // Ví dụ kiểm tra login (bạn đổi thành logic thật)
-    const isLoggedIn = true; // hoặc req.session.user != null
+(function() {
+  'use strict';
 
-    const guestArea = document.getElementById("auth-guest");
-    const userArea = document.getElementById("auth-user");
-    const menu = document.getElementById("user-menu");
+  // === Category Dropdown Module ===
+  const CategoryDropdown = {
+    init() {
+      this.toggleBtn = document.getElementById('catToggle');
+      this.panel = document.getElementById('catPanel');
+      this.arrow = document.getElementById('catArrow');
 
-    // Nếu đã đăng nhập → ẩn guest, hiện user
-    if (isLoggedIn) {
-        guestArea.style.display = "none";
-        userArea.style.display = "flex";
-    }
+      if (!this.toggleBtn || !this.panel || !this.arrow) {
+        console.error('Category dropdown elements not found');
+        return;
+      }
 
-    // Toggle menu khi bấm avatar
-    userArea.onclick = () => {
-        menu.style.display = menu.style.display === "block" ? "none" : "block";
-    };
+      this.bindEvents();
+      this.hide();
+    },
 
-    // Click ra ngoài thì ẩn menu
-    document.addEventListener("click", function (e) {
-        if (!userArea.contains(e.target)) {
-            menu.style.display = "none";
+    show() {
+      this.panel.classList.remove('hidden');
+      this.toggleBtn.setAttribute('aria-expanded', 'true');
+      this.arrow.style.transform = 'rotate(180deg)';
+    },
+
+    hide() {
+      this.panel.classList.add('hidden');
+      this.toggleBtn.setAttribute('aria-expanded', 'false');
+      this.arrow.style.transform = 'rotate(0deg)';
+    },
+
+    isVisible() {
+      return !this.panel.classList.contains('hidden');
+    },
+
+    toggleDropdown() {
+      if (this.isVisible()) {
+        this.hide();
+      } else {
+        this.show();
+      }
+    },
+
+    bindEvents() {
+      // Toggle on click
+      this.toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleDropdown();
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.isVisible()) {
+          this.hide();
         }
-    });
-</script>
+      });
 
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!this.toggleBtn.contains(e.target) && !this.panel.contains(e.target)) {
+          this.hide();
+        }
+      });
+    }
+  };
+
+  // === User Authentication Module ===
+  const UserAuth = {
+    init() {
+      // TODO: Replace with server-side logic
+      // Example: const isLoggedIn = <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>;
+      this.isLoggedIn = true;
+
+      this.guestArea = document.getElementById('auth-guest');
+      this.userArea = document.getElementById('auth-user');
+      this.menu = document.getElementById('user-menu');
+
+      if (!this.guestArea || !this.userArea || !this.menu) {
+        console.error('Auth elements not found');
+        return;
+      }
+
+      this.updateAuthDisplay();
+      if (this.isLoggedIn) {
+        this.bindUserMenuEvents();
+      }
+    },
+
+    updateAuthDisplay() {
+      if (this.isLoggedIn) {
+        this.guestArea.style.display = 'none';
+        this.userArea.style.display = 'flex';
+      } else {
+        this.guestArea.style.display = 'flex';
+        this.userArea.style.display = 'none';
+      }
+    },
+
+    toggleMenu() {
+      const isVisible = this.menu.style.display === 'block';
+      this.menu.style.display = isVisible ? 'none' : 'block';
+    },
+
+    hideMenu() {
+      this.menu.style.display = 'none';
+    },
+
+    bindUserMenuEvents() {
+      // Toggle menu on avatar click
+      this.userArea.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMenu();
+      });
+
+      // Close menu on outside click
+      document.addEventListener('click', (e) => {
+        if (!this.userArea.contains(e.target) && !this.menu.contains(e.target)) {
+          this.hideMenu();
+        }
+      });
+
+      // Close menu on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          this.hideMenu();
+        }
+      });
+    }
+  };
+
+  // === Initialize All Modules ===
+  const init = () => {
+    CategoryDropdown.init();
+    UserAuth.init();
+  };
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
