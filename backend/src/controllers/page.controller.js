@@ -63,14 +63,14 @@ const reviewView = async (req, res) => {
   try {
     const userId = req.user?.id || 1;
 
-    // Lấy tổng điểm – luôn trả về 0 nếu không có bản ghi
+    // Lấy tổng điểm
     const [totalPointResult] = await db.query(
       `SELECT COALESCE(SUM(point), 0) AS total FROM reviews WHERE user_id = ?`,
       [userId]
     );
-    const totalPoint = totalPointResult?.[0]?.total || 0;
+    const totalPoint = totalPointResult?.[0]?.total ?? 0;
 
-    // Lấy danh sách review – nếu rỗng vẫn trả về []
+    // Lấy danh sách review
     const [reviewList] = await db.query(
       `SELECT reviewer, comment, point, avatar 
        FROM reviews 
@@ -80,23 +80,22 @@ const reviewView = async (req, res) => {
     );
 
     return res.render("profile/review", {
-      title: "my review",
+      title: "My review",
       totalPoint,
-      reviewList: reviewList || []   // luôn là array
+      reviewList: reviewList || []   // luôn đảm bảo là array
     });
 
   } catch (err) {
     console.error("reviewView error:", err);
     
+    // ❗ Không trả về 500 nữa — trả về 200 với dữ liệu rỗng
     return res.render("profile/review", {
-      title: "my review",
+      title: "My review",
       totalPoint: 0,
       reviewList: []
     });
   }
 };
-
-
 
 
 export default {
