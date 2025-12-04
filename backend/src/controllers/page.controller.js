@@ -198,10 +198,6 @@ const profileAuctionView = async (req, res) => {
   }
 };
 
-
-
-
-
 export default {
   index,
   loginView,
