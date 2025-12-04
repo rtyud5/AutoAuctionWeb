@@ -59,6 +59,45 @@ const profileView = (req, res) => {
   });
 };
 
+const reviewView = async (req, res) => {
+  try {
+    const userId = req.user?.id || 1;
+
+    // Lấy tổng điểm – luôn trả về 0 nếu không có bản ghi
+    const [totalPointResult] = await db.query(
+      `SELECT COALESCE(SUM(point), 0) AS total FROM reviews WHERE user_id = ?`,
+      [userId]
+    );
+    const totalPoint = totalPointResult?.[0]?.total || 0;
+
+    // Lấy danh sách review – nếu rỗng vẫn trả về []
+    const [reviewList] = await db.query(
+      `SELECT reviewer, comment, point, avatar 
+       FROM reviews 
+       WHERE user_id = ?
+       ORDER BY id DESC`,
+      [userId]
+    );
+
+    return res.render("profile/review", {
+      title: "my review",
+      totalPoint,
+      reviewList: reviewList || []   // luôn là array
+    });
+
+  } catch (err) {
+    console.error("reviewView error:", err);
+    
+    return res.render("profile/review", {
+      title: "my review",
+      totalPoint: 0,
+      reviewList: []
+    });
+  }
+};
+
+
+
 
 export default {
   index,
@@ -66,5 +105,6 @@ export default {
   registerView,
   showAuction,
   listAuctions, 
-  profileView
+  profileView,
+  reviewView
 };

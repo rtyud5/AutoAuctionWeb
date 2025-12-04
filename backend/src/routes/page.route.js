@@ -8,6 +8,7 @@ router.get("/login", pageController.loginView);
 router.get("/register", pageController.registerView);
 router.get("/list", pageController.listAuctions);
 router.get("/setting", pageController.profileView);
+router.get("/review", pageController.reviewView);
 
 // Trang xác minh OTP – chỉ render giao diện
 router.get("/verify-otp", (req, res) => {

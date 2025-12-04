@@ -1,5 +1,6 @@
 <!-- Banner -->
-<section class="flex flex-col md:flex-row items-center justify-between bg-gradient-to-r from-blue-500 to-blue-700 text-white px-8 py-16 rounded-2xl shadow-lg mb-12">
+<section
+    class="flex flex-col md:flex-row items-center justify-between bg-gradient-to-r from-blue-500 to-blue-700 text-white px-8 py-16 rounded-2xl shadow-lg mb-12">
     <div class="banner-left max-w-lg">
         <h1 class="text-4xl font-bold mb-4">ĐẤU GIÁ TRỰC TUYẾN</h1>
         <p class="text-lg opacity-90 mb-2">Mô tả ngắn về hệ thống đấu giá trực tuyến...</p>
@@ -15,83 +16,217 @@
 </section>
 
 <!-- Section Template -->
-<% const sections = [
+<% const sections=[ 'Top 5 sản phẩm giá rẻ nhất' , 'Top 5 sản phẩm có nhiều lượt ra giá nhất'
+    , 'Top 5 sản phẩm giá cao nhất' ]; %>
 
-'Top 5 sản phẩm giá rẻ nhất',
-    'Top 5 sản phẩm có nhiều lượt ra giá nhất',
-    'Top 5 sản phẩm giá cao nhất'
-]; %>
-
-<% sections.forEach(title => { %>
-<section class="auction-section mb-12">
-    <h2 class="text-2xl font-semibold mb-6 text-gray-800"><%= title %></h2>
-
-    <div class="auction-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <% for (let i = 0; i < 5; i++) { %>
-        <div class="auction-card bg-white rounded-xl shadow-md hover:shadow-xl transition p-4 flex gap-4">
-            
-            <!-- Image -->
-            <div class="auction-img w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
-                Hình
+    <% sections.forEach((title, sidx)=> { %>
+        <section class="auction-section mb-12">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-semibold text-gray-800">
+                    <%= title %>
+                </h2>
             </div>
 
-            <!-- Info -->
-            <div class="auction-info flex flex-col justify-between w-full">
-                <div>
-                    <h3 class="text-lg font-bold text-gray-700 mb-1">Tên sản phẩm: ___ </h3>
-                    <% if (title.includes('nhiều lượt')) { %>
-                        <p>Số lượt ra giá: ________</p>
-                        <p>Giá hiện tại: ________</p>
-                        <p>Ngày đăng: ________</p>
-                        <p>Bidder cao nhất: _____</p>
-                        <p>Thời gian còn lại: ___</p>
-                        <p>Giá mua ngay: __ </p>
-                    <% } else if (title.includes('giá cao nhất')) { %>
-                        <p>Số lượt ra giá: ________</p>
-                        <p>Giá hiện tại: ________</p>
-                        <p>Ngày đăng: ________</p>
-                        <p>Bidder cao nhất: _____</p>
-                        <p>Thời gian còn lại: ___</p>
-                        <p>Giá mua ngay: __ </p>
-                    <% } else { %>
-                        <p>Số lượt ra giá: ________</p>
-                        <p>Giá hiện tại: ________</p>
-                        <p>Ngày đăng: ________</p>
-                        <p>Bidder cao nhất: _____</p>
-                        <p>Thời gian còn lại: ___</p>
-                        <p>Giá mua ngay: __ </p>
-                    <% } %>
+            <!-- CAROUSEL: shows 3 cards per view; arrows + dots if more -->
+            <div class="relative">
+                <!-- viewport -->
+                <div class="carousel-viewport overflow-hidden">
+                    <!-- track: flex list of cards -->
+                    <div class="carousel-track flex gap-6 snap-x snap-mandatory">
+                        <% for (let i=0; i < 9; i++) { /* demo: render 9 items to show multiple pages; replace with real
+                            data loop */ %>
+                            <div class="auction-card flex-shrink-0 w-full sm:w-1/2 md:w-1/3 snap-start">
+                                <div
+                                    class="bg-white rounded-xl shadow-md hover:shadow-xl transition p-4 flex gap-4 h-full">
+                                    <!-- Image -->
+                                    <div
+                                        class="auction-img w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
+                                        Hình
+                                    </div>
+                                    <!-- Info -->
+                                    <div class="auction-info flex flex-col justify-between w-full">
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-700 mb-1">Tên sản phẩm: ___ </h3>
+                                            <p class="text-sm text-gray-600">Giá hiện tại: 1,000,000vnđ</p>
+                                            <p class="text-sm text-gray-500">Bidder cao nhất: ****Khoa</p>
+                                            <p class="text-sm text-gray-500">Thời gian còn lại: 2 Ngày 5 Giờ</p>
+                                        </div>
+                                        <button
+                                            class="btn-auction mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition w-28 text-sm">View
+                                            Product</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <% } %>
+                    </div>
                 </div>
 
-                <button class="btn-auction mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition">
-                    View Product
+                <!-- arrows -->
+                <button aria-label="prev"
+                    class="carousel-prev absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow hidden md:flex">
+                    <!-- simple left chevron -->
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
                 </button>
+                <button aria-label="next"
+                    class="carousel-next absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow hidden md:flex">
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+
+                <!-- dots -->
+                <div class="carousel-dots mt-4 flex justify-center gap-2"></div>
             </div>
-        </div>
-        <% } %>
-    </div>
-</section>
-<% }) %>
+        </section>
+        <% }) %>
 
-<!-- CONTACT SECTION -->
-<section class="bg-white shadow-md rounded-2xl px-8 py-12 mt-12">
-    <div class="container mx-auto flex flex-col md:flex-row items-center gap-8">
-        <!-- Logo -->
-        <div class="flex-shrink-0">
-            <img src="/path/to/logo.png" alt="Logo" class="w-32 h-auto">
-        </div>
+            <!-- CONTACT SECTION -->
+            <section class="bg-white shadow-md rounded-2xl px-8 py-12 mt-12">
+                <div class="container mx-auto flex flex-col md:flex-row items-center gap-8">
+                    <!-- Logo -->
+                    <div class="flex-shrink-0">
+                        <img src="/path/to/logo.png" alt="Logo" class="w-32 h-auto">
+                    </div>
 
-        <!-- Info -->
-        <div class="text-gray-800 flex-1">
-            <h3 class="text-xl font-semibold mb-4">THÔNG TIN LIÊN HỆ</h3>
-            <p class="mb-1"><strong>Hotline:</strong> 0359988494</p>
-            <p class="mb-1"><strong>Email:</strong> tavanduc298@gmail.com</p>
-            <p class="mb-1"><strong>Địa chỉ:</strong> 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
-        </div>
-    </div>
-</section>
+                    <!-- Info -->
+                    <div class="text-gray-800 flex-1">
+                        <h3 class="text-xl font-semibold mb-4">THÔNG TIN LIÊN HỆ</h3>
+                        <p class="mb-1"><strong>Hotline:</strong> 0359988494</p>
+                        <p class="mb-1"><strong>Email:</strong> tavanduc298@gmail.com</p>
+                        <p class="mb-1"><strong>Địa chỉ:</strong> 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
+                    </div>
+                </div>
+            </section>
 
-<!-- FOOTER -->
-<footer class="bg-blue-400 text-center py-6 mt-8 text-black">
-    © 2025 Online Auction System @L&P2025
-</footer>
+            <!-- FOOTER -->
+            <footer class="bg-blue-400 text-center py-6 mt-8 text-black">
+                © 2025 Online Auction System @L&P2025
+            </footer>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.querySelectorAll('.auction-section').forEach(section => {
+                        const viewport = section.querySelector('.carousel-viewport');
+                        const track = section.querySelector('.carousel-track');
+                        const cards = Array.from(section.querySelectorAll('.auction-card'));
+                        const prevBtn = section.querySelector('.carousel-prev');
+                        const nextBtn = section.querySelector('.carousel-next');
+                        const dotsWrap = section.querySelector('.carousel-dots');
+                        if (!viewport || !track || cards.length === 0) return;
+
+                        // decide perPage by breakpoint
+                        const getPerPage = () => {
+                            const w = window.innerWidth;
+                            if (w >= 1024) return 3;   // desktop
+                            if (w >= 640) return 2;    // tablet
+                            return 1;                  // mobile
+                        };
+
+                        const setCardWidths = (perPage) => {
+                            // compute gap between cards (fallback 24)
+                            const style = getComputedStyle(track);
+                            const gap = parseFloat(style.gap) || 24;
+                            const avail = Math.max(0, viewport.clientWidth - gap * (perPage - 1));
+                            const cw = Math.floor(avail / perPage);
+                            cards.forEach(card => {
+                                card.style.width = cw + 'px';
+                            });
+                        };
+
+                        let perPage = getPerPage();
+                        setCardWidths(perPage);
+
+                        let pages = Math.max(1, Math.ceil(cards.length / perPage));
+                        let currentPage = 0;
+
+                        const buildDots = () => {
+                            dotsWrap.innerHTML = '';
+                            for (let i = 0; i < pages; i++) {
+                                const d = document.createElement('button');
+                                d.className = 'w-3 h-3 rounded-full bg-gray-300';
+                                d.setAttribute('aria-label', 'Go to page ' + (i + 1));
+                                d.addEventListener('click', () => goToPage(i));
+                                dotsWrap.appendChild(d);
+                            }
+                            updateDots();
+                        };
+
+                        const updateDots = () => {
+                            Array.from(dotsWrap.children).forEach((dot, idx) => {
+                                dot.classList.toggle('bg-teal-500', idx === currentPage);
+                                dot.classList.toggle('bg-gray-300', idx !== currentPage);
+                            });
+                        };
+
+                        const toggleArrows = () => {
+                            if (!prevBtn || !nextBtn) return;
+                            if (pages > 1) {
+                                prevBtn.classList.remove('hidden');
+                                nextBtn.classList.remove('hidden');
+                            } else {
+                                prevBtn.classList.add('hidden');
+                                nextBtn.classList.add('hidden');
+                            }
+                        };
+
+                        const goToPage = (page) => {
+                            perPage = getPerPage();
+                            pages = Math.max(1, Math.ceil(cards.length / perPage));
+                            currentPage = Math.max(0, Math.min(page, pages - 1));
+                            // scroll to card index = currentPage * perPage
+                            const targetIndex = currentPage * perPage;
+                            const targetCard = cards[targetIndex];
+                            if (targetCard) {
+                                viewport.scrollTo({ left: targetCard.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+                            } else {
+                                viewport.scrollTo({ left: currentPage * viewport.clientWidth, behavior: 'smooth' });
+                            }
+                            updateDots();
+                            toggleArrows();
+                        };
+
+                        if (prevBtn) prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
+                        if (nextBtn) nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+
+                        // sync page when user scrolls manually
+                        let scrollTimeout;
+                        viewport.addEventListener('scroll', () => {
+                            window.clearTimeout(scrollTimeout);
+                            scrollTimeout = setTimeout(() => {
+                                // find leftmost visible card index
+                                const left = viewport.scrollLeft + 1; // +1 to avoid border cases
+                                let idx = 0;
+                                for (let i = 0; i < cards.length; i++) {
+                                    if (cards[i].offsetLeft - track.offsetLeft <= left) idx = i;
+                                    else break;
+                                }
+                                currentPage = Math.floor(idx / perPage);
+                                updateDots();
+                                toggleArrows();
+                            }, 100);
+                        });
+
+                        // recalc on resize
+                        let resizeTimeout;
+                        window.addEventListener('resize', () => {
+                            window.clearTimeout(resizeTimeout);
+                            resizeTimeout = setTimeout(() => {
+                                const oldPer = perPage;
+                                perPage = getPerPage();
+                                setCardWidths(perPage);
+                                pages = Math.max(1, Math.ceil(cards.length / perPage));
+                                if (pages !== dotsWrap.children.length) buildDots();
+                                if (currentPage > pages - 1) currentPage = pages - 1;
+                                goToPage(currentPage);
+                            }, 120);
+                        });
+
+                        // init
+                        buildDots();
+                        toggleArrows();
+                        goToPage(0);
+                    });
+                });
+            </script>

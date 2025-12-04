@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý sản phẩm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 via-purple-50 to-yellow-50 p-4">
+    <div class="max-w-2xl mx-auto space-y-6">
+        
+        <!-- Danh sách sản phẩm đang đăng & cần hạn -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+            <h2 class="text-base font-semibold text-gray-800 mb-4">danh sách sản phẩm đang đăng & cần hạn</h2>
+            
+            <!-- Table Header -->
+            <div class="grid grid-cols-5 gap-4 mb-4 pb-2 border-b border-gray-200">
+                <div class="text-sm font-medium text-gray-600">Sản Phẩm</div>
+                <div class="text-sm font-medium text-gray-600 text-center">Giá hiện tại</div>
+                <div class="text-sm font-medium text-gray-600 text-center">Giá thầu</div>
+                <div class="text-sm font-medium text-gray-600 text-center">Thời gian</div>
+                <div></div>
+            </div>
+
+            <!-- Product Row -->
+            <div class="grid grid-cols-5 gap-4 items-center py-4">
+                <div class="flex items-center gap-3">
+                    <img src="https://via.placeholder.com/50" alt="Product" class="w-12 h-12 rounded-lg">
+                    <span class="text-sm font-medium text-gray-700">eMosy tĩnh</span>
+                </div>
+                <div class="text-center text-sm text-gray-800">3,000,000 VNĐ</div>
+                <div class="text-center text-sm font-semibold text-gray-900">12</div>
+                <div class="text-center">
+                    <div class="text-sm text-gray-700">2d 4h 30m</div>
+                    <button class="text-xs text-blue-500 hover:text-blue-700">Xem chi tiết</button>
+                </div>
+                <div class="text-center">
+                    <div class="text-sm font-bold text-red-500">Kết thúc sau: 1h 30m</div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex justify-center items-center gap-2 mt-6">
+                <button class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center font-semibold text-sm">1</button>
+                <button class="w-8 h-8 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 text-sm">2</button>
+                <button class="w-8 h-8 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 text-sm">3</button>
+                <button class="w-8 h-8 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Danh sách sản phẩm đã có người thắng đấu giá -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+            <h2 class="text-base font-semibold text-gray-800 mb-6">danh sách sản phẩm đã có người thắng đấu giá</h2>
+            
+            <!-- Product Info Row -->
+            <div class="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
+                <img src="https://via.placeholder.com/60" alt="Product" class="w-14 h-14 rounded-lg">
+                <div class="flex-1">
+                    <span class="text-sm font-medium text-gray-700">eMosy tĩnh</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <img src="https://via.placeholder.com/32" alt="User" class="w-8 h-8 rounded-full">
+                        <span class="text-sm text-gray-700">Seller_Alex</span>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-900">3,000,000 VNĐ</span>
+                    <div class="flex gap-2">
+                        <button class="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                            </svg>
+                            H
+                        </button>
+                        <button class="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            H
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment Box -->
+            <div class="bg-gradient-to-br from-teal-100 to-cyan-100 rounded-2xl p-6 mb-4">
+                <textarea 
+                    placeholder="Type your comment here ...." 
+                    class="w-full h-32 bg-transparent border-none outline-none text-gray-700 placeholder-gray-500 resize-none text-sm"
+                ></textarea>
+                <div class="flex justify-center mt-4">
+                    <button class="bg-white hover:bg-gray-50 text-gray-700 px-8 py-2 rounded-full text-sm font-medium shadow-md transition">
+                        Submit
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hủy giao dịch Button -->
+            <div class="flex justify-center">
+                <button class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-8 py-2.5 rounded-full text-sm font-medium shadow-lg transition">
+                    Hủy giao dịch
+                </button>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex justify-center items-center gap-2 mt-6">
+                <button class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center font-semibold text-sm">1</button>
+                <button class="w-8 h-8 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 text-sm">2</button>
+                <button class="w-8 h-8 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 text-sm">3</button>
+                <button class="w-8 h-8 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

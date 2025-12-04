@@ -14,7 +14,7 @@ const startServer = async () => {
     await testConnection();
 
     // sync models (adjust options as needed)
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log("✅ Sequelize models synchronized with database");
 
     const server = app.listen(PORT, () => {
