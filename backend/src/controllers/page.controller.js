@@ -48,10 +48,23 @@ const listAuctions = async (req, res) => {
   return res.render("home/list", { title: "Danh sách", auctions: rows });
 };
 
+const profileView = (req, res) => {
+  const user = req.user || {
+    name: "Guest User",
+    email: "guest@example.com",
+    avatar: null
+  };
+  return res.render("profile/setting", {title: 'Cài đặt Profile',
+    user
+  });
+};
+
+
 export default {
   index,
   loginView,
   registerView,
   showAuction,
-  listAuctions
+  listAuctions, 
+  profileView
 };

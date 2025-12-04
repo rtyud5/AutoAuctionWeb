@@ -25,6 +25,12 @@
                     danh sách danh mục ▼
                 </a>
             </div>
+
+            <div style="position: relative;">
+                <a href="/setting" style="color: white; text-decoration: none;">
+                    Cài đặt Profile
+                </a>
+            </div>
         </div>
     </div>
 
@@ -59,14 +65,85 @@
                 style="height: 20px; margin-left: 8px; opacity: 0.7;"
             >
         </div>
-
-        <!-- Auth buttons -->
-        <a href="/login" style="color: white; text-decoration: none; font-size: 15px;">
-            Sign In
-        </a>
-
-        <a href="/register" style="color: white; text-decoration: none; font-size: 15px;">
-            register
-        </a>
     </div>
+
+    <!-- Auth Zone -->
+    <div id="auth-area" style="display: flex; align-items: center; gap: 20px;">
+
+        <!-- Khi chưa đăng nhập -->
+        <div id="auth-guest">
+            <a href="/login" style="color: white; text-decoration: none; font-size: 15px;">
+                Sign In
+            </a>
+            <a href="/register" style="color: white; text-decoration: none; font-size: 15px;">
+                Register
+            </a>
+        </div>
+
+        <!-- Khi đã đăng nhập -->
+        <div id="auth-user" style="display: none; position: relative; cursor: pointer;">
+
+            <!-- Avatar + arrow -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <img src="/images/user-avatar.png" 
+                    style="height: 38px; width: 38px; border-radius: 50%; object-fit: cover;">
+                <span style="color: white; font-size: 14px;">▼</span>
+            </div>
+
+            <!-- Dropdown menu -->
+            <div id="user-menu" 
+                style="
+                    position: absolute;
+                    top: 48px;
+                    right: 0;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                    width: 160px;
+                    display: none;
+                    z-index: 999;
+                ">
+                <a href="/setting" 
+                style="padding: 10px 12px; display: block; text-decoration: none; color: #333;">
+                    Cài đặt Profile
+                </a>
+
+                <a href="/logout" 
+                style="padding: 10px 12px; display: block; text-decoration: none; color: #333;">
+                    Đăng xuất
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
 </nav>
+
+<script>
+    // Ví dụ kiểm tra login (bạn đổi thành logic thật)
+    const isLoggedIn = true; // hoặc req.session.user != null
+
+    const guestArea = document.getElementById("auth-guest");
+    const userArea = document.getElementById("auth-user");
+    const menu = document.getElementById("user-menu");
+
+    // Nếu đã đăng nhập → ẩn guest, hiện user
+    if (isLoggedIn) {
+        guestArea.style.display = "none";
+        userArea.style.display = "flex";
+    }
+
+    // Toggle menu khi bấm avatar
+    userArea.onclick = () => {
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+    };
+
+    // Click ra ngoài thì ẩn menu
+    document.addEventListener("click", function (e) {
+        if (!userArea.contains(e.target)) {
+            menu.style.display = "none";
+        }
+    });
+</script>
+
