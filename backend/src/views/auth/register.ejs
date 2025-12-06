@@ -238,7 +238,11 @@
                     </div>
                 </div>
 
-                <form action="/auth/register" method="POST" id="registerForm">
+                        <% if (typeof error !== 'undefined' && error) { %>
+            <p style="color:#d00; margin-bottom: 12px;"><%= error %></p>
+        <% } %>
+
+<form action="/auth/register" method="POST" id="registerForm">
                     <!-- input ẩn để gửi full name cho backend -->
                     <input type="hidden" name="name" id="fullName" />
 

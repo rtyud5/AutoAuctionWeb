@@ -2,8 +2,18 @@
 <h1><%= auction.title %></h1>
 <p>Giá hiện tại: <%= auction.current_price %> VNĐ</p>
 <p>Mô tả: <%= auction.description || "Chưa có mô tả" %></p>
-<form method="post" action="/auctions/<%= auction.id %>/bid">
+<form method="post" action="/bidder/auctions/<%= auction.id %>/bid">
   <label>Giá bid của bạn</label>
   <input type="number" name="amount" required />
   <button type="submit">Đặt giá</button>
+</form>
+
+
+<hr />
+<h2>Tự động đấu giá</h2>
+<p>Đặt mức giá tối đa bạn sẵn sàng trả, hệ thống sẽ tự động tăng giá theo từng bước khi có người khác ra giá.</p>
+<form method="post" action="/bidder/auctions/<%= auction.id %>/auto-bid">
+  <label>Giá tối đa (auto-bid)</label>
+  <input type="number" name="max_amount" min="<%= auction.current_price %>" required />
+  <button type="submit">Lưu cấu hình auto-bid</button>
 </form>

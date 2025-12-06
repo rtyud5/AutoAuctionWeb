@@ -12,6 +12,7 @@ import sellerRoutes from "./routes/seller.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import orderRoutes from "./routes/order.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
+import { attachUser } from "./middlewares/auth.middleware.js";
 
 dotenv.config();
 
@@ -42,6 +43,8 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+app.use(attachUser);
 
 // Routes
 app.use("/", pageRoutes);

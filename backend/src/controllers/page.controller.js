@@ -19,7 +19,12 @@ const index = async (req, res) => {
   return res.render('home/index', { title: 'Online Auction', auctions });
 };
 
-const loginView = (req, res) => res.render('auth/login', { title: 'Đăng nhập' });
+const loginView = (req, res) => {
+  const rawError = req.query.error;
+  const error = rawError ? decodeURIComponent(rawError) : null;
+  return res.render("auth/login", { title: "Đăng nhập", error });
+};
+
 const registerView = (req, res) => res.render('auth/register', { title: 'Đăng ký' });
 
 const showAuction = async (req, res) => {
@@ -87,16 +92,45 @@ const listByCategory = async (req, res, category, view) => {
 const listElectronics = (req, res) => listByCategory(req, res, 'electronics', 'categories/electronics');
 const listFashion = (req, res) => listByCategory(req, res, 'fashion', 'categories/fashion');
 
-const profileView = (req, res) => {
-  const user = req.user || {
-    name: "Guest User",
-    email: "guest@example.com",
-    avatar: null
-  };
-  return res.render("profile/setting", {title: 'Cài đặt Profile',
-    user
-  });
+const profileView = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.redirect("/login");
+    }
+
+    const userId = req.user.id;
+
+    const [rows] = await db.query(
+      "SELECT id, name, email, role FROM users WHERE id = ?",
+      [userId]
+    );
+
+    const dbUser = rows && rows[0];
+
+    const user = dbUser || {
+      id: userId,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+    };
+
+    return res.render("profile/setting", {
+      title: "Cài đặt Profile",
+      user,
+    });
+  } catch (err) {
+    console.error("page.profileView", err);
+    const fallbackUser = req.user || {
+      name: "Guest User",
+      email: "guest@example.com",
+    };
+    return res.render("profile/setting", {
+      title: "Cài đặt Profile",
+      user: fallbackUser,
+    });
+  }
 };
+
 
 const reviewView = async (req, res) => {
   try {

@@ -9,8 +9,8 @@
                  class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg">
 
             <div>
-                <h3 class="text-lg font-semibold">Alexa Rawles</h3>
-                <p class="text-gray-500 text-sm">alexarawles@gmail.com</p>
+                <h3 class="text-lg font-semibold"><%= user && user.name ? user.name : "User" %></h3>
+                <p class="text-gray-500 text-sm"><%= user && user.email ? user.email : "" %></p>
             </div>
         </div>
 
@@ -22,14 +22,14 @@
                     <label class="text-sm text-gray-700">Full Name</label>
                     <input type="text"
                            class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none"
-                           value="Alexa Rawles">
+                           value="<%= user && user.name ? user.name : "" %>">
                 </div>
 
                 <div class="flex flex-col gap-1">
                     <label class="text-sm text-gray-700">Email address</label>
                     <input type="text"
                            class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none"
-                           value="alexarawles@gmail.com">
+                           value="<%= user && user.email ? user.email : "" %>">
                 </div>
 
             </div>

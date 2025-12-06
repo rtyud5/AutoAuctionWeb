@@ -1,76 +1,135 @@
-import db from '../config/db.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+// backend/src/controllers/auth.controller.js
+import bcrypt from "bcrypt";
+import User from "../models/user.model.js";
+import { signToken } from "../utils/token.util.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
-const TOKEN_EXPIRES_IN = process.env.TOKEN_EXPIRES_IN || '7d';
-const COOKIE_NAME = 'token';
+const COOKIE_NAME = "token";
 
+/**
+ * Tạo JWT và set cookie đăng nhập
+ */
+const issueToken = (res, user) => {
+  const payload = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: (user.role || "bidder").toLowerCase(),
+  };
+
+  const token = signToken(payload, "7d");
+
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    // secure: true trong môi trường production với HTTPS
+  });
+
+  return token;
+};
+
+/**
+ * ĐĂNG KÝ
+ *  - Thêm user mới với role mặc định = 'bidder'
+ *  - Kiểm tra trùng email
+ *  - Lưu password_hash
+ *  - Đăng nhập luôn sau khi đăng ký thành công
+ */
 const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Missing fields' });
+    const { name, email, password } = req.body || {};
 
-    const [[existing]] = await db.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
-    if (existing) return res.status(409).json({ success: false, message: 'Email already registered' });
+    if (!name || !email || !password) {
+      return res.status(400).render("auth/register", {
+        error: "Vui lòng nhập đầy đủ Họ tên, Email và Mật khẩu",
+      });
+    }
+
+    const existing = await User.findOne({ where: { email } });
+    if (existing) {
+      return res.status(409).render("auth/register", {
+        error: "Email đã tồn tại, vui lòng dùng email khác",
+      });
+    }
 
     const hash = await bcrypt.hash(password, 10);
-    const [result] = await db.query('INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())', [
+
+    const user = await User.create({
       name,
       email,
-      hash,
-      'user'
-    ]);
-
-    const userId = result.insertId;
-    return res.status(201).json({ success: true, data: { id: userId, name, email } });
-  } catch (err) {
-    console.error('auth.register', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
-  }
-};
-
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ success: false, message: 'Missing credentials' });
-
-    const [[user]] = await db.query('SELECT id, name, email, password, role FROM users WHERE email = ? LIMIT 1', [email]);
-    if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-
-    const payload = { id: user.id, email: user.email, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRES_IN });
-
-    const secure = process.env.NODE_ENV === 'production';
-    res.cookie(COOKIE_NAME, token, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
+      password_hash: hash,
+      role: "bidder",
+      is_active: true,
     });
 
-    return res.json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    issueToken(res, user);
+    return res.redirect("/");
   } catch (err) {
-    console.error('auth.login', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("auth.register error:", err);
+    return res.status(500).render("auth/register", {
+      error: "Có lỗi hệ thống xảy ra khi đăng ký. Vui lòng thử lại.",
+    });
   }
 };
 
+/**
+ * ĐĂNG NHẬP
+ *  - Nếu sai thông tin => redirect về /login?error=...
+ *  - Không ném lỗi 500 cho case sai email/mật khẩu
+ */
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+
+    const invalidMsg = encodeURIComponent("Email hoặc mật khẩu không đúng");
+
+    if (!email || !password) {
+      const msg = encodeURIComponent("Vui lòng nhập đầy đủ Email và Mật khẩu");
+      return res.redirect(`/login?error=${msg}`);
+    }
+
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.redirect(`/login?error=${invalidMsg}`);
+    }
+
+    const ok = await bcrypt.compare(password, user.password_hash || "");
+
+    if (!ok) {
+      return res.redirect(`/login?error=${invalidMsg}`);
+    }
+
+    issueToken(res, user);
+    return res.redirect("/");
+  } catch (err) {
+    console.error("auth.login error:", err);
+    return res.status(500).render("auth/login", {
+      error: "Có lỗi hệ thống xảy ra khi đăng nhập. Vui lòng thử lại.",
+    });
+  }
+};
+
+/**
+ * ĐĂNG XUẤT
+ */
 const logout = async (req, res) => {
   try {
-    res.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: 'lax' });
-    return res.json({ success: true });
+    res.clearCookie(COOKIE_NAME, {
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
+    return res.redirect("/");
   } catch (err) {
-    console.error('auth.logout', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("auth.logout error:", err);
+    return res.status(500).render("auth/login", {
+      error: "Có lỗi hệ thống xảy ra khi đăng xuất. Vui lòng thử lại.",
+    });
   }
 };
 
 export default {
   register,
   login,
-  logout
+  logout,
 };

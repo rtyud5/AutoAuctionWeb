@@ -78,6 +78,85 @@ const removeFromWatchlist = async (req, res) => {
   }
 };
 
+
+// Auto-bid engine: after any manual bid, system will simulate automatic bids
+// from all users who have configured auto-bid rules for this auction.
+const runAutoBidEngine = async (conn, auctionId) => {
+  // Lock the auction row and get latest state
+  const [[auction]] = await conn.query(
+    'SELECT id, current_price, bid_step, highest_bidder, end_time, status FROM auctions WHERE id = ? FOR UPDATE',
+    [auctionId]
+  );
+
+  if (!auction) {
+    return;
+  }
+
+  // Only run auto-bid on active, non-ended auctions
+  if (auction.status && auction.status !== 'active') {
+    return;
+  }
+  const now = new Date();
+  if (auction.end_time && new Date(auction.end_time) <= now) {
+    return;
+  }
+
+  const step = Number(auction.bid_step || 0);
+  if (!step || step <= 0) {
+    // no step configured -> skip auto-bid
+    return;
+  }
+
+  // Load all active auto-bid rules for this auction
+  const [rules] = await conn.query(
+    `SELECT user_id, max_amount, is_active
+     FROM auto_bid_rules
+     WHERE auction_id = ? AND is_active = 1
+     ORDER BY max_amount DESC`,
+    [auctionId]
+  );
+
+  if (!rules || rules.length === 0) {
+    return;
+  }
+
+  let changed = true;
+
+  // Loop until no rule can outbid the current winner
+  while (changed) {
+    changed = false;
+
+    for (const rule of rules) {
+      if (!rule.is_active) continue;
+
+      // Skip current winner; they are already holding the highest price
+      if (rule.user_id === auction.highest_bidder) continue;
+
+      const nextPrice = Number(auction.current_price || 0) + step;
+
+      // Rule cannot cover the next step price
+      if (nextPrice > Number(rule.max_amount)) continue;
+
+      // Place an auto bid on behalf of this user
+      await conn.query(
+        'INSERT INTO bids (auction_id, user_id, amount, is_auto, created_at) VALUES (?, ?, ?, 1, NOW())',
+        [auctionId, rule.user_id, nextPrice]
+      );
+
+      // Update auction current price / highest bidder / bids_count
+      await conn.query(
+        'UPDATE auctions SET current_price = ?, highest_bidder = ?, bids_count = COALESCE(bids_count,0) + 1 WHERE id = ?',
+        [nextPrice, rule.user_id, auctionId]
+      );
+
+      auction.current_price = nextPrice;
+      auction.highest_bidder = rule.user_id;
+      changed = true;
+    }
+  }
+};
+
+
 const placeBid = async (req, res) => {
   const userId = req.user.id;
   const auctionId = req.params.id;
@@ -126,6 +205,9 @@ const placeBid = async (req, res) => {
       'UPDATE auctions SET current_price = ?, highest_bidder = ?, bids_count = COALESCE(bids_count,0) + 1 WHERE id = ?',
       [amount, userId, auctionId]
     );
+
+    // After manual bid, trigger auto-bid engine for other bidders
+    await runAutoBidEngine(conn, auctionId);
 
     await conn.commit();
     return res.json({ success: true });

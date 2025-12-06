@@ -130,7 +130,7 @@
                     quản lí sản phẩm
                 </a>
 
-                <a href="/logout" 
+                <a href="/auth/logout" 
                 style="padding: 10px 12px; display: block; text-decoration: none; color: #333;">
                     Đăng xuất
                 </a>
@@ -213,9 +213,9 @@
   // === User Authentication Module ===
   const UserAuth = {
     init() {
-      // TODO: Replace with server-side logic
-      // Example: const isLoggedIn = <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>;
-      this.isLoggedIn = true;
+      // Lấy trạng thái đăng nhập từ server (res.locals)
+      this.isLoggedIn = <%= (typeof isAuthenticated !== 'undefined' && isAuthenticated) ? 'true' : 'false' %>;
+      this.role = "<%= typeof role !== 'undefined' ? role : 'guest' %>";
 
       this.guestArea = document.getElementById('auth-guest');
       this.userArea = document.getElementById('auth-user');
