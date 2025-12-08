@@ -1,0 +1,53 @@
+<section class="py-8">
+  <div class="max-w-6xl mx-auto px-4 space-y-6">
+    <header class="flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold text-slate-50">Tổng quan hệ thống</h1>
+        <p class="text-sm text-slate-400 mt-1">
+          Khu vực quản trị hệ thống đấu giá. Bạn có thể theo dõi nhanh số lượng người dùng và yêu cầu nâng cấp Seller.
+        </p>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
+        <p class="text-xs text-slate-400">Tổng số tài khoản</p>
+        <p class="mt-1 text-xl font-semibold text-slate-50"><%= stats?.totalUsers ?? "--" %></p>
+      </div>
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
+        <p class="text-xs text-slate-400">Bidder</p>
+        <p class="mt-1 text-xl font-semibold text-slate-50"><%= stats?.bidderCount ?? "--" %></p>
+      </div>
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 shadow-shadow-sm">
+        <p class="text-xs text-slate-400">Seller</p>
+        <p class="mt-1 text-xl font-semibold text-slate-50"><%= stats?.sellerCount ?? "--" %></p>
+      </div>
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
+        <p class="text-xs text-slate-400">Yêu cầu nâng cấp đang chờ</p>
+        <p class="mt-1 text-xl font-semibold text-teal-400"><%= stats?.pendingUpgrade ?? "--" %></p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <a href="/admin/upgrade-requests-page" class="group bg-slate-900/80 border border-slate-800 rounded-2xl px-5 py-4 flex items-center justify-between hover:border-teal-400/70 transition">
+        <div>
+          <h2 class="text-base font-semibold text-slate-50">Yêu cầu nâng cấp Seller</h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Xem danh sách các bidder đang yêu cầu nâng cấp quyền thành Seller và thực hiện duyệt / từ chối.
+          </p>
+        </div>
+        <span class="text-teal-400 text-lg group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+
+      <a href="/admin/users-page" class="group bg-slate-900/80 border border-slate-800 rounded-2xl px-5 py-4 flex items-center justify-between hover:border-teal-400/70 transition">
+        <div>
+          <h2 class="text-base font-semibold text-slate-50">Quản lý tài khoản</h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Xem danh sách tài khoản hệ thống, trạng thái hoạt động và role hiện tại (Admin / Seller / Bidder).
+          </p>
+        </div>
+        <span class="text-teal-400 text-lg group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+    </div>
+  </div>
+</section>

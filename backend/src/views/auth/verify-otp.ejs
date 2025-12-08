@@ -1,76 +1,87 @@
 <% layout("layouts/main") %>
 
-<section class="min-h-[calc(100vh-120px)] flex items-center justify-center py-10">
-  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg overflow-hidden">
-    <div class="px-6 sm:px-8 py-8">
-      <h2 class="text-2xl font-semibold text-slate-800 mb-1">Xác minh OTP</h2>
-      <p class="text-sm text-slate-500 mb-6">
-        Chúng tôi đã gửi mã OTP tới email của bạn. Vui lòng nhập 4 chữ số bên dưới để hoàn tất bước xác minh.
+<section class="min-h-[72vh] flex items-center justify-center py-10">
+  <div class="max-w-md w-full bg-white/95 shadow-xl shadow-slate-200/70 rounded-2xl border border-slate-100 p-6 sm:p-8">
+    <div class="space-y-4 text-center">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-teal-50 text-teal-600 text-2xl">
+        🔐
+      </div>
+      <header class="space-y-1">
+        <h1 class="text-xl font-semibold text-slate-900">Xác minh OTP</h1>
+        <p class="text-sm text-slate-500">
+          Nhập mã OTP gồm 4 số được gửi đến email của bạn để hoàn tất đăng ký.
+        </p>
+      </header>
+    </div>
+
+    <% if (typeof error !== "undefined" && error) { %>
+      <div class="mt-4 text-sm px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <form action="/auth/verify-otp" method="POST" id="otpForm" class="mt-6 space-y-5">
+      <!-- input ẩn gửi full OTP -->
+      <input type="hidden" name="otp" id="otpValue" />
+
+      <div class="flex items-center justify-center gap-3">
+        <% for (let i = 0; i < 4; i++) { %>
+          <input
+            type="text"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            class="otp-digit w-12 h-12 text-center text-xl font-semibold rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
+          />
+        <% } %>
+      </div>
+
+      <p class="text-xs text-slate-500 text-center">
+        Bạn chưa nhận được OTP?
+        <a href="#" class="font-semibold text-teal-600 hover:text-teal-700">Gửi lại OTP</a>
       </p>
 
-      <form id="otpForm" action="/auth/verify-otp" method="POST" class="space-y-6">
-        <div class="flex justify-between gap-3 max-w-xs mx-auto">
-          <% for (let i = 0; i < 4; i++) { %>
-            <input
-              type="text"
-              maxlength="1"
-              class="otp-digit w-12 h-12 text-center text-xl font-semibold border-b-2 border-teal-500 bg-transparent focus:outline-none focus:border-teal-600"
-            />
-          <% } %>
-        </div>
-
-        <input type="hidden" id="otpValue" name="otp" />
-
-        <div class="text-xs text-slate-500 text-center">
-          <span>Không nhận được mã?</span>
-          <a href="/auth/resend-otp" class="ml-1 font-medium text-teal-600 hover:text-teal-700">Gửi lại OTP</a>
-        </div>
-
-        <div class="flex justify-center">
-          <button
-            type="submit"
-            class="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:ring-2 focus:ring-offset-1 focus:ring-slate-900/60"
-          >
-            Xác minh
-          </button>
-        </div>
-      </form>
-    </div>
+      <button
+        type="submit"
+        class="w-full inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+      >
+        Xác minh
+      </button>
+    </form>
   </div>
 </section>
 
 <script>
-  (function () {
-    const inputs = document.querySelectorAll(".otp-digit");
-    const otpForm = document.getElementById("otpForm");
-    const otpValue = document.getElementById("otpValue");
+(function() {
+  const inputs = document.querySelectorAll('.otp-digit');
+  const otpForm = document.getElementById('otpForm');
+  const otpValue = document.getElementById('otpValue');
 
-    if (!otpForm || !inputs.length) return;
+  if (!inputs.length || !otpForm || !otpValue) return;
 
-    // Tự động chuyển sang ô tiếp theo
-    inputs.forEach((input, index) => {
-      input.addEventListener("input", () => {
-        if (input.value && index < inputs.length - 1) {
-          inputs[index + 1].focus();
-        }
-      });
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" && !input.value && index > 0) {
-          inputs[index - 1].focus();
-        }
-      });
-    });
-
-    otpForm.addEventListener("submit", (e) => {
-      let code = "";
-      inputs.forEach((i) => (code += i.value || ""));
-      otpValue.value = code;
-
-      if (code.length < inputs.length) {
-        e.preventDefault();
-        alert("Vui lòng nhập đầy đủ mã OTP.");
+  inputs.forEach((input, index) => {
+    input.addEventListener('input', () => {
+      if (input.value && index < inputs.length - 1) {
+        inputs[index + 1].focus();
       }
     });
-  })();
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && index > 0) {
+        inputs[index - 1].focus();
+      }
+    });
+  });
+
+  otpForm.addEventListener('submit', (e) => {
+    let code = '';
+    inputs.forEach(i => code += (i.value || ''));
+    otpValue.value = code;
+
+    if (code.length < inputs.length) {
+      e.preventDefault();
+      alert('Vui lòng nhập đầy đủ mã OTP.');
+    }
+  });
+})();
 </script>

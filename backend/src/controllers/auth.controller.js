@@ -5,6 +5,8 @@ import { signToken } from "../utils/token.util.js";
 
 const COOKIE_NAME = "token";
 
+const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";
+
 /**
  * Tạo JWT và set cookie đăng nhập
  */
@@ -128,8 +130,53 @@ const logout = async (req, res) => {
   }
 };
 
+
+
+/**
+ * ĐĂNG NHẬP ADMIN BẰNG ADMIN KEY
+ *  - Dùng popup riêng trên trang login.
+ *  - Nếu adminKey đúng thì tìm (hoặc tạo) user role 'ADMIN' và cấp token.
+ */
+const loginAsAdmin = async (req, res) => {
+  try {
+    const { adminKey } = req.body || {};
+
+    if (!adminKey) {
+      const msg = encodeURIComponent("Vui lòng nhập Admin key");
+      return res.redirect(`/login?adminError=${msg}`);
+    }
+
+    if (adminKey !== ADMIN_KEY) {
+      const msg = encodeURIComponent("Admin key không đúng");
+      return res.redirect(`/login?adminError=${msg}`);
+    }
+
+    // Tìm user admin, nếu chưa có thì tạo mặc định
+    let adminUser = await User.findOne({ where: { role: "ADMIN" } });
+
+    if (!adminUser) {
+      const password_hash = await bcrypt.hash(ADMIN_KEY, 10);
+      adminUser = await User.create({
+        name: "System Admin",
+        email: "admin@example.com",
+        password_hash,
+        role: "ADMIN",
+      });
+    }
+
+    issueToken(res, adminUser);
+
+    return res.redirect("/admin/dashboard");
+  } catch (err) {
+    console.error("auth.loginAsAdmin error:", err);
+    const msg = encodeURIComponent("Có lỗi hệ thống xảy ra khi đăng nhập Admin");
+    return res.redirect(`/login?adminError=${msg}`);
+  }
+};
+
 export default {
   register,
   login,
   logout,
+  loginAsAdmin,
 };

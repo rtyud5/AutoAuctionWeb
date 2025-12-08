@@ -1,99 +1,103 @@
 <% layout("layouts/main") %>
 
 <section class="py-8">
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- Left: Image & basic info -->
-    <div class="lg:col-span-2 space-y-4">
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="aspect-video bg-slate-100 flex items-center justify-center text-slate-400 text-sm">
-          <!-- Placeholder image; có thể thay bằng ảnh thật -->
-          <span>Hình sản phẩm đang được cập nhật</span>
+  <div class="max-w-5xl mx-auto">
+    <!-- Breadcrumb -->
+    <nav class="mb-4 text-xs text-slate-500">
+      <a href="/" class="hover:text-teal-600">Trang chủ</a>
+      <span class="mx-1">/</span>
+      <a href="/electronics" class="hover:text-teal-600">Đấu giá</a>
+      <span class="mx-1">/</span>
+      <span class="text-slate-700 font-medium"><%= auction.title %></span>
+    </nav>
+
+    <div class="grid gap-8 md:grid-cols-5">
+      <!-- Left: image + description -->
+      <div class="md:col-span-3 space-y-4">
+        <!-- Product image placeholder -->
+        <div class="aspect-video rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-sm">
+          Hình ảnh sản phẩm (banner)
         </div>
-        <div class="px-5 py-4 border-t border-slate-100">
-          <h1 class="text-2xl font-semibold text-slate-800 mb-2"><%= auction.title %></h1>
-          <p class="text-sm text-slate-600 mb-1">
-            Mã phiên: <span class="font-mono text-slate-800">#<%= auction.id %></span>
-          </p>
-          <p class="text-sm text-slate-600">
-            Kết thúc: <span class="font-medium"><%= auction.end_time || "Đang cập nhật" %></span>
+
+        <div class="space-y-2">
+          <h1 class="text-2xl font-semibold text-slate-900">
+            <%= auction.title %>
+          </h1>
+
+          <p class="text-sm text-slate-500">
+            <%= auction.description || "Chưa có mô tả cho phiên đấu giá này." %>
           </p>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 px-5 py-4">
-        <h2 class="text-lg font-semibold text-slate-800 mb-2">Mô tả sản phẩm</h2>
-        <p class="text-sm text-slate-600 leading-relaxed">
-          <%= auction.description || "Chưa có mô tả" %>
-        </p>
-      </div>
-    </div>
-
-    <!-- Right: Bidding panel -->
-    <div class="space-y-6">
-      <!-- Current price & manual bid -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 px-5 py-5">
-        <h2 class="text-lg font-semibold text-slate-800 mb-3">Đặt giá thủ công</h2>
-
-        <p class="text-sm text-slate-600 mb-3">
-          Giá hiện tại:
-          <span class="text-xl font-semibold text-teal-600">
+      <!-- Right: bidding panels -->
+      <div class="md:col-span-2 space-y-5">
+        <!-- Current price -->
+        <div class="rounded-2xl border border-teal-100 bg-teal-50 p-4 space-y-1">
+          <p class="text-xs font-medium text-teal-700 uppercase tracking-wide">Giá hiện tại</p>
+          <p class="text-2xl font-semibold text-teal-900">
             <%= auction.current_price %> VNĐ
-          </span>
-        </p>
+          </p>
+        </div>
 
-        <form method="post" action="/bidder/auctions/<%= auction.id %>/bid" class="space-y-3">
-          <div>
-            <label for="amount" class="block text-sm font-medium text-slate-700 mb-1">
-              Giá bid của bạn
-            </label>
-            <input
-              type="number"
-              id="amount"
-              name="amount"
-              required
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-              min="<%= auction.current_price %>"
-            />
-          </div>
+        <!-- Manual bid -->
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+          <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wide">
+            Đặt giá thủ công
+          </h2>
+          <p class="text-xs text-slate-500">
+            Nhập mức giá bạn muốn đặt cho phiên đấu giá này.
+          </p>
 
-          <button
-            type="submit"
-            class="inline-flex w-full items-center justify-center rounded-full bg-teal-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-teal-700 focus:ring-2 focus:ring-offset-1 focus:ring-teal-600/70"
-          >
-            Đặt giá
-          </button>
-        </form>
-      </div>
+          <form method="post" action="/bidder/auctions/<%= auction.id %>/bid" class="space-y-3">
+            <div class="space-y-1">
+              <label for="manualBid" class="text-xs font-medium text-slate-600">Giá bid của bạn (VNĐ)</label>
+              <input
+                id="manualBid"
+                type="number"
+                name="amount"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+              />
+            </div>
+            <button
+              type="submit"
+              class="w-full inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+            >
+              Đặt giá
+            </button>
+          </form>
+        </div>
 
-      <!-- Auto bid configuration -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 px-5 py-5">
-        <h2 class="text-lg font-semibold text-slate-800 mb-2">Tự động đấu giá</h2>
-        <p class="text-sm text-slate-600 mb-4">
-          Đặt mức giá tối đa bạn sẵn sàng trả, hệ thống sẽ tự động tăng giá theo từng bước khi có người khác ra giá.
-        </p>
+        <!-- Auto-bid -->
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+          <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wide">
+            Tự động đấu giá
+          </h2>
+          <p class="text-xs text-slate-500">
+            Đặt mức giá tối đa bạn sẵn sàng trả. Hệ thống sẽ tự động tăng theo từng bước khi có người khác ra giá.
+          </p>
 
-        <form method="post" action="/bidder/auctions/<%= auction.id %>/auto-bid" class="space-y-3">
-          <div>
-            <label for="max_amount" class="block text-sm font-medium text-slate-700 mb-1">
-              Giá tối đa (auto-bid)
-            </label>
-            <input
-              type="number"
-              id="max_amount"
-              name="max_amount"
-              min="<%= auction.current_price %>"
-              required
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-            />
-          </div>
-
-          <button
-            type="submit"
-            class="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:ring-2 focus:ring-offset-1 focus:ring-slate-900/60"
-          >
-            Lưu cấu hình auto-bid
-          </button>
-        </form>
+          <form method="post" action="/bidder/auctions/<%= auction.id %>/auto-bid" class="space-y-3">
+            <div class="space-y-1">
+              <label for="autoBidMax" class="text-xs font-medium text-slate-600">Giá tối đa (VNĐ)</label>
+              <input
+                id="autoBidMax"
+                type="number"
+                name="max_amount"
+                min="<%= auction.current_price %>"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+              />
+            </div>
+            <button
+              type="submit"
+              class="w-full inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900"
+            >
+              Lưu cấu hình auto-bid
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>

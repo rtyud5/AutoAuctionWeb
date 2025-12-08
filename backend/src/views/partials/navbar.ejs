@@ -1,21 +1,18 @@
-<nav class="w-full bg-teal-500 text-white shadow-sm">
-  <div class="max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
-    <!-- Left: Logo + Menu -->
-    <div class="flex items-center gap-8">
+<nav class="w-full bg-teal-500 text-white shadow-md">
+  <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+    <!-- Left: Logo + menu -->
+    <div class="flex items-center gap-6">
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2">
-        <div class="flex items-center justify-center w-9 h-9 rounded-lg border border-white/40 bg-white/10 font-black text-lg tracking-widest">
-          OAE
-        </div>
-        <div class="flex flex-col leading-tight">
-          <span class="font-semibold text-sm sm:text-base">Online Auction</span>
-          <span class="text-[11px] text-white/80 hidden sm:block">PTUDW Project</span>
-        </div>
+        <img src="/images/logo.png" alt="PTUDW Auction" class="h-9 w-auto object-contain">
+        <span class="hidden sm:inline text-sm font-semibold tracking-wide">
+          PTUDW Online Auction
+        </span>
       </a>
 
-      <!-- Menu -->
-      <div class="hidden md:flex items-center gap-4 text-[15px]">
-        <a href="/" class="hover:text-slate-100 transition-colors">Trang chủ</a>
+      <!-- Main menu -->
+      <div class="hidden md:flex items-center gap-5 text-sm">
+        <a href="/" class="font-medium hover:text-slate-900/90 transition-colors">Trang chủ</a>
 
         <!-- Category dropdown -->
         <div class="relative">
@@ -24,21 +21,20 @@
             type="button"
             aria-expanded="false"
             aria-controls="catPanel"
-            class="flex items-center gap-1 text-white hover:text-slate-100 focus:outline-none"
+            class="inline-flex items-center gap-1 text-sm font-medium hover:text-slate-900/90 transition-colors"
           >
             <span>danh sách danh mục</span>
             <span id="catArrow" aria-hidden="true" class="transition-transform origin-center">▾</span>
           </button>
 
-          <!-- dropdown panel (hidden by default) -->
           <div
             id="catPanel"
-            class="hidden absolute top-9 left-0 min-w-[180px] rounded-lg shadow-md bg-white text-slate-800 overflow-hidden z-60"
+            class="hidden absolute top-9 left-0 w-52 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 z-50 overflow-hidden"
           >
-            <a href="/electronics" class="block px-4 py-3 border-b border-slate-100 hover:bg-slate-50">
+            <a href="/electronics" class="block px-4 py-2 text-sm hover:bg-slate-100 border-b border-slate-100">
               Điện tử
             </a>
-            <a href="/fashion" class="block px-4 py-3 hover:bg-slate-50">
+            <a href="/fashion" class="block px-4 py-2 text-sm hover:bg-slate-100">
               Thời trang
             </a>
           </div>
@@ -47,232 +43,224 @@
     </div>
 
     <!-- Right: Search + Auth -->
-    <div class="flex items-center gap-4">
-      <!-- Search box -->
-      <form action="/search" method="get" class="hidden sm:block w-64 lg:w-80">
-        <div class="relative">
-          <input
-            type="text"
-            name="q"
-            placeholder="Search..."
-            class="w-full rounded-full bg-white/95 text-slate-800 pl-4 pr-10 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-300"
-          />
-          <button
-            type="submit"
-            class="absolute inset-y-0 right-0 flex items-center justify-center mr-2 rounded-full w-7 h-7 bg-teal-500 text-white hover:bg-teal-600 focus:outline-none"
-          >
-            🔍
-          </button>
-        </div>
-      </form>
-
-      <!-- Auth Zone -->
-      <div id="auth-area" class="flex items-center gap-3 text-[15px]">
-        <!-- Khi chưa đăng nhập -->
-        <div id="auth-guest" class="flex items-center gap-3">
-          <a href="/login" class="hover:text-slate-100 transition-colors">Sign In</a>
-          <a href="/register" class="hover:text-slate-100 transition-colors">Register</a>
-        </div>
-
-        <!-- Khi đã đăng nhập -->
-        <div
-          id="auth-user"
-          class="hidden relative cursor-pointer"
+    <div class="flex items-center gap-3 flex-1 justify-end">
+      <!-- Search (UI only) -->
+      <div class="hidden sm:flex items-center bg-teal-400/30 rounded-full px-4 py-1.5 max-w-md w-full">
+        <input
+          type="text"
+          placeholder="Search..."
+          class="flex-1 bg-transparent placeholder-white/70 text-xs sm:text-sm focus:outline-none"
         >
-          <!-- Avatar + arrow -->
-          <div class="flex items-center gap-2">
-            <img
-              src="/images/user-avatar.png"
-              alt="user"
-              class="h-9 w-9 rounded-full object-cover border border-white/40 bg-white/10"
-            />
-            <span class="text-xs sm:text-sm">▼</span>
-          </div>
+        <button
+          type="button"
+          class="ml-2 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 w-7 h-7 transition-colors"
+        >
+          <!-- simple search icon -->
+          <span class="text-lg leading-none">🔍</span>
+        </button>
+      </div>
 
-          <!-- Dropdown menu -->
-          <div
-            id="user-menu"
-            class="hidden absolute right-0 mt-2 w-44 bg-white text-slate-800 rounded-lg shadow-lg overflow-hidden z-60"
-          >
-            <a href="/setting" class="block px-4 py-2 text-sm hover:bg-slate-100">Hồ sơ cá nhân</a>
-            <a href="/profile/items" class="block px-4 py-2 text-sm hover:bg-slate-100">Sản phẩm của tôi</a>
-            <a href="/profile/history" class="block px-4 py-2 text-sm hover:bg-slate-100">Lịch sử đấu giá</a>
-            <a href="/profile/reviews" class="block px-4 py-2 text-sm hover:bg-slate-100">Đánh giá</a>
-            <hr class="border-slate-100" />
-            <form action="/auth/logout" method="post">
-              <button
-                id="logoutButton"
-                type="submit"
-                class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                Đăng xuất
-              </button>
-            </form>
+      <!-- Auth zone -->
+      <div class="flex items-center gap-3">
+        <% if (!isAuthenticated) { %>
+          <!-- Guest view -->
+          <div class="flex items-center gap-3 text-xs sm:text-sm">
+            <a href="/login" class="hover:text-slate-900/90 font-medium transition-colors">
+              Sign In
+            </a>
+            <a
+              href="/register"
+              class="inline-flex items-center rounded-full border border-white/80 px-3 py-1 hover:bg-white hover:text-teal-600 text-xs sm:text-sm font-medium transition-colors"
+            >
+              Register
+            </a>
           </div>
-        </div>
+        <% } else { %>
+          <!-- Logged-in user view -->
+          <div
+            id="auth-user"
+            class="flex items-center gap-2 relative cursor-pointer text-xs sm:text-sm"
+          >
+            <!-- Avatar + name + role -->
+            <div class="flex items-center gap-2">
+              <!-- Placeholder avatar icon -->
+              <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
+                👤
+              </div>
+              <div class="hidden sm:flex flex-col text-left">
+                <span class="text-xs font-semibold">
+                  <%= (currentUser && (currentUser.name || currentUser.username)) ? (currentUser.name || currentUser.username) : "Tài khoản" %>
+                </span>
+                <span class="text-[11px] text-teal-100/80 capitalize">
+                  <%= role || "guest" %>
+                </span>
+              </div>
+              <span class="text-xs sm:text-sm">▼</span>
+            </div>
+
+            <!-- Dropdown menu -->
+            <div
+              id="user-menu"
+              class="hidden absolute top-11 right-0 w-44 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 text-sm"
+            >
+              <a href="/setting" class="block px-4 py-2 hover:bg-slate-100">
+                Hồ sơ cá nhân
+              </a>
+              <a href="/itemManager" class="block px-4 py-2 hover:bg-slate-100">
+                Quản lý sản phẩm
+              </a>
+              <a href="/itemHistory" class="block px-4 py-2 hover:bg-slate-100">
+                Lịch sử đấu giá
+              </a>
+              <a href="/review" class="block px-4 py-2 hover:bg-slate-100">
+                Đánh giá
+              </a>
+              <div class="border-t border-slate-100 my-1"></div>
+              <a href="/auth/logout" class="block px-4 py-2 hover:bg-slate-100 text-rose-600">
+                Đăng xuất
+              </a>
+            </div>
+          </div>
+        <% } %>
       </div>
     </div>
   </div>
 
-  <!-- Mobile menu: categories shortcut & search -->
-  <div class="md:hidden border-t border-teal-400/50 bg-teal-500/95">
-    <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-3">
-      <button
-        id="catToggleMobile"
-        type="button"
-        class="flex items-center gap-1 text-sm text-white hover:text-slate-100"
+  <!-- Mobile menu (chỉ logo & search đơn giản) -->
+  <div class="md:hidden px-4 pb-3 space-y-2 bg-teal-500/95 border-t border-teal-400/40">
+    <div class="flex items-center gap-2 bg-teal-400/30 rounded-full px-3 py-1.5">
+      <input
+        type="text"
+        placeholder="Search..."
+        class="flex-1 bg-transparent placeholder-white/70 text-xs focus:outline-none"
       >
-        <span>Danh mục</span>
-        <span aria-hidden="true">▾</span>
+      <button
+        type="button"
+        class="ml-1 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 w-7 h-7 transition-colors"
+      >
+        <span class="text-sm leading-none">🔍</span>
       </button>
-      <form action="/search" method="get" class="flex-1">
-        <div class="relative">
-          <input
-            type="text"
-            name="q"
-            placeholder="Search..."
-            class="w-full rounded-full bg-white/95 text-slate-800 pl-3 pr-9 py-1.5 text-xs shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-300"
-          />
-          <button
-            type="submit"
-            class="absolute inset-y-0 right-0 flex items-center justify-center mr-1 rounded-full w-6 h-6 bg-teal-500 text-white hover:bg-teal-600 focus:outline-none"
-          >
-            🔍
-          </button>
-        </div>
-      </form>
     </div>
   </div>
-
-  <!-- Scripts: Category dropdown + Auth state -->
-  <script>
-    (function () {
-      // ===== CATEGORY DROPDOWN =====
-      const CategoryDropdown = {
-        toggleBtn: null,
-        panel: null,
-        arrow: null,
-        mobileToggle: null,
-
-        init() {
-          this.toggleBtn = document.getElementById("catToggle");
-          this.panel = document.getElementById("catPanel");
-          this.arrow = document.getElementById("catArrow");
-          this.mobileToggle = document.getElementById("catToggleMobile");
-          if (!this.toggleBtn || !this.panel) return;
-          this.bindEvents();
-        },
-
-        show() {
-          this.panel.classList.remove("hidden");
-          if (this.arrow) {
-            this.arrow.style.transform = "rotate(180deg)";
-          }
-        },
-
-        hide() {
-          this.panel.classList.add("hidden");
-          if (this.arrow) {
-            this.arrow.style.transform = "rotate(0deg)";
-          }
-        },
-
-        isVisible() {
-          return !this.panel.classList.contains("hidden");
-        },
-
-        toggleDropdown() {
-          if (this.isVisible()) {
-            this.hide();
-          } else {
-            this.show();
-          }
-        },
-
-        bindEvents() {
-          // Desktop toggle
-          this.toggleBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.toggleDropdown();
-          });
-
-          // Mobile toggle uses same panel
-          if (this.mobileToggle) {
-            this.mobileToggle.addEventListener("click", (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              this.toggleDropdown();
-            });
-          }
-
-          // Close on Escape
-          document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape" && this.isVisible()) {
-              this.hide();
-            }
-          });
-
-          // Close on outside click
-          document.addEventListener("click", (e) => {
-            if (
-              !this.toggleBtn.contains(e.target) &&
-              !this.panel.contains(e.target) &&
-              (!this.mobileToggle || !this.mobileToggle.contains(e.target))
-            ) {
-              this.hide();
-            }
-          });
-        },
-      };
-
-      // ===== AUTH AREA (hiển thị guest / user) =====
-      const UserAuth = {
-        init() {
-          const authArea = document.getElementById("auth-area");
-          const guest = document.getElementById("auth-guest");
-          const user = document.getElementById("auth-user");
-          const userMenu = document.getElementById("user-menu");
-
-          if (!authArea || !guest || !user) return;
-
-          const isLoggedIn = document.body.dataset.user === "true";
-
-          if (isLoggedIn) {
-            guest.classList.add("hidden");
-            user.classList.remove("hidden");
-          } else {
-            guest.classList.remove("hidden");
-            user.classList.add("hidden");
-          }
-
-          // Toggle user dropdown menu
-          user.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (userMenu) {
-              userMenu.classList.toggle("hidden");
-            }
-          });
-
-          document.addEventListener("click", () => {
-            if (userMenu && !userMenu.classList.contains("hidden")) {
-              userMenu.classList.add("hidden");
-            }
-          });
-        },
-      };
-
-      // === Initialize All Modules ===
-      const init = () => {
-        CategoryDropdown.init();
-        UserAuth.init();
-      };
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-      } else {
-        init();
-      }
-    })();
-  </script>
 </nav>
+
+<script>
+(function() {
+  'use strict';
+
+  // === Category Dropdown Module ===
+  const CategoryDropdown = {
+    init() {
+      this.toggleBtn = document.getElementById('catToggle');
+      this.panel = document.getElementById('catPanel');
+      this.arrow = document.getElementById('catArrow');
+
+      if (!this.toggleBtn || !this.panel || !this.arrow) {
+        console.error('Category dropdown elements not found');
+        return;
+      }
+
+      this.bindEvents();
+    },
+
+    isVisible() {
+      return !this.panel.classList.contains('hidden');
+    },
+
+    show() {
+      this.panel.classList.remove('hidden');
+      this.arrow.style.transform = 'rotate(180deg)';
+    },
+
+    hide() {
+      this.panel.classList.add('hidden');
+      this.arrow.style.transform = 'rotate(0deg)';
+    },
+
+    toggleDropdown() {
+      if (this.isVisible()) {
+        this.hide();
+      } else {
+        this.show();
+      }
+    },
+
+    bindEvents() {
+      // Toggle on click
+      this.toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleDropdown();
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.isVisible()) {
+          this.hide();
+        }
+      });
+
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!this.toggleBtn.contains(e.target) && !this.panel.contains(e.target)) {
+          this.hide();
+        }
+      });
+    }
+  };
+
+  // === User dropdown menu (only when logged in) ===
+  const UserMenu = {
+    init() {
+      this.userArea = document.getElementById('auth-user');
+      this.menu = document.getElementById('user-menu');
+
+      if (!this.userArea || !this.menu) {
+        return;
+      }
+
+      this.bindEvents();
+    },
+
+    toggleMenu() {
+      const isHidden = this.menu.classList.contains('hidden');
+      if (isHidden) {
+        this.menu.classList.remove('hidden');
+      } else {
+        this.menu.classList.add('hidden');
+      }
+    },
+
+    hideMenu() {
+      if (!this.menu) return;
+      this.menu.classList.add('hidden');
+    },
+
+    bindEvents() {
+      this.userArea.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMenu();
+      });
+
+      document.addEventListener('click', () => this.hideMenu());
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          this.hideMenu();
+        }
+      });
+    }
+  };
+
+  // === Initialize ===
+  const init = () => {
+    CategoryDropdown.init();
+    UserMenu.init();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

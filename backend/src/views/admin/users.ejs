@@ -1,0 +1,118 @@
+<div class="space-y-6">
+  <!-- Tiêu đề + nút quay về -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-50">
+        Quản lý tài khoản
+      </h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Danh sách tất cả tài khoản trong hệ thống, gồm Admin, Bidder và Seller.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Nút quay về Dashboard -->
+      <a
+        href="/admin/dashboard"
+        class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+      >
+        ← Về Dashboard
+      </a>
+
+      <span class="inline-flex items-center rounded-full bg-slate-800/80 px-3 py-1 text-xs sm:text-sm text-slate-300 border border-slate-700">
+        Tổng tài khoản:
+        <span class="ml-2 font-semibold text-teal-400">
+          <%= (users && users.length) ? users.length : 0 %>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Bảng users -->
+  <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-md shadow-slate-950/40 overflow-hidden">
+    <% if (!users || !users.length) { %>
+      <div class="px-6 py-10 text-center text-sm text-slate-400">
+        Hiện chưa có tài khoản nào trong hệ thống.
+      </div>
+    <% } else { %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm text-left text-slate-200">
+          <thead class="bg-slate-950/70 border-b border-slate-800">
+            <tr>
+              <th class="px-4 py-3 font-medium text-slate-400">ID</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Tên hiển thị</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Email</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Role</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Trạng thái</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Ngày tạo</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/80">
+            <% users.forEach(function(user) { %>
+              <tr class="hover:bg-slate-900/80 transition-colors">
+                <!-- ID -->
+                <td class="px-4 py-3 text-slate-400">
+                  <%= user.id %>
+                </td>
+
+                <!-- Tên -->
+                <td class="px-4 py-3">
+                  <div class="font-medium text-slate-100">
+                    <%= user.name || ('User #' + user.id) %>
+                  </div>
+                </td>
+
+                <!-- Email -->
+                <td class="px-4 py-3">
+                  <span class="text-xs sm:text-sm text-slate-300">
+                    <%= user.email %>
+                  </span>
+                </td>
+
+                <!-- Role -->
+                <td class="px-4 py-3">
+                  <% var role = (user.role || '').toLowerCase(); %>
+                  <% if (role === 'admin') { %>
+                    <span class="inline-flex items-center rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/40 px-3 py-1 text-xs font-medium">
+                      Admin
+                    </span>
+                  <% } else if (role === 'seller') { %>
+                    <span class="inline-flex items-center rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/40 px-3 py-1 text-xs font-medium">
+                      Seller
+                    </span>
+                  <% } else { %>
+                    <span class="inline-flex items-center rounded-full bg-slate-700/60 text-slate-100 border border-slate-500/60 px-3 py-1 text-xs font-medium">
+                      Bidder
+                    </span>
+                  <% } %>
+                </td>
+
+                <!-- Trạng thái -->
+                <td class="px-4 py-3">
+                  <% if (user.is_active) { %>
+                    <span class="inline-flex items-center rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-3 py-1 text-xs font-medium">
+                      Đang hoạt động
+                    </span>
+                  <% } else { %>
+                    <span class="inline-flex items-center rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/40 px-3 py-1 text-xs font-medium">
+                      Đã khóa
+                    </span>
+                  <% } %>
+                </td>
+
+                <!-- Ngày tạo -->
+                <td class="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                  <% if (user.created_at) { %>
+                    <%= new Date(user.created_at).toLocaleString('vi-VN') %>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>

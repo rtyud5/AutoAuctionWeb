@@ -1,0 +1,115 @@
+<div class="space-y-6">
+  <!-- Tiêu đề + nút quay về -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-50">
+        Yêu cầu nâng cấp Seller
+      </h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Danh sách các yêu cầu từ Bidder muốn nâng cấp tài khoản lên Seller.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Nút quay về Dashboard -->
+      <a
+        href="/admin/dashboard"
+        class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+      >
+        ← Về Dashboard
+      </a>
+
+      <span class="inline-flex items-center rounded-full bg-slate-800/80 px-3 py-1 text-xs sm:text-sm text-slate-300 border border-slate-700">
+        Tổng yêu cầu:
+        <span class="ml-2 font-semibold text-teal-400">
+          <%= (requests && requests.length) ? requests.length : 0 %>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Bảng danh sách yêu cầu -->
+  <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-md shadow-slate-950/40 overflow-hidden">
+    <% if (!requests || !requests.length) { %>
+      <div class="px-6 py-10 text-center text-sm text-slate-400">
+        Hiện chưa có yêu cầu nâng cấp Seller nào.
+      </div>
+    <% } else { %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm text-left text-slate-200">
+          <thead class="bg-slate-950/70 border-b border-slate-800">
+            <tr>
+              <th class="px-4 py-3 font-medium text-slate-400">#</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Người dùng</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Email</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Lý do / Ghi chú</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Trạng thái</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Thời gian</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/80">
+            <% requests.forEach(function(req, idx) { %>
+              <tr class="hover:bg-slate-900/80 transition-colors">
+                <!-- STT -->
+                <td class="px-4 py-3 text-slate-400">
+                  <%= idx + 1 %>
+                </td>
+
+                <!-- Tên user -->
+                <td class="px-4 py-3">
+                  <div class="font-medium text-slate-100">
+                    <%= req.user_name || ('User #' + req.user_id) %>
+                  </div>
+                  <div class="text-xs text-slate-500">
+                    ID: <%= req.user_id %>
+                  </div>
+                </td>
+
+                <!-- Email -->
+                <td class="px-4 py-3">
+                  <span class="text-xs sm:text-sm text-slate-300">
+                    <%= req.user_email || '—' %>
+                  </span>
+                </td>
+
+                <!-- Message -->
+                <td class="px-4 py-3 max-w-md">
+                  <p class="text-xs sm:text-sm text-slate-200">
+                    <%= req.message || 'Không có ghi chú' %>
+                  </p>
+                </td>
+
+                <!-- Trạng thái -->
+                <td class="px-4 py-3">
+                  <% var status = (req.status || '').toLowerCase(); %>
+                  <% if (status === 'approved') { %>
+                    <span class="inline-flex items-center rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-3 py-1 text-xs font-medium">
+                      Đã duyệt
+                    </span>
+                  <% } else if (status === 'rejected') { %>
+                    <span class="inline-flex items-center rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/40 px-3 py-1 text-xs font-medium">
+                      Từ chối
+                    </span>
+                  <% } else { %>
+                    <span class="inline-flex items-center rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/40 px-3 py-1 text-xs font-medium">
+                      Đang chờ duyệt
+                    </span>
+                  <% } %>
+                </td>
+
+                <!-- Thời gian -->
+                <td class="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                  <% if (req.created_at) { %>
+                    <%= new Date(req.created_at).toLocaleString('vi-VN') %>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>

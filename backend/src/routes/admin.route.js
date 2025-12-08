@@ -118,4 +118,16 @@ router.post('/upgrade-requests/:id/reject', adminController.rejectUpgradeRequest
 // Stats / dashboard
 router.get('/stats', adminController.getStats);
 
+
+// ===== Admin EJS UI routes (require admin role) =====
+// Dashboard giao diện admin
+router.get('/dashboard', adminController.renderDashboard);
+
+// Trang danh sách yêu cầu nâng cấp Seller (UI)
+router.get('/upgrade-requests-page', adminController.renderUpgradeRequestsPage);
+
+// Trang danh sách tài khoản (UI)
+router.get('/users-page', adminController.renderUsersPage);
+
+
 export default router;

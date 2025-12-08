@@ -2,21 +2,26 @@ import db from '../config/db.js';
 
 /*
   Admin controller (ESM) — 1:1 map to routes in routes/admin.route.js.
-  Implement business logic later; these are safe stubs that use db where straightforward.
+  Phần API trả JSON giữ nguyên như cũ.
 */
+
+// ===== API JSON =====
 
 const dashboard = async (req, res) => {
   try {
     const [[usersCount]] = await db.query('SELECT COUNT(*) AS cnt FROM users');
     const [[auctionsCount]] = await db.query('SELECT COUNT(*) AS cnt FROM auctions');
-    const [[pendingUpgrades]] = await db.query("SELECT COUNT(*) AS cnt FROM upgrade_requests WHERE status = 'pending'");
+    const [[pendingUpgrades]] = await db.query(
+      "SELECT COUNT(*) AS cnt FROM upgrade_requests WHERE status = 'pending'"
+    );
+
     return res.json({
       success: true,
       data: {
         users: usersCount?.cnt ?? 0,
         auctions: auctionsCount?.cnt ?? 0,
-        pendingUpgradeRequests: pendingUpgrades?.cnt ?? 0
-      }
+        pendingUpgradeRequests: pendingUpgrades?.cnt ?? 0,
+      },
     });
   } catch (err) {
     console.error('admin.dashboard', err);
@@ -26,7 +31,9 @@ const dashboard = async (req, res) => {
 
 const listUsers = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, username, email, role, is_blocked FROM users ORDER BY id DESC LIMIT 500');
+    const [rows] = await db.query(
+      'SELECT id, username, email, role, is_blocked FROM users ORDER BY id DESC LIMIT 500'
+    );
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('admin.listUsers', err);
@@ -37,7 +44,10 @@ const listUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const id = req.params.id;
-    const [[user]] = await db.query('SELECT id, username, email, role, is_blocked FROM users WHERE id = ? LIMIT 1', [id]);
+    const [[user]] = await db.query(
+      'SELECT id, username, email, role, is_blocked FROM users WHERE id = ? LIMIT 1',
+      [id]
+    );
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     return res.json({ success: true, data: user });
   } catch (err) {
@@ -93,7 +103,9 @@ const unlockUser = async (req, res) => {
 
 const listSellers = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT id, name AS storeName, email, created_at FROM users WHERE role = 'seller' ORDER BY created_at DESC");
+    const [rows] = await db.query(
+      "SELECT id, name AS storeName, email, created_at FROM users WHERE role = 'seller' ORDER BY created_at DESC"
+    );
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('admin.listSellers', err);
@@ -104,7 +116,10 @@ const listSellers = async (req, res) => {
 const getSellerById = async (req, res) => {
   try {
     const id = req.params.id;
-    const [[seller]] = await db.query("SELECT id, name, email, storeName FROM users WHERE id = ? AND role = 'seller' LIMIT 1", [id]);
+    const [[seller]] = await db.query(
+      "SELECT id, name, email, storeName FROM users WHERE id = ? AND role = 'seller' LIMIT 1",
+      [id]
+    );
     if (!seller) return res.status(404).json({ success: false, message: 'Seller not found' });
     return res.json({ success: true, data: seller });
   } catch (err) {
@@ -126,7 +141,9 @@ const deleteSeller = async (req, res) => {
 
 const listProducts = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, title, seller_id, status FROM products ORDER BY id DESC LIMIT 200');
+    const [rows] = await db.query(
+      'SELECT id, title, seller_id, status FROM products ORDER BY id DESC LIMIT 200'
+    );
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('admin.listProducts', err);
@@ -159,7 +176,9 @@ const deleteProduct = async (req, res) => {
 
 const listAuctions = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, title, seller_id, status, end_time FROM auctions ORDER BY end_time DESC LIMIT 500');
+    const [rows] = await db.query(
+      'SELECT id, title, seller_id, status, end_time FROM auctions ORDER BY end_time DESC LIMIT 500'
+    );
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('admin.listAuctions', err);
@@ -204,7 +223,9 @@ const removeAuction = async (req, res) => {
 
 const listCategories = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, name, slug, parent_id FROM categories ORDER BY parent_id, id');
+    const [rows] = await db.query(
+      'SELECT id, name, slug, parent_id FROM categories ORDER BY parent_id, id'
+    );
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('admin.listCategories', err);
@@ -215,7 +236,11 @@ const listCategories = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name, slug, parent_id } = req.body;
-    await db.query('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', [name, slug || null, parent_id || null]);
+    await db.query('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', [
+      name,
+      slug || null,
+      parent_id || null,
+    ]);
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.createCategory', err);
@@ -251,7 +276,9 @@ const deleteCategory = async (req, res) => {
 
 const listUpgradeRequests = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, user_id, message, status, created_at FROM upgrade_requests ORDER BY created_at DESC');
+    const [rows] = await db.query(
+      'SELECT id, user_id, message, status, created_at FROM upgrade_requests ORDER BY created_at DESC'
+    );
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('admin.listUpgradeRequests', err);
@@ -264,14 +291,20 @@ const approveUpgradeRequest = async (req, res) => {
   try {
     await conn.beginTransaction();
     const id = req.params.id;
-    const [[reqRow]] = await conn.query('SELECT user_id FROM upgrade_requests WHERE id = ? FOR UPDATE', [id]);
+    const [[reqRow]] = await conn.query(
+      'SELECT user_id FROM upgrade_requests WHERE id = ? FOR UPDATE',
+      [id]
+    );
     if (!reqRow) {
       await conn.rollback();
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
     const userId = reqRow.user_id;
     await conn.query('UPDATE users SET role = ? WHERE id = ?', ['seller', userId]);
-    await conn.query("UPDATE upgrade_requests SET status = 'approved', processed_at = NOW() WHERE id = ?", [id]);
+    await conn.query(
+      "UPDATE upgrade_requests SET status = 'approved', processed_at = NOW() WHERE id = ?",
+      [id]
+    );
     await conn.commit();
     return res.json({ success: true });
   } catch (err) {
@@ -286,7 +319,10 @@ const approveUpgradeRequest = async (req, res) => {
 const rejectUpgradeRequest = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query("UPDATE upgrade_requests SET status = 'rejected', processed_at = NOW() WHERE id = ?", [id]);
+    await db.query(
+      "UPDATE upgrade_requests SET status = 'rejected', processed_at = NOW() WHERE id = ?",
+      [id]
+    );
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.rejectUpgradeRequest', err);
@@ -296,14 +332,117 @@ const rejectUpgradeRequest = async (req, res) => {
 
 const getStats = async (req, res) => {
   try {
-    const [[usersToday]] = await db.query("SELECT COUNT(*) AS cnt FROM users WHERE DATE(created_at) = CURDATE()");
-    const [[auctionsActive]] = await db.query("SELECT COUNT(*) AS cnt FROM auctions WHERE status = 'active'");
-    return res.json({ success: true, data: { usersToday: usersToday?.cnt ?? 0, activeAuctions: auctionsActive?.cnt ?? 0 } });
+    const [[usersToday]] = await db.query(
+      'SELECT COUNT(*) AS cnt FROM users WHERE DATE(created_at) = CURDATE()'
+    );
+    const [[auctionsActive]] = await db.query(
+      "SELECT COUNT(*) AS cnt FROM auctions WHERE status = 'active'"
+    );
+    return res.json({
+      success: true,
+      data: { usersToday: usersToday?.cnt ?? 0, activeAuctions: auctionsActive?.cnt ?? 0 },
+    });
   } catch (err) {
     console.error('admin.getStats', err);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ===== Admin UI render functions (EJS, dùng layout riêng) =====
+
+const renderDashboard = async (req, res) => {
+  try {
+    const [[usersCount]] = await db.query('SELECT COUNT(*) AS cnt FROM users');
+    const [[bidderCount]] = await db.query(
+      "SELECT COUNT(*) AS cnt FROM users WHERE role = 'bidder'"
+    );
+    const [[sellerCount]] = await db.query(
+      "SELECT COUNT(*) AS cnt FROM users WHERE role = 'seller'"
+    );
+    const [[pendingUpgrades]] = await db.query(
+      "SELECT COUNT(*) AS cnt FROM upgrade_requests WHERE status = 'pending'"
+    );
+
+    return res.render('admin/dashboard', {
+      layout: 'layouts/admin',
+      layout: 'layouts/admin',        // <-- BẮT BUỘC DÙNG LAYOUT ADMIN
+      title: 'Admin Dashboard',
+      stats: {
+        totalUsers: usersCount?.cnt ?? 0,
+        bidderCount: bidderCount?.cnt ?? 0,
+        sellerCount: sellerCount?.cnt ?? 0,
+        pendingUpgrade: pendingUpgrades?.cnt ?? 0,
+      },
+    });
+  } catch (err) {
+    console.error('admin.renderDashboard', err);
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
+
+const renderUpgradeRequestsPage = async (req, res) => {
+  try {
+    // Lấy toàn bộ yêu cầu từ bảng upgrade_requests
+    // dùng SELECT * để tránh lỗi do tên cột khác nhau
+    const [rows] = await db.query(
+      'SELECT * FROM upgrade_requests ORDER BY id DESC'
+    );
+
+    // Map lại dữ liệu cho view dùng (an toàn nếu thiếu cột)
+    const requests = (rows || []).map((r) => ({
+      id: r.id,
+      user_id: r.user_id,
+      // nếu sau này có join user thì gán vào 2 field này
+      user_name: r.user_name || null,
+      user_email: r.user_email || null,
+      message: r.message || r.reason || null,
+      status: r.status || 'pending',
+      created_at: r.created_at || null,
+    }));
+
+    return res.render('admin/upgrade-requests', {
+      layout: 'layouts/admin',
+      title: 'Yêu cầu nâng cấp Seller',
+      requests,
+    });
+  } catch (err) {
+    console.error('admin.renderUpgradeRequestsPage', err);
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
+
+
+const renderUsersPage = async (req, res) => {
+  try {
+    // Lấy toàn bộ user, tránh phụ thuộc tên cột cụ thể
+    const [rows] = await db.query('SELECT * FROM users ORDER BY id DESC');
+
+    const users = (rows || []).map((u) => ({
+      id: u.id,
+      // Ưu tiên username, nếu không có thì name, nếu không nữa thì fallback User #id
+      name: u.username || u.name || `User #${u.id}`,
+      email: u.email || '',
+      role: u.role || 'bidder',
+      // nếu không có is_blocked thì mặc định là đang hoạt động
+      is_active: !(u.is_blocked ?? 0),
+      // nếu DB không có created_at thì để null, view sẽ hiển thị "—"
+      created_at: u.created_at || null,
+    }));
+
+    return res.render('admin/users', {
+      layout: 'layouts/admin',
+      title: 'Quản lý tài khoản',
+      users,
+    });
+  } catch (err) {
+    console.error('admin.renderUsersPage', err);
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
+
+
+
+
 
 export default {
   dashboard,
@@ -330,5 +469,8 @@ export default {
   listUpgradeRequests,
   approveUpgradeRequest,
   rejectUpgradeRequest,
-  getStats
+  getStats,
+  renderDashboard,
+  renderUpgradeRequestsPage,
+  renderUsersPage,
 };

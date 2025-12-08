@@ -1,158 +1,158 @@
 <% layout("layouts/main") %>
 
-<section class="min-h-[calc(100vh-120px)] flex items-center justify-center py-10">
-  <div class="w-full max-w-5xl bg-white rounded-2xl shadow-lg overflow-hidden grid md:grid-cols-2">
-    <!-- Left: Form -->
-    <div class="px-6 sm:px-8 py-8">
-      <h2 class="text-2xl font-semibold text-slate-800 mb-1">Tạo tài khoản mới</h2>
-      <p class="text-sm text-slate-500 mb-6">
-        Đăng ký để bắt đầu tham gia đấu giá và quản lý tài khoản của bạn.
-      </p>
-
-      <form id="registerForm" action="/auth/register" method="POST" class="space-y-4">
-        <!-- Họ & Tên: gộp lại vào field name trước khi submit -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="lastName" class="block text-sm font-medium text-slate-700 mb-1">Họ</label>
-            <input
-              type="text"
-              id="lastName"
-              name="lastName"
-              required
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-              placeholder="Nguyễn"
-            />
-          </div>
-          <div>
-            <label for="firstName" class="block text-sm font-medium text-slate-700 mb-1">Tên</label>
-            <input
-              type="text"
-              id="firstName"
-              name="firstName"
-              required
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-              placeholder="A"
-            />
-          </div>
+<section class="min-h-[72vh] flex items-center justify-center py-10">
+  <div class="max-w-3xl w-full bg-white/95 shadow-xl shadow-slate-200/70 rounded-2xl border border-slate-100 p-6 sm:p-8">
+    <div class="flex flex-col md:flex-row gap-8">
+      <!-- Intro / illustration -->
+      <div class="space-y-4 md:w-5/12">
+        <div class="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 border border-teal-100">
+          <span>Welcome to</span>
+          <span class="font-semibold">PTUDW Auction</span>
         </div>
-
-        <!-- Hidden full name for backend -->
-        <input type="hidden" id="fullName" name="name" />
-
-        <div>
-          <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            required
-            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-            placeholder="you@example.com"
-          />
-          <span class="mt-1 block text-xs text-slate-500">
-            Đây sẽ là tên đăng nhập và email nhận thông báo của bạn.
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-              placeholder="••••••••"
-            />
-          </div>
-          <div>
-            <label for="confirmPassword" class="block text-sm font-medium text-slate-700 mb-1">Nhập lại mật khẩu</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              required
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 text-xs text-slate-500">
-          <input
-            id="togglePassword"
-            type="checkbox"
-            class="rounded border-slate-300 text-teal-500 focus:ring-teal-400"
-          />
-          <label for="togglePassword">Hiện mật khẩu</label>
-        </div>
-
-        <div class="flex items-start gap-2 text-xs text-slate-500">
-          <input id="terms" type="checkbox" required class="mt-0.5 rounded border-slate-300 text-teal-500 focus:ring-teal-400" />
-          <label for="terms">
-            Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của hệ thống.
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          class="mt-1 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:ring-2 focus:ring-offset-1 focus:ring-slate-900/60"
-        >
-          Đăng ký
-        </button>
-
-        <p class="mt-4 text-xs text-slate-500 text-center">
-          Hoặc
+        <h1 class="text-2xl font-semibold text-slate-900">
+          Tạo tài khoản mới
+        </h1>
+        <p class="text-sm text-slate-500 leading-relaxed">
+          Đăng ký để bắt đầu tham gia đặt giá, theo dõi sản phẩm yêu thích và quản lý lịch sử đấu giá của bạn.
         </p>
 
-        <p class="text-sm text-slate-500 text-center">
+        <!-- Placeholder illustration/banner -->
+        <div class="mt-4 w-full aspect-video rounded-2xl bg-gradient-to-tr from-teal-500 via-sky-500 to-indigo-500 flex items-center justify-center text-white text-sm font-medium shadow-md">
+          Banner đăng ký tài khoản
+        </div>
+
+        <p class="mt-4 text-xs text-slate-500">
           Đã có tài khoản?
-          <a href="/login" class="font-medium text-teal-600 hover:text-teal-700">Đăng nhập</a>
+          <a href="/login" class="font-semibold text-teal-600 hover:text-teal-700">Đăng nhập</a>
         </p>
-      </form>
-    </div>
-
-    <!-- Right: Illustration -->
-    <div class="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-sky-500 to-indigo-600 text-white px-6 py-8">
-      <div class="w-56 h-56 rounded-2xl border border-white/40 bg-white/10 flex items-center justify-center text-sm text-center px-4">
-        Khu vực minh họa sản phẩm / banner<br />Có thể thay bằng hình ảnh thật sau.
       </div>
-      <p class="mt-4 text-xs text-white/80 max-w-xs text-center">
-        Đây chỉ là hình placeholder. Khi triển khai chính thức bạn có thể thay bằng logo hoặc hình sản phẩm nổi bật.
-      </p>
+
+      <!-- Form -->
+      <div class="md:w-7/12">
+        <% if (typeof error !== "undefined" && error) { %>
+          <div class="mb-4 text-sm px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700">
+            <%= error %>
+          </div>
+        <% } %>
+
+        <form action="/auth/register" method="POST" id="registerForm" class="space-y-4">
+          <!-- hidden full name for backend -->
+          <input type="hidden" name="name" id="fullName" />
+
+          <!-- Name -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label for="lastName" class="text-xs font-medium text-slate-600">Họ</label>
+              <input
+                id="lastName"
+                type="text"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+              />
+            </div>
+            <div class="space-y-1">
+              <label for="firstName" class="text-xs font-medium text-slate-600">Tên</label>
+              <input
+                id="firstName"
+                type="text"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+              />
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="space-y-1">
+            <label for="email" class="text-xs font-medium text-slate-600">Email</label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              required
+              class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+            />
+          </div>
+
+          <!-- Password + confirm -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label for="password" class="text-xs font-medium text-slate-600">Mật khẩu</label>
+              <input
+                id="password"
+                type="password"
+                name="password"
+                minlength="6"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+              />
+            </div>
+            <div class="space-y-1">
+              <label for="confirmPassword" class="text-xs font-medium text-slate-600">Xác nhận mật khẩu</label>
+              <input
+                id="confirmPassword"
+                type="password"
+                minlength="6"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500"
+              />
+            </div>
+          </div>
+
+          <!-- Show password -->
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <input id="togglePassword" type="checkbox" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500/70" />
+            <label for="togglePassword">Hiển thị mật khẩu</label>
+          </div>
+
+          <!-- Dummy captcha -->
+          <div class="mt-2 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <div class="flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500/70" />
+              <span>Tôi không phải là robot</span>
+            </div>
+            <div class="text-[10px] text-slate-400 text-right leading-tight">
+              reCAPTCHA<br />Privacy • Terms
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="flex items-center justify-between pt-1">
+            <a href="/login" class="text-xs text-teal-600 hover:text-teal-700">Đăng nhập thay thế</a>
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-lg bg-teal-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+            >
+              Đăng ký
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </section>
 
 <script>
-  // Gộp Họ + Tên vào field name trước khi submit
-  (function () {
-    const form = document.getElementById("registerForm");
-    const lastNameInput = document.getElementById("lastName");
-    const firstNameInput = document.getElementById("firstName");
-    const fullNameInput = document.getElementById("fullName");
-    const passwordInput = document.getElementById("password");
-    const confirmPasswordInput = document.getElementById("confirmPassword");
+(function() {
+  const form = document.getElementById('registerForm');
+  const firstNameInput = document.getElementById('firstName');
+  const lastNameInput = document.getElementById('lastName');
+  const fullNameInput = document.getElementById('fullName');
+  const passwordInput = document.getElementById('password');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const togglePassword = document.getElementById('togglePassword');
 
-    if (!form) return;
-
-    form.addEventListener("submit", function (e) {
-      // Validate mật khẩu khớp nhau
-      if (passwordInput.value !== confirmPasswordInput.value) {
-        e.preventDefault();
-        alert("Mật khẩu xác nhận không khớp.");
-        return;
-      }
-      fullNameInput.value = (lastNameInput.value + " " + firstNameInput.value).trim();
+  if (form && firstNameInput && lastNameInput && fullNameInput) {
+    form.addEventListener('submit', function() {
+      fullNameInput.value = (lastNameInput.value + ' ' + firstNameInput.value).trim();
     });
+  }
 
-    // Hiện / ẩn mật khẩu
-    const togglePassword = document.getElementById("togglePassword");
-    togglePassword.addEventListener("change", function () {
-      const type = this.checked ? "text" : "password";
+  if (togglePassword && passwordInput && confirmPasswordInput) {
+    togglePassword.addEventListener('change', function() {
+      const type = this.checked ? 'text' : 'password';
       passwordInput.type = type;
       confirmPasswordInput.type = type;
     });
-  })();
+  }
+})();
 </script>

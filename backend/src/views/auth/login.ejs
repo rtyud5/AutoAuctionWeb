@@ -1,84 +1,173 @@
 <% layout("layouts/main") %>
 
-<section class="min-h-[calc(100vh-120px)] flex items-center justify-center py-10">
-  <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden grid md:grid-cols-2">
-    <!-- Left: Intro -->
-    <div class="hidden md:flex flex-col justify-center gap-4 bg-gradient-to-br from-teal-500 to-sky-600 text-white px-8 py-10">
-      <h1 class="text-2xl font-semibold">Chào mừng quay lại 👋</h1>
-      <p class="text-sm text-teal-50">
-        Đăng nhập để tiếp tục tham gia đấu giá, quản lý sản phẩm và theo dõi lịch sử giao dịch của bạn.
+<section class="min-h-[70vh] flex items-center justify-center py-10">
+  <div class="max-w-md w-full bg-white/90 shadow-xl shadow-slate-200/60 rounded-2xl border border-slate-100 p-6 space-y-4">
+    <header class="space-y-1">
+      <h1 class="text-xl font-semibold text-slate-900">Đăng nhập tài khoản</h1>
+      <p class="text-sm text-slate-500">
+        Sử dụng email và mật khẩu đã đăng ký để tham gia đấu giá.
       </p>
-      <ul class="mt-2 space-y-1 text-sm text-teal-50/90">
-        <li>• Theo dõi phiên đấu giá theo thời gian thực</li>
-        <li>• Lưu sản phẩm yêu thích</li>
-        <li>• Quản lý hồ sơ và đánh giá</li>
-      </ul>
-    </div>
+    </header>
 
-    <!-- Right: Form -->
-    <div class="px-6 sm:px-8 py-8">
-      <h2 class="text-2xl font-semibold text-slate-800 mb-1">Đăng nhập</h2>
-      <p class="text-sm text-slate-500 mb-6">
-        Nhập email và mật khẩu để truy cập tài khoản của bạn.
+    <% if (error) { %>
+      <div class="text-sm px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <% if (typeof adminError !== "undefined" && adminError) { %>
+      <div class="text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700">
+        <%= adminError %>
+      </div>
+    <% } %>
+
+    <form action="/auth/login" method="POST" class="space-y-4">
+      <div class="space-y-1.5">
+        <label for="email" class="block text-sm font-medium text-slate-700">
+          Email
+        </label>
+        <input
+          id="email"
+          type="email"
+          name="email"
+          required
+          class="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 bg-white"
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="password" class="block text-sm font-medium text-slate-700">
+          Mật khẩu
+        </label>
+        <input
+          id="password"
+          type="password"
+          name="password"
+          required
+          class="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 bg-white"
+          placeholder="••••••••"
+        />
+      </div>
+
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <div class="flex items-center gap-2">
+          <input id="remember" type="checkbox" class="rounded border-slate-300 text-teal-500 focus:ring-teal-400" />
+          <label for="remember">Ghi nhớ đăng nhập</label>
+        </div>
+        <a href="#" class="hover:text-teal-600">Quên mật khẩu?</a>
+      </div>
+
+      <button
+        type="submit"
+        class="w-full inline-flex items-center justify-center rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium py-2.5 transition"
+      >
+        Đăng nhập
+      </button>
+    </form>
+
+    <div class="pt-2 border-t border-dashed border-slate-200 space-y-2">
+      <p class="text-xs text-slate-500 text-center">
+        Chưa có tài khoản?
+        <a href="/register" class="text-teal-600 font-medium hover:underline">Đăng ký ngay</a>
       </p>
 
-      <% if (typeof error !== 'undefined' && error) { %>
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          <%= error %>
-        </div>
-      <% } %>
+      <div class="flex items-center gap-2 text-[11px] text-slate-500 justify-center">
+        <span class="h-px w-10 bg-slate-200"></span>
+        <span>Hoặc</span>
+        <span class="h-px w-10 bg-slate-200"></span>
+      </div>
 
-      <form action="/auth/login" method="POST" class="space-y-4">
-        <div>
-          <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            required
-            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div>
-          <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            required
-            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none"
-            placeholder="••••••••"
-          />
-        </div>
-
-        <div class="flex items-start gap-2 text-xs text-slate-500">
-          <input id="terms" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-teal-500 focus:ring-teal-400" />
-          <label for="terms">
-            Bằng cách tạo tài khoản, tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi.
-          </label>
-        </div>
-
-        <div class="flex items-start gap-2 text-xs text-slate-500">
-          <input id="promo" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-teal-500 focus:ring-teal-400" />
-          <label for="promo">
-            Tôi đồng ý nhận tin nhắn SMS và email về cập nhật mới, sự kiện và chương trình khuyến mãi.
-          </label>
-        </div>
-
+      <div class="flex justify-center">
         <button
-          type="submit"
-          class="mt-2 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:ring-2 focus:ring-offset-1 focus:ring-slate-900/60"
+          type="button"
+          id="admin-login-trigger"
+          class="text-xs font-medium text-slate-600 hover:text-teal-600 underline underline-offset-2"
         >
-          Sign in
+          Đăng nhập với quyền Admin
         </button>
-      </form>
-
-      <p class="mt-5 text-sm text-slate-500">
-        Bạn chưa có tài khoản?
-        <a href="/register" class="font-medium text-teal-600 hover:text-teal-700">Đăng ký</a>
-      </p>
+      </div>
     </div>
   </div>
 </section>
+
+<!-- Admin login modal -->
+<div
+  id="admin-login-modal"
+  class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+>
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
+    <header class="space-y-1">
+      <h2 class="text-base font-semibold text-slate-900">Đăng nhập Admin</h2>
+      <p class="text-xs text-slate-500">
+        Nhập Admin key để truy cập khu vực quản trị. Luồng này độc lập với tài khoản người dùng.
+      </p>
+    </header>
+
+    <form id="admin-login-form" method="POST" action="/auth/admin-login" class="space-y-4">
+      <div class="space-y-1.5">
+        <label for="adminKey" class="block text-xs font-medium text-slate-700">
+          Admin key
+        </label>
+        <input
+          id="adminKey"
+          type="password"
+          name="adminKey"
+          required
+          class="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 bg-white"
+          placeholder="Nhập admin key (mặc định: admin123)"
+        />
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button
+          type="button"
+          id="admin-login-cancel"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100"
+        >
+          Hủy
+        </button>
+        <button
+          type="submit"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium bg-teal-500 text-white hover:bg-teal-600"
+        >
+          Vào Admin
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const trigger = document.getElementById("admin-login-trigger");
+    const modal = document.getElementById("admin-login-modal");
+    const cancelBtn = document.getElementById("admin-login-cancel");
+
+    if (!trigger || !modal) return;
+
+    const openModal = () => {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      const input = document.getElementById("adminKey");
+      if (input) input.focus();
+    };
+
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    trigger.addEventListener("click", openModal);
+    cancelBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeModal();
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+  })();
+</script>

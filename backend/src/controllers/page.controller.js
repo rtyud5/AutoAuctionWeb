@@ -21,8 +21,10 @@ const index = async (req, res) => {
 
 const loginView = (req, res) => {
   const rawError = req.query.error;
+  const rawAdminError = req.query.adminError;
   const error = rawError ? decodeURIComponent(rawError) : null;
-  return res.render("auth/login", { title: "Đăng nhập", error });
+  const adminError = rawAdminError ? decodeURIComponent(rawAdminError) : null;
+  return res.render("auth/login", { title: "Đăng nhập", error, adminError });
 };
 
 const registerView = (req, res) => res.render('auth/register', { title: 'Đăng ký' });

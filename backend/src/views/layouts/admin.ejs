@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title><%= typeof title !== 'undefined' ? title : 'Admin Panel' %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+
+  <!-- HEADER ADMIN: chỉ tên + nút Đăng xuất -->
+  <header class="w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="text-sm sm:text-base font-semibold tracking-wide">
+        PTUDW Online Auction · <span class="text-teal-400">Admin</span>
+      </div>
+
+      <!-- Nút Đăng xuất (dùng chung /auth/logout) -->
+      <a
+        href="/auth/logout"
+        class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+      >
+        Đăng xuất
+      </a>
+    </div>
+  </header>
+
+  <!-- NỘI DUNG CHÍNH -->
+  <main class="flex-1">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+      <%- body %>
+    </div>
+  </main>
+
+</body>
+</html>

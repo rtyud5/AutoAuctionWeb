@@ -1,2 +1,21 @@
-<h1>500 - Lỗi hệ thống</h1>
-<p>Đã có lỗi xảy ra. Vui lòng thử lại sau.</p>
+<% layout("layouts/main") %>
+
+<section class="min-h-[60vh] flex items-center justify-center">
+  <div class="text-center space-y-4">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 text-rose-500 text-2xl shadow-sm">
+      500
+    </div>
+    <div class="space-y-1">
+      <h1 class="text-xl font-semibold text-slate-900">Đã xảy ra lỗi hệ thống</h1>
+      <p class="text-sm text-slate-500">
+        Có lỗi xảy ra trong quá trình xử lý. Vui lòng thử lại sau hoặc quay lại trang chủ.
+      </p>
+    </div>
+    <a
+      href="/"
+      class="inline-flex items-center justify-center rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+    >
+      ← Về trang chủ
+    </a>
+  </div>
+</section>
