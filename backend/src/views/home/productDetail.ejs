@@ -124,33 +124,25 @@
 
             <!-- Table Rows -->
             <div class="border border-t-0 rounded-b-lg">
-                <div class="grid grid-cols-4 gap-4 p-4 border-b hover:bg-gray-50">
-                    <div class="text-gray-600">d*********g</div>
-                    <div>9,000,000 VND</div>
-                    <div class="text-sm text-gray-500">7/6/2022 03:21:09</div>
-                    <div class="text-yellow-400">★★★★★</div>
-                </div>
-                
-                <div class="grid grid-cols-4 gap-4 p-4 border-b hover:bg-gray-50">
-                    <div class="text-gray-600">d*********g</div>
-                    <div>7,000,000 VND</div>
-                    <div class="text-sm text-gray-500">3/6/2022 07:44:13</div>
-                    <div class="text-yellow-400">★★★★★</div>
-                </div>
-                
-                <div class="grid grid-cols-4 gap-4 p-4 border-b hover:bg-gray-50">
-                    <div class="text-gray-600">d*********g</div>
-                    <div>6,500,000 VND</div>
-                    <div class="text-sm text-gray-500">7/6/2022 11:11:39</div>
-                    <div class="text-yellow-400">★★★★★</div>
-                </div>
-                
-                <div class="grid grid-cols-4 gap-4 p-4 hover:bg-gray-50">
-                    <div class="text-gray-600">d*********g</div>
-                    <div>4,500,000 VND</div>
-                    <div class="text-sm text-gray-500">20/1/2022 03:03:04</div>
-                    <div class="text-yellow-400">★★★★★</div>
-                </div>
+                <% if (bids && bids.length > 0) { %>
+                    <% bids.forEach((bid, index) => { %>
+                        <div class="grid grid-cols-4 gap-4 p-4 <%= index < bids.length - 1 ? 'border-b' : '' %> hover:bg-gray-50">
+                            <div class="text-gray-600"><%= bid.bidder_masked %></div>
+                            <div><%= Number(bid.amount).toLocaleString('vi-VN') %> VND</div>
+                            <div class="text-sm text-gray-500"><%= new Date(bid.created_at).toLocaleString('vi-VN') %></div>
+                            <div class="text-yellow-400">
+                                <% const bidRating = Math.floor((bid.bidder_rating || 50) / 20); %>
+                                <% for (let i = 0; i < 5; i++) { %>
+                                    <%= i < bidRating ? '★' : '☆' %>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div class="p-8 text-center text-gray-500">
+                        Chưa có lượt đấu giá nào
+                    </div>
+                <% } %>
             </div>
         </div>
 
@@ -159,102 +151,9 @@
             <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Mô tả sản phẩm</h2>
             
             <div class="space-y-6">
-                <!-- Product Title & Description -->
                 <div>
-                    <p class="text-gray-700 leading-relaxed">
-                        Hải Nam Computer - Cam Kết Hàng Chính Hãng - Uy tín - Chất Lượng - Bảo Hành 3 tháng. 
-                        Lời i đồi 1 tuần cho khách hàng trong 15 ngày
-                    </p>
-                </div>
-
-                <!-- Product Images Grid -->
-                <div class="my-6">
-                    <img src="https://via.placeholder.com/800x400/667eea/ffffff?text=Multiple+Laptops+Display" 
-                         alt="Product showcase" 
-                         class="w-full rounded-lg shadow-md">
-                </div>
-
-                <!-- Important Notes -->
-                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                    <h3 class="font-bold text-red-700 mb-2">⚠️ LƯU Ý:</h3>
-                    <ul class="space-y-2 text-gray-700">
-                        <li>- MÁY LÀ HÀNG ĐÃ QUA SỬ DỤNG, NGOẠI HÌNH TẦM 98% (LIKENEW)</li>
-                        <li>- PHỤ KIỆN CÓ: MÁY, SẠC ADAPTER, TẶNG CHUỘT VÀ BAO DI CHUỘT</li>
-                        <li>- ẢNH SẢN PHẨM ĐỀU LÀ HÌNH THẬT SHOP TỰ CHỤP</li>
-                        <li>- SẢN PHẨM ĐƯỢC BẢO HÀNH 3 THÁNG (MÀN VÀ MAIN, PHÍM BH 1 THÁNG), CÓ DÁN TEM BẢO HÀNH TRÊN SẢN PHẨM</li>
-                    </ul>
-                </div>
-
-                <!-- Product Specifications -->
-                <div class="bg-white border rounded-lg p-6">
-                    <h3 class="font-bold text-lg mb-4 flex items-center">
-                        <span class="text-green-600 mr-2">✅</span>
-                        CẤU HÌNH CHI TIẾT: Dell & Hp 14 inch và 15.6 inch
-                    </h3>
-                    
-                    <div class="space-y-3 text-gray-700">
-                        <div class="flex">
-                            <span class="font-semibold w-48">Hệ điều hành:</span>
-                            <span>cài sẵn Window 10 vừa (Office)</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Bộ vi xử lý:</span>
-                            <span>Intel Core i5 (hoặc Core i7)</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Ram:</span>
-                            <span>8G (có thể nâng cấp lên 16G nếu shop để dư trợ a)</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Ổ đĩa cứng:</span>
-                            <span>SSD 256G (=> Sử dụng SSD giúp máy tính chạy nhanh hơn gấp 10 lần HDD ace nhé)</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Card màn hình:</span>
-                            <span>Intel HD Graphics</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Màn hình:</span>
-                            <span>Độ phân giải HD (1.280 x 720 pixels)</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Webcam:</span>
-                            <span>Có</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Kết nối:</span>
-                            <span>2 x USB 3.0, LAN, Headphone/microphone combo jack, HDMI</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Thời lượng pin:</span>
-                            <span>tầm 2-2.5 giờ</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Trọng lượng:</span>
-                            <span>1.6 kg</span>
-                        </div>
-                        
-                        <div class="flex">
-                            <span class="font-semibold w-48">Kích thước:</span>
-                            <span>333.4.00 x 228.8 mm x 20.3 mm</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Additional Info -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p class="text-sm text-gray-600 italic">
-                        💡 Sản phẩm phù hợp cho học sinh, sinh viên, văn phòng làm việc cơ bản. 
-                        Máy đã qua kiểm tra kỹ lưỡng, đảm bảo chất lượng.
+                    <p class="text-gray-700 leading-relaxed whitespace-pre-line">
+                        <%= product.full_description || product.short_description || 'Chưa có mô tả chi tiết' %>
                     </p>
                 </div>
             </div>
@@ -320,65 +219,23 @@
             <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Các sản phẩm khác</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Product Card 1 -->
-                <div class="border rounded-lg overflow-hidden hover:shadow-lg transition">
-                    <img src="https://via.placeholder.com/300x200/1a1a1a/808080?text=Laptop+1" alt="Laptop" class="w-full h-48 object-cover">
-                    <div class="p-4">
-                        <h3 class="font-semibold text-gray-800 mb-2">Tên Sản Phẩm: Laptop</h3>
-                        <p class="text-sm text-gray-600 mb-1">Giá Hiện Tại: <span class="font-bold text-red-600">1,000,000vnd</span></p>
-                        <p class="text-sm text-gray-600 mb-1">Bidder Cao Nhất: ****Khoa</p>
-                        <p class="text-sm text-gray-600 mb-1">Số Lượt Ra Giá: 5 Lượt</p>
-                        <p class="text-sm text-gray-600 mb-2">Giá Mua Ngay: <span class="font-bold">12,000,000đ</span></p>
-                        <p class="text-sm text-gray-500 mb-2">Ngày Đăng: 01/11/2025</p>
-                        <p class="text-sm text-green-600 mb-3">Thời Gian Còn Lại: <span class="font-semibold">2 Ngày 5 Giờ</span></p>
-                        <button class="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 transition">
-                            mua ngay
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Product Card 2 -->
-                <div class="border rounded-lg overflow-hidden hover:shadow-lg transition">
-                    <img src="https://via.placeholder.com/300x200/1a1a1a/808080?text=Laptop+2" alt="Laptop" class="w-full h-48 object-cover">
-                    <div class="p-4">
-                        <h3 class="font-semibold text-gray-800 mb-2">Tên Sản Phẩm: Laptop</h3>
-                        <p class="text-sm text-gray-600 mb-1">Giá Hiện Tại: <span class="font-bold text-red-600">1,000,000vnd</span></p>
-                        <p class="text-sm text-gray-600 mb-1">Bidder Cao Nhất: ****Khoa</p>
-                        <p class="text-sm text-gray-600 mb-1">Số Lượt Ra Giá: 5 Lượt</p>
-                        <p class="text-sm text-gray-600 mb-2">Giá Mua Ngay: <span class="font-bold">12,000,000đ</span></p>
-                        <p class="text-sm text-gray-500 mb-2">Ngày Đăng: 01/11/2025</p>
-                        <p class="text-sm text-green-600 mb-3">Thời Gian Còn Lại: <span class="font-semibold">2 Ngày 5 Giờ</span></p>
-                        <button class="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 transition">
-                            mua ngay
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Product Card 3 -->
-                <div class="border rounded-lg overflow-hidden hover:shadow-lg transition">
-                    <img src="https://via.placeholder.com/300x200/1a1a1a/808080?text=Laptop+3" alt="Laptop" class="w-full h-48 object-cover">
-                    <div class="p-4">
-                        <h3 class="font-semibold text-gray-800 mb-2">Tên Sản Phẩm: Laptop</h3>
-                        <p class="text-sm text-gray-600 mb-1">Giá Hiện Tại: <span class="font-bold text-red-600">1,000,000vnd</span></p>
-                        <p class="text-sm text-gray-600 mb-1">Bidder Cao Nhất: ****Khoa</p>
-                        <p class="text-sm text-gray-600 mb-1">Số Lượt Ra Giá: 5 Lượt</p>
-                        <p class="text-sm text-gray-600 mb-2">Giá Mua Ngay: <span class="font-bold">12,000,000đ</span></p>
-                        <p class="text-sm text-gray-500 mb-2">Ngày Đăng: 01/11/2025</p>
-                        <p class="text-sm text-green-600 mb-3">Thời Gian Còn Lại: <span class="font-semibold">2 Ngày 5 Giờ</span></p>
-                        <button class="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 transition">
-                            mua ngay
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pagination Dots -->
-            <div class="flex justify-center gap-2 mt-6">
-                <button class="w-3 h-3 rounded-full bg-gray-800"></button>
-                <button class="w-3 h-3 rounded-full bg-gray-300"></button>
-                <button class="w-3 h-3 rounded-full bg-gray-300"></button>
-                <button class="w-3 h-3 rounded-full bg-gray-300"></button>
-                <button class="w-3 h-3 rounded-full bg-gray-300"></button>
+                <% if (relatedProducts && relatedProducts.length > 0) { %>
+                    <% relatedProducts.forEach(related => { %>
+                        <div class="border rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer" onclick="window.location.href='/product/<%= related.id %>'">
+                            <img src="<%= related.image %>" alt="<%= related.title %>" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2"><%= related.title %></h3>
+                                <p class="text-sm text-gray-600 mb-1">Giá hiện tại: <span class="font-bold text-red-600"><%= Number(related.current_price).toLocaleString('vi-VN') %>₫</span></p>
+                                <p class="text-sm text-green-600 mb-3" data-end-time="<%= related.end_time %>">Đang tính...</p>
+                                <button class="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 transition">
+                                    Xem chi tiết
+                                </button>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p class="col-span-3 text-center text-gray-500 py-8">Không có sản phẩm liên quan</p>
+                <% } %>
             </div>
         </div>
     </div>
@@ -414,4 +271,86 @@
             <p class="font-semibold">@ULP2025</p>
         </div>
     </footer>
+
+<script>
+    // Countdown timer
+    function updateCountdown() {
+        const countdown = document.getElementById('countdown');
+        if (!countdown) return;
+        
+        const endTime = new Date(countdown.getAttribute('data-end-time')).getTime();
+        const now = new Date().getTime();
+        const distance = endTime - now;
+
+        if (distance < 0) {
+            document.getElementById('days').textContent = '00';
+            document.getElementById('hours').textContent = '00';
+            document.getElementById('minutes').textContent = '00';
+            document.getElementById('seconds').textContent = '00';
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById('days').textContent = String(days).padStart(2, '0');
+        document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+        document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+        document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
+    }
+
+    // Update related products countdown
+    document.querySelectorAll('[data-end-time]').forEach(el => {
+        if (el.id === 'countdown') return;
+        
+        const endTime = new Date(el.getAttribute('data-end-time')).getTime();
+        const now = new Date().getTime();
+        const distance = endTime - now;
+
+        if (distance < 0) {
+            el.textContent = 'Đã kết thúc';
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        el.textContent = `Còn ${days} ngày ${hours} giờ`;
+    });
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    // Change main image
+    function changeMainImage(src) {
+        document.getElementById('mainImage').src = src;
+    }
+
+    // Toggle watchlist
+    function toggleWatchlist(productId) {
+        const icon = document.getElementById('watchlist-icon');
+        icon.textContent = icon.textContent === '☆' ? '★' : '☆';
+        // TODO: Implement AJAX call
+    }
+
+    // Place bid
+    function placeBid(event, productId) {
+        event.preventDefault();
+        const amount = document.getElementById('bidAmount').value;
+        alert('Đặt giá: ' + Number(amount).toLocaleString('vi-VN') + ' VND');
+        // TODO: Implement AJAX call
+    }
+
+    // Ask question
+    function askQuestion(event, productId) {
+        event.preventDefault();
+        const question = document.getElementById('questionText').value;
+        if (question.trim()) {
+            alert('Câu hỏi đã được gửi');
+            document.getElementById('questionText').value = '';
+        }
+        // TODO: Implement AJAX call
+    }
+</script>
 </body>
