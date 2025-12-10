@@ -12,7 +12,7 @@ router.get("/itemHistory", pageController.profileProductView);
 router.get("/itemManager", pageController.profileAuctionView);
 router.get("/electronics", pageController.listElectronics);
 router.get("/fashion", pageController.listFashion);
-
+router.get("/product/:id", pageController.productDetailView);
 // Trang xác minh OTP – chỉ render giao diện
 router.get("/verify-otp", (req, res) => {
   res.render("auth/verify-otp");

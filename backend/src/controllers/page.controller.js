@@ -1,22 +1,74 @@
-import db from '../config/db.js';
+import db from "../config/db.js";
 
 const index = async (req, res) => {
-  let auctions = [];
+  let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
   try {
-    const [endingSoon] = await db.query(
-      "SELECT id, title, current_price, end_time FROM auctions WHERE end_time > NOW() ORDER BY end_time ASC LIMIT 5"
+    // Query sản phẩm sắp kết thúc (JOIN với products để lấy product_id và thumbnail)
+    const endingSoon = await db.query(
+      `SELECT 
+        p.id AS product_id,
+        p.title,
+        p.thumbnail AS image,
+        a.current_price,
+        a.end_time,
+        (SELECT CONCAT(LEFT(u.name, 4), '***') FROM bids b 
+         INNER JOIN users u ON b.bidder_id = u.id 
+         WHERE b.auction_id = a.id 
+         ORDER BY b.amount DESC LIMIT 1) AS top_bidder
+      FROM products p
+      INNER JOIN auctions a ON p.id = a.product_id
+      WHERE a.end_time > NOW() AND p.status = 'active'
+      ORDER BY a.end_time ASC 
+      LIMIT 5`,
+      { type: db.QueryTypes.SELECT }
     );
-    const [highestPrice] = await db.query(
-      "SELECT id, title, current_price, end_time FROM auctions ORDER BY current_price DESC LIMIT 5"
+
+    // Query sản phẩm giá cao nhất
+    const highestPrice = await db.query(
+      `SELECT 
+        p.id AS product_id,
+        p.title,
+        p.thumbnail AS image,
+        a.current_price,
+        a.end_time,
+        (SELECT CONCAT(LEFT(u.name, 4), '***') FROM bids b 
+         INNER JOIN users u ON b.bidder_id = u.id 
+         WHERE b.auction_id = a.id 
+         ORDER BY b.amount DESC LIMIT 1) AS top_bidder
+      FROM products p
+      INNER JOIN auctions a ON p.id = a.product_id
+      WHERE p.status = 'active'
+      ORDER BY a.current_price DESC 
+      LIMIT 5`,
+      { type: db.QueryTypes.SELECT }
     );
-    const [mostBids] = await db.query(
-      "SELECT a.id, a.title, a.current_price, a.end_time, COALESCE(a.bids_count, (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id)) AS bids_count FROM auctions a ORDER BY bids_count DESC LIMIT 5"
+
+    // Query sản phẩm có nhiều lượt đấu giá nhất
+    const mostBids = await db.query(
+      `SELECT 
+        p.id AS product_id,
+        p.title,
+        p.thumbnail AS image,
+        a.current_price,
+        a.end_time,
+        (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id) AS bids_count,
+        (SELECT CONCAT(LEFT(u.name, 4), '***') FROM bids b 
+         INNER JOIN users u ON b.bidder_id = u.id 
+         WHERE b.auction_id = a.id 
+         ORDER BY b.amount DESC LIMIT 1) AS top_bidder
+      FROM products p
+      INNER JOIN auctions a ON p.id = a.product_id
+      WHERE p.status = 'active'
+      ORDER BY bids_count DESC 
+      LIMIT 5`,
+      { type: db.QueryTypes.SELECT }
     );
+
     auctions = { endingSoon, highestPrice, mostBids };
   } catch (e) {
-    console.error(e);
+    console.error("Error in index controller:", e);
   }
-  return res.render('home/index', { title: 'Online Auction', auctions });
+  return res.render("home/index", { title: "Online Auction", auctions });
 };
 
 const loginView = (req, res) => {
@@ -27,18 +79,20 @@ const loginView = (req, res) => {
   return res.render("auth/login", { title: "Đăng nhập", error, adminError });
 };
 
-const registerView = (req, res) => res.render('auth/register', { title: 'Đăng ký' });
+const registerView = (req, res) =>
+  res.render("auth/register", { title: "Đăng ký" });
 
 const showAuction = async (req, res) => {
   const { id } = req.params;
   try {
-    const [rows] = await db.query('SELECT * FROM auctions WHERE id = ?', [id]);
+    const [rows] = await db.query("SELECT * FROM auctions WHERE id = ?", [id]);
     const auction = rows[0] || null;
-    if (!auction) return res.status(404).render('error/404', { title: 'Không tìm thấy' });
-    return res.render('auction/detail', { title: auction.title, auction });
+    if (!auction)
+      return res.status(404).render("error/404", { title: "Không tìm thấy" });
+    return res.render("auction/detail", { title: auction.title, auction });
   } catch (e) {
     console.error(e);
-    return res.status(500).render('error/500', { title: 'Lỗi server' });
+    return res.status(500).render("error/500", { title: "Lỗi server" });
   }
 };
 
@@ -64,19 +118,28 @@ const listByCategory = async (req, res, category, view) => {
     );
     rows = Array.isArray(result) ? result : [];
   } catch (e) {
-    console.error(`❌ listByCategory (${category}) DB error:`, e.message, e.code);
+    console.error(
+      `❌ listByCategory (${category}) DB error:`,
+      e.message,
+      e.code
+    );
     rows = [];
     total = 0;
   }
 
-  const title = category === 'electronics' ? 'Điện tử' : category === 'fashion' ? 'Thời trang' : 'Danh sách';
+  const title =
+    category === "electronics"
+      ? "Điện tử"
+      : category === "fashion"
+      ? "Thời trang"
+      : "Danh sách";
   const totalPages = Math.ceil(total / limit) || 1;
   const pages = [];
   for (let i = 1; i <= totalPages; i++) {
     pages.push({
       num: i,
       url: `?page=${i}`,
-      current: i === page
+      current: i === page,
     });
   }
 
@@ -85,14 +148,16 @@ const listByCategory = async (req, res, category, view) => {
     prev: page > 1 ? `?page=${page - 1}` : null,
     next: page < totalPages ? `?page=${page + 1}` : null,
     currentPage: page,
-    totalPages
+    totalPages,
   };
 
   return res.render(view, { title, auctions: rows, category, pagination });
 };
 
-const listElectronics = (req, res) => listByCategory(req, res, 'electronics', 'categories/electronics');
-const listFashion = (req, res) => listByCategory(req, res, 'fashion', 'categories/fashion');
+const listElectronics = (req, res) =>
+  listByCategory(req, res, "electronics", "categories/electronics");
+const listFashion = (req, res) =>
+  listByCategory(req, res, "fashion", "categories/fashion");
 
 const profileView = async (req, res) => {
   try {
@@ -133,7 +198,6 @@ const profileView = async (req, res) => {
   }
 };
 
-
 const reviewView = async (req, res) => {
   try {
     const userId = req.user?.id || 1;
@@ -157,16 +221,15 @@ const reviewView = async (req, res) => {
     return res.render("profile/review", {
       title: "My review",
       totalPoint,
-      reviewList: reviewList || []   // luôn đảm bảo là array
+      reviewList: reviewList || [], // luôn đảm bảo là array
     });
-
   } catch (err) {
     console.error("reviewView error:", err);
-    
+
     return res.render("profile/review", {
       title: "My review",
       totalPoint: 0,
-      reviewList: []
+      reviewList: [],
     });
   }
 };
@@ -209,9 +272,8 @@ const profileProductView = async (req, res) => {
       title: "Quản lý sản phẩm",
       favoriteList: favoriteList || [],
       biddingList: biddingList || [],
-      wonList: wonList || []
+      wonList: wonList || [],
     });
-
   } catch (err) {
     console.error("profileProductView error:", err);
 
@@ -219,7 +281,7 @@ const profileProductView = async (req, res) => {
       title: "Quản lý sản phẩm",
       favoriteList: [],
       biddingList: [],
-      wonList: []
+      wonList: [],
     });
   }
 };
@@ -259,17 +321,59 @@ const profileAuctionView = async (req, res) => {
       title: "Quản lý đấu giá",
       activeAuctions: activeAuctions || [],
       wonAuctions: wonAuctions || [],
-      favoriteProducts: favoriteProducts || []
+      favoriteProducts: favoriteProducts || [],
     });
-
   } catch (err) {
     console.error("profileAuctionView error:", err);
     return res.render("profile/itemManager", {
       title: "Quản lý đấu giá",
       activeAuctions: [],
       wonAuctions: [],
-      favoriteProducts: []
+      favoriteProducts: [],
     });
+  }
+};
+
+const productDetailView = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Tạm thời trả về view với dữ liệu mẫu để test
+    const product = {
+      id: id,
+      title: "iPhone 15 Pro Max 256GB - Sản phẩm " + id,
+      short_description: "Điện thoại cao cấp từ Apple",
+      full_description:
+        "iPhone 15 Pro Max với chip A17 Pro, camera 48MP, màn hình Super Retina XDR 6.7 inch",
+      image:
+        "https://cdn.tgdd.vn/Products/Images/42/305658/iphone-15-pro-max-blue-thumbnew-600x600.jpg",
+      current_price: 28500000,
+      start_price: 25000000,
+      step_price: 500000,
+      end_time: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      seller_name: "Nguyễn Văn A",
+      positive_count: 45,
+      negative_count: 5,
+      total_ratings: 50,
+      seller_rating: 90,
+      category_name: "Điện thoại",
+      category_id: 1,
+    };
+
+    const bids = [];
+    const reviews = [];
+    const relatedProducts = [];
+
+    return res.render("home/productDetail", {
+      title: product.title,
+      product,
+      bids,
+      reviews,
+      relatedProducts,
+    });
+  } catch (error) {
+    console.error("Error in productDetailView:", error);
+    return res.status(500).render("error/500", { title: "Lỗi hệ thống" });
   }
 };
 
@@ -283,5 +387,6 @@ export default {
   profileView,
   reviewView,
   profileProductView,
-  profileAuctionView
+  profileAuctionView,
+  productDetailView,
 };
