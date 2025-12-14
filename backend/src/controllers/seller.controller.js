@@ -1,5 +1,9 @@
 import db from '../config/db.js';
 import bcrypt from 'bcrypt';
+import fs from 'fs';
+import path from 'path';
+import Product from '../models/product.model.js';
+import Auction from '../models/auction.model.js';
 
 /*
   Seller controller — 1:1 map to routes/seller.route.js
@@ -292,6 +296,321 @@ const answerQuestion = async (req, res) => {
   }
 };
 
+const newProductForm = async (req, res) => {
+  try {
+    const [categories] = await db.query('SELECT id, name FROM categories ORDER BY name');
+    return res.render('seller/upProduct', {
+      title: 'Đăng sản phẩm mới',
+      categories,
+      user: req.user || null,
+    });
+  } catch (err) {
+    console.error('seller.newProductForm', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+const createProduct = async (req, res) => {
+  const t = await db.transaction();
+  try {
+    const sellerId = req.user?.id;
+    if (!sellerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const {
+      title,
+      category_id,
+      short_description,
+      full_description,
+      starting_price,
+      end_time,
+      step_price,   // optional
+      auto_extend   // optional
+    } = req.body;
+
+    const startPriceNum = Number(starting_price);
+    const stepPriceNum = step_price ? Number(step_price) : 100000;
+    const autoExtendVal = auto_extend === undefined ? true : Boolean(auto_extend);
+    const endTimeVal = end_time ? new Date(end_time) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+
+    if (!title || !category_id || isNaN(startPriceNum) || startPriceNum <= 0 || isNaN(stepPriceNum) || stepPriceNum <= 0) {
+      return res.status(400).json({ success: false, message: 'Thiếu/không hợp lệ: title, category_id, starting_price, step_price' });
+    }
+
+    let thumbnail = null;
+
+    // 1) Product
+    const product = await Product.create(
+      {
+        seller_id: sellerId,
+        category_id,
+        title,
+        short_description: short_description || null,
+        full_description: full_description || null,
+        thumbnail,
+        status: 'APPROVED'
+      },
+      { transaction: t }
+    );
+
+    // 2) Lưu ảnh vào folder theo product ID
+    if (req.file) {
+      const productDir = path.join(process.cwd(), 'public', 'uploads', 'products', String(product.id));
+      
+      if (!fs.existsSync(productDir)) {
+        fs.mkdirSync(productDir, { recursive: true });
+      }
+
+      const newFilePath = path.join(productDir, '0.jpg');
+      fs.copyFileSync(req.file.path, newFilePath);
+      fs.unlinkSync(req.file.path);
+      
+      thumbnail = `/uploads/products/${product.id}/0.jpg`;
+
+      await product.update(
+        { thumbnail },
+        { transaction: t }
+      );
+    }
+
+    // 3) Auction
+    const auction = await Auction.create(
+      {
+        product_id: product.id,
+        seller_id: sellerId,
+        start_price: startPriceNum,
+        step_price: stepPriceNum,
+        current_price: startPriceNum,
+        current_winner_id: null,
+        start_time: new Date(),
+        end_time: endTimeVal,
+        auto_extend: autoExtendVal,
+        status: 'PENDING',
+        winner_id: null,
+        winner_bid_id: null
+      },
+      { transaction: t }
+    );
+
+    await t.commit();
+    return res.status(201).json({ success: true, message: 'Product created successfully', productId: product.id, auctionId: auction.id });
+  } catch (err) {
+    await t.rollback();
+    console.error('seller.createProduct error:', err);
+    return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+};
+
+const listProducts = async (req, res) => {
+  try {
+    const sellerId = req.user?.id;
+    if (!sellerId) {
+      return res.redirect('/login');
+    }
+
+    const [rows] = await db.query(
+      `SELECT p.*, c.name as category_name 
+       FROM products p 
+       LEFT JOIN categories c ON p.category_id = c.id 
+       WHERE p.seller_id = ? 
+       ORDER BY p.created_at DESC`,
+      { replacements: [sellerId], raw: true }
+    );
+
+    // Render đúng file: seller/products.ejs
+    return res.render('seller/products', {
+      title: 'Quản lý sản phẩm',
+      products: rows || [],
+      user: req.user || null,
+    });
+  } catch (err) {
+    console.error('seller.listProducts error:', err);
+    return res.status(500).render('error/500', { 
+      title: 'Lỗi hệ thống',
+      user: req.user || null 
+    });
+  }
+};
+
+const editProductForm = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const sellerId = req.user?.id;
+    
+    const [rows] = await db.query(
+      'SELECT * FROM products WHERE id = ? AND seller_id = ? LIMIT 1',
+      { replacements: [id, sellerId], raw: true }
+    );
+    
+    if (!rows || rows.length === 0) {
+      return res.status(404).render('error/404', { 
+        title: 'Không tìm thấy',
+        user: req.user || null 
+      });
+    }
+    
+    const product = rows[0];
+    const [categories] = await db.query(
+      'SELECT id, name FROM categories ORDER BY name',
+      { replacements: [], raw: true }
+    );
+
+    // Lấy auction gắn với product (nếu có)
+    const [auctionRows] = await db.query(
+      'SELECT * FROM auctions WHERE product_id = ? AND seller_id = ? LIMIT 1',
+      { replacements: [id, sellerId], raw: true }
+    );
+    const auction = auctionRows && auctionRows.length ? auctionRows[0] : null;
+    
+    return res.render('seller/editProduct', { 
+      title: 'Chỉnh sửa sản phẩm',
+      product,
+      categories,
+      auction,
+      user: req.user || null
+    });
+  } catch (err) {
+    console.error('seller.editProductForm error:', err);
+    return res.status(500).render('error/500', { 
+      title: 'Lỗi hệ thống',
+      user: req.user || null 
+    });
+  }
+};
+
+const updateProduct = async (req, res) => {
+  const t = await db.transaction();
+  try {
+    const sellerId = req.user?.id;
+    if (!sellerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const productId = req.params.id;
+    const {
+      title,
+      category_id,
+      short_description,
+      full_description,
+      starting_price,
+      step_price,
+      end_time,
+      auto_extend
+    } = req.body;
+
+    const startPriceNum = starting_price !== undefined ? Number(starting_price) : null;
+    const stepPriceNum = step_price !== undefined ? Number(step_price) : null;
+
+    if (startPriceNum !== null && (isNaN(startPriceNum) || startPriceNum <= 0)) {
+      return res.status(400).json({ success: false, message: 'starting_price không hợp lệ' });
+    }
+    if (stepPriceNum !== null && (isNaN(stepPriceNum) || stepPriceNum <= 0)) {
+      return res.status(400).json({ success: false, message: 'step_price không hợp lệ' });
+    }
+
+    // 1) Update product
+    const product = await Product.findOne({ where: { id: productId, seller_id: sellerId } });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    // Xử lý ảnh mới
+    let thumbnail = undefined;
+    if (req.file) {
+      const productDir = path.join(process.cwd(), 'public', 'uploads', 'products', String(productId));
+      
+      if (!fs.existsSync(productDir)) {
+        fs.mkdirSync(productDir, { recursive: true });
+      }
+
+      const newFilePath = path.join(productDir, '0.jpg');
+      
+      // Xóa ảnh cũ nếu tồn tại
+      if (fs.existsSync(newFilePath)) {
+        fs.unlinkSync(newFilePath);
+      }
+      
+      fs.copyFileSync(req.file.path, newFilePath);
+      fs.unlinkSync(req.file.path);
+      
+      thumbnail = `/uploads/products/${productId}/0.jpg`;
+    }
+
+    await product.update(
+      {
+        title: title ?? product.title,
+        category_id: category_id ?? product.category_id,
+        short_description: short_description ?? product.short_description,
+        full_description: full_description ?? product.full_description,
+        thumbnail: thumbnail ?? product.thumbnail,
+      },
+      { transaction: t }
+    );
+
+    // 2) Update auction linked to product
+    const auction = await Auction.findOne({ where: { product_id: productId, seller_id: sellerId } });
+    if (auction) {
+      await auction.update(
+        {
+          start_price: startPriceNum ?? auction.start_price,
+          step_price: stepPriceNum ?? auction.step_price,
+          current_price: startPriceNum ?? auction.current_price, // nếu chỉnh giá khởi điểm, cập nhật current_price theo
+          end_time: end_time ? new Date(end_time) : auction.end_time,
+          auto_extend: auto_extend === undefined ? auction.auto_extend : Boolean(auto_extend),
+        },
+        { transaction: t }
+      );
+    }
+
+    await t.commit();
+    return res.json({ success: true, message: 'Updated successfully' });
+  } catch (err) {
+    await t.rollback();
+    console.error('seller.updateProduct error:', err);
+    return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+};
+
+const deleteProduct = async (req, res) => {
+  const t = await db.transaction();
+  try {
+    const sellerId = req.user?.id;
+    const productId = req.params.id;
+    if (!sellerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    // Lấy product + thumbnail để kiểm tra quyền sở hữu
+    const [rows] = await db.query(
+      'SELECT id, thumbnail FROM products WHERE id = ? AND seller_id = ? LIMIT 1',
+      { replacements: [productId, sellerId], transaction: t }
+    );
+    if (!rows || rows.length === 0) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    // Xóa auctions gắn với product
+    await db.query(
+      'DELETE FROM auctions WHERE product_id = ? AND seller_id = ?',
+      { replacements: [productId, sellerId], transaction: t }
+    );
+
+    // Xóa product
+    await db.query(
+      'DELETE FROM products WHERE id = ? AND seller_id = ?',
+      { replacements: [productId, sellerId], transaction: t }
+    );
+
+    await t.commit();
+
+    // Xóa folder ảnh
+    const productDir = path.join(process.cwd(), 'public', 'uploads', 'products', String(productId));
+    if (fs.existsSync(productDir)) {
+      fs.rmSync(productDir, { recursive: true, force: true });
+    }
+
+    return res.json({ success: true, message: 'Product & auctions deleted successfully' });
+  } catch (err) {
+    await t.rollback();
+    console.error('seller.deleteProduct error:', err);
+    return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+};
+
 export default {
   register,
   login,
@@ -311,5 +630,11 @@ export default {
   editAuctionForm,
   updateAuction,
   blockBidder,
-  answerQuestion
+  answerQuestion,
+  newProductForm,
+  createProduct,
+  listProducts,
+  editProductForm,
+  updateProduct,
+  deleteProduct
 };

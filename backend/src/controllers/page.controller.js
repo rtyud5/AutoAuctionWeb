@@ -3,72 +3,56 @@ import db from "../config/db.js";
 const index = async (req, res) => {
   let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
   try {
-    // Query sản phẩm sắp kết thúc (JOIN với products để lấy product_id và thumbnail)
-    const endingSoon = await db.query(
-      `SELECT 
-        p.id AS product_id,
-        p.title,
-        p.thumbnail AS image,
-        a.current_price,
-        a.end_time,
-        (SELECT CONCAT(LEFT(u.name, 4), '***') FROM bids b 
-         INNER JOIN users u ON b.bidder_id = u.id 
-         WHERE b.auction_id = a.id 
-         ORDER BY b.amount DESC LIMIT 1) AS top_bidder
-      FROM products p
-      INNER JOIN auctions a ON p.id = a.product_id
-      WHERE a.end_time > NOW() AND p.status = 'active'
-      ORDER BY a.end_time ASC 
-      LIMIT 5`,
-      { type: db.QueryTypes.SELECT }
+    const [endingSoon] = await db.query(
+      `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
+              c.name as category_name, u.name as seller_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN users u ON p.seller_id = u.id
+       WHERE p.status = 'APPROVED'
+       ORDER BY p.created_at DESC 
+       LIMIT 5`,
+      { raw: true }
     );
 
-    // Query sản phẩm giá cao nhất
-    const highestPrice = await db.query(
-      `SELECT 
-        p.id AS product_id,
-        p.title,
-        p.thumbnail AS image,
-        a.current_price,
-        a.end_time,
-        (SELECT CONCAT(LEFT(u.name, 4), '***') FROM bids b 
-         INNER JOIN users u ON b.bidder_id = u.id 
-         WHERE b.auction_id = a.id 
-         ORDER BY b.amount DESC LIMIT 1) AS top_bidder
-      FROM products p
-      INNER JOIN auctions a ON p.id = a.product_id
-      WHERE p.status = 'active'
-      ORDER BY a.current_price DESC 
-      LIMIT 5`,
-      { type: db.QueryTypes.SELECT }
+    const [highestPrice] = await db.query(
+      `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
+              c.name as category_name, u.name as seller_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN users u ON p.seller_id = u.id
+       WHERE p.status = 'APPROVED'
+       ORDER BY p.id DESC 
+       LIMIT 5`,
+      { raw: true }
     );
 
-    // Query sản phẩm có nhiều lượt đấu giá nhất
-    const mostBids = await db.query(
-      `SELECT 
-        p.id AS product_id,
-        p.title,
-        p.thumbnail AS image,
-        a.current_price,
-        a.end_time,
-        (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id) AS bids_count,
-        (SELECT CONCAT(LEFT(u.name, 4), '***') FROM bids b 
-         INNER JOIN users u ON b.bidder_id = u.id 
-         WHERE b.auction_id = a.id 
-         ORDER BY b.amount DESC LIMIT 1) AS top_bidder
-      FROM products p
-      INNER JOIN auctions a ON p.id = a.product_id
-      WHERE p.status = 'active'
-      ORDER BY bids_count DESC 
-      LIMIT 5`,
-      { type: db.QueryTypes.SELECT }
+    const [mostBids] = await db.query(
+      `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
+              c.name as category_name, u.name as seller_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN users u ON p.seller_id = u.id
+       WHERE p.status = 'APPROVED'
+       ORDER BY RAND()
+       LIMIT 5`,
+      { raw: true }
     );
+
+    const fixImage = (p) => {
+      if (p.image && !p.image.includes('placeholder')) return;
+      p.image = `/uploads/products/${p.product_id}/0.jpg`;
+    };
+
+    endingSoon.forEach(fixImage);
+    highestPrice.forEach(fixImage);
+    mostBids.forEach(fixImage);
 
     auctions = { endingSoon, highestPrice, mostBids };
   } catch (e) {
     console.error("Error in index controller:", e);
   }
-  return res.render("home/index", { title: "Online Auction", auctions });
+  return res.render("home/index", { title: "Online Auction", auctions, user: req.user || null });
 };
 
 const loginView = (req, res) => {
@@ -96,62 +80,67 @@ const showAuction = async (req, res) => {
   }
 };
 
-const listByCategory = async (req, res, category, view) => {
+const listByCategory = async (req, res, categoryId, view) => {
   const page = parseInt(req.query.page) || 1;
   const limit = 9;
   const offset = (page - 1) * limit;
 
-  let rows = [];
-  let total = 0;
   try {
-    // Count total
-    const countResult = await db.query(
-      "SELECT COUNT(*) as count FROM auctions WHERE category = ? AND end_time > NOW()",
-      [category]
+    const [countRows] = await db.query(
+      "SELECT COUNT(*) as count FROM products WHERE category_id = ? AND status = 'APPROVED'",
+      { replacements: [categoryId], raw: true }
     );
-    total = countResult[0]?.count || 0;
+    const total = countRows?.[0]?.count || 0;
 
-    // Fetch paginated data
-    const result = await db.query(
-      "SELECT id, title, current_price, end_time, image, top_bidder, is_new FROM auctions WHERE category = ? AND end_time > NOW() ORDER BY end_time ASC LIMIT ? OFFSET ?",
-      [category, limit, offset]
+    const [rows] = await db.query(
+      `SELECT 
+        p.id AS product_id,
+        p.title,
+        p.thumbnail as image,
+        p.short_description,
+        c.name as category_name,
+        u.name as seller_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN users u ON p.seller_id = u.id
+       WHERE p.category_id = ? AND p.status = 'APPROVED'
+       ORDER BY p.created_at DESC 
+       LIMIT ? OFFSET ?`,
+      { replacements: [categoryId, limit, offset], raw: true }
     );
-    rows = Array.isArray(result) ? result : [];
+
+    const [catRows] = await db.query(
+      "SELECT name FROM categories WHERE id = ? LIMIT 1",
+      { replacements: [categoryId], raw: true }
+    );
+    const category = catRows?.[0];
+    const title = category?.name || "Danh mục";
+
+    const totalPages = Math.ceil(total / limit) || 1;
+    const pages = Array.from({ length: totalPages }, (_, i) => ({
+      num: i + 1,
+      url: `?page=${i + 1}`,
+      current: i + 1 === page,
+    }));
+
+    const pagination = {
+      pages,
+      prev: page > 1 ? `?page=${page - 1}` : null,
+      next: page < totalPages ? `?page=${page + 1}` : null,
+      currentPage: page,
+      totalPages,
+    };
+
+    return res.render(view, { title, auctions: rows || [], category: categoryId, pagination });
   } catch (e) {
-    console.error(
-      `❌ listByCategory (${category}) DB error:`,
-      e.message,
-      e.code
-    );
-    rows = [];
-    total = 0;
-  }
-
-  const title =
-    category === "electronics"
-      ? "Điện tử"
-      : category === "fashion"
-      ? "Thời trang"
-      : "Danh sách";
-  const totalPages = Math.ceil(total / limit) || 1;
-  const pages = [];
-  for (let i = 1; i <= totalPages; i++) {
-    pages.push({
-      num: i,
-      url: `?page=${i}`,
-      current: i === page,
+    console.error(`Error in listByCategory:`, e);
+    return res.render(view, { 
+      title: "Danh mục", 
+      auctions: [], 
+      category: categoryId, 
+      pagination: { pages: [], currentPage: 1, totalPages: 1, prev: null, next: null } 
     });
   }
-
-  const pagination = {
-    pages,
-    prev: page > 1 ? `?page=${page - 1}` : null,
-    next: page < totalPages ? `?page=${page + 1}` : null,
-    currentPage: page,
-    totalPages,
-  };
-
-  return res.render(view, { title, auctions: rows, category, pagination });
 };
 
 const listElectronics = (req, res) =>
@@ -199,137 +188,174 @@ const profileView = async (req, res) => {
 };
 
 const reviewView = async (req, res) => {
-  try {
-    const userId = req.user?.id || 1;
+  if (!req.user) return res.redirect("/login");
+  const userId = req.user.id;
 
-    // Lấy tổng điểm
+  try {
     const [totalPointResult] = await db.query(
       `SELECT COALESCE(SUM(point), 0) AS total FROM reviews WHERE user_id = ?`,
-      [userId]
+      { replacements: [userId], raw: true }
     );
     const totalPoint = totalPointResult?.[0]?.total ?? 0;
 
-    // Lấy danh sách review
     const [reviewList] = await db.query(
       `SELECT reviewer, comment, point, avatar 
        FROM reviews 
        WHERE user_id = ?
        ORDER BY id DESC`,
-      [userId]
+      { replacements: [userId], raw: true }
     );
 
     return res.render("profile/review", {
       title: "My review",
       totalPoint,
-      reviewList: reviewList || [], // luôn đảm bảo là array
+      reviewList: reviewList || [],
+      user: req.user || null,
     });
   } catch (err) {
     console.error("reviewView error:", err);
-
     return res.render("profile/review", {
       title: "My review",
       totalPoint: 0,
       reviewList: [],
+      user: req.user || null,
     });
   }
 };
 
 const profileProductView = async (req, res) => {
   try {
-    const userId = req.user?.id || 1;
+    const userId = req.user?.id;
+    if (!userId) return res.redirect('/login');
 
     // --- SẢN PHẨM YÊU THÍCH ---
     const [favoriteList] = await db.query(
-      `SELECT p.id, p.name, p.price, p.image
+      `SELECT p.id, p.title, p.thumbnail as image, p.short_description
        FROM favorites f
        JOIN products p ON f.product_id = p.id
        WHERE f.user_id = ?`,
-      [userId]
+      { replacements: [userId], raw: true }
     );
 
-    // --- SẢN PHẨM ĐANG ĐẤU GIÁ ---
-    const [biddingList] = await db.query(
-      `SELECT a.id, a.title AS name, a.current_price AS price, a.image
-       FROM bids b
-       JOIN auctions a ON b.auction_id = a.id
-       WHERE b.user_id = ? AND a.end_time > NOW()
-       GROUP BY a.id
-       ORDER BY a.end_time ASC`,
-      [userId]
-    );
+    // --- SẢN PHẨM ĐANG ĐẤU GIÁ (nếu có bảng bids + auctions) ---
+    let biddingList = [];
+    try {
+      const [bidData] = await db.query(
+        `SELECT p.id, p.title, p.current_price, p.thumbnail as image, p.end_time
+         FROM bids b
+         JOIN products p ON b.product_id = p.id
+         WHERE b.user_id = ? AND p.end_time > NOW()
+         GROUP BY p.id
+         ORDER BY p.end_time ASC`,
+        { replacements: [userId], raw: true }
+      );
+      biddingList = bidData || [];
+    } catch (e) {
+      console.warn('Skip biddingList:', e.message);
+    }
 
-    // --- SẢN PHẨM ĐÃ THẮNG ---
-    const [wonList] = await db.query(
-      `SELECT a.id, a.title AS name, a.current_price AS price, a.image, w.win_date
-       FROM winners w
-       JOIN auctions a ON w.auction_id = a.id
-       WHERE w.user_id = ?
-       ORDER BY w.win_date DESC`,
-      [userId]
-    );
+    // --- SẢN PHẨM ĐÃ THẮNG (nếu có bảng winners) ---
+    let wonList = [];
+    try {
+      const [wonData] = await db.query(
+        `SELECT p.id, p.title, p.current_price, p.thumbnail as image
+         FROM products p
+         WHERE p.seller_id = ? AND p.status = 'SOLD'
+         ORDER BY p.updated_at DESC`,
+        { replacements: [userId], raw: true }
+      );
+      wonList = wonData || [];
+    } catch (e) {
+      console.warn('Skip wonList:', e.message);
+    }
 
     return res.render("profile/product", {
       title: "Quản lý sản phẩm",
       favoriteList: favoriteList || [],
-      biddingList: biddingList || [],
-      wonList: wonList || [],
+      biddingList,
+      wonList,
+      user: req.user || null,
     });
   } catch (err) {
     console.error("profileProductView error:", err);
-
-    return res.render("profile/itemHistory", {
+    return res.render("profile/product", {
       title: "Quản lý sản phẩm",
       favoriteList: [],
       biddingList: [],
       wonList: [],
+      user: req.user || null,
     });
   }
 };
 
 const profileAuctionView = async (req, res) => {
   try {
-    const userId = req.user?.id || 1;
+    const userId = req.user?.id;
+    if (!userId) return res.redirect('/login');
 
-    // 1. Danh sách sản phẩm đang đấu giá
-    const [activeAuctions] = await db.query(
-      `SELECT id, title, current_price, bid_count, end_time
-       FROM auctions
-       WHERE status = 'active' AND user_id = ? 
-       ORDER BY end_time ASC`,
-      [userId]
-    );
+    // 1. Sản phẩm đang đấu giá (APPROVED, chưa kết thúc)
+    let activeAuctions = [];
+    try {
+      const [activeData] = await db.query(
+        `SELECT id, title, thumbnail AS image, end_time
+         FROM products
+         WHERE status = 'APPROVED' AND end_time > NOW()
+         ORDER BY end_time ASC
+         LIMIT 10`,
+        { raw: true }
+      );
+      activeAuctions = activeData || [];
+    } catch (e) {
+      console.warn('Skip activeAuctions:', e.message);
+    }
 
-    // 2. Danh sách sản phẩm của người thắng đấu giá
-    const [wonAuctions] = await db.query(
-      `SELECT id, title, final_price, win_time
-       FROM auctions
-       WHERE status = 'won' AND winner_id = ?
-       ORDER BY win_time DESC`,
-      [userId]
-    );
+    // 2. Sản phẩm đã thắng (SOLD)
+    let wonAuctions = [];
+    try {
+      const [wonData] = await db.query(
+        `SELECT id, title, thumbnail AS image, updated_at AS win_time
+         FROM products
+         WHERE status = 'SOLD'
+         ORDER BY updated_at DESC
+         LIMIT 10`,
+        { raw: true }
+      );
+      wonAuctions = wonData || [];
+    } catch (e) {
+      console.warn('Skip wonAuctions:', e.message);
+    }
 
-    // 3. Danh sách yêu thích
-    const [favoriteProducts] = await db.query(
-      `SELECT p.id, p.name, p.image, p.price
-       FROM favorites f
-       JOIN products p ON p.id = f.product_id
-       WHERE f.user_id = ?`,
-      [userId]
-    );
+    // 3. Yêu thích (nếu có bảng favorites)
+    let favoriteProducts = [];
+    try {
+      const [favData] = await db.query(
+        `SELECT p.id, p.title, p.thumbnail AS image
+         FROM favorites f
+         JOIN products p ON p.id = f.product_id
+         WHERE f.user_id = ?`,
+        { replacements: [userId], raw: true }
+      );
+      favoriteProducts = favData || [];
+    } catch (e) {
+      console.warn('Skip favoriteProducts:', e.message);
+      favoriteProducts = [];
+    }
 
-    return res.render("profile/auction", {
-      title: "Quản lý đấu giá",
-      activeAuctions: activeAuctions || [],
-      wonAuctions: wonAuctions || [],
-      favoriteProducts: favoriteProducts || [],
+    return res.render('profile/auction', {
+      title: 'Quản lý đấu giá',
+      activeAuctions,
+      wonAuctions,
+      favoriteProducts,
+      user: req.user || null,
     });
   } catch (err) {
-    console.error("profileAuctionView error:", err);
-    return res.render("profile/itemManager", {
-      title: "Quản lý đấu giá",
+    console.error('profileAuctionView error:', err);
+    return res.render('profile/auction', {
+      title: 'Quản lý đấu giá',
       activeAuctions: [],
       wonAuctions: [],
       favoriteProducts: [],
+      user: req.user || null,
     });
   }
 };
@@ -338,42 +364,133 @@ const productDetailView = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Tạm thời trả về view với dữ liệu mẫu để test
-    const product = {
-      id: id,
-      title: "iPhone 15 Pro Max 256GB - Sản phẩm " + id,
-      short_description: "Điện thoại cao cấp từ Apple",
-      full_description:
-        "iPhone 15 Pro Max với chip A17 Pro, camera 48MP, màn hình Super Retina XDR 6.7 inch",
-      image:
-        "https://cdn.tgdd.vn/Products/Images/42/305658/iphone-15-pro-max-blue-thumbnew-600x600.jpg",
-      current_price: 28500000,
-      start_price: 25000000,
-      step_price: 500000,
-      end_time: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      seller_name: "Nguyễn Văn A",
-      positive_count: 45,
-      negative_count: 5,
-      total_ratings: 50,
-      seller_rating: 90,
-      category_name: "Điện thoại",
-      category_id: 1,
-    };
+    const [prodRows] = await db.query(
+      `SELECT 
+        p.id, p.title, p.short_description, p.full_description, p.thumbnail, p.status,
+        p.seller_id, p.category_id,
+        c.name as category_name,
+        u.name as seller_name,
+        u.email as seller_email
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN users u ON p.seller_id = u.id
+       WHERE p.id = ? AND p.status = 'APPROVED'
+       LIMIT 1`,
+      { replacements: [id], raw: true }
+    );
+    const product = prodRows?.[0];
 
-    const bids = [];
-    const reviews = [];
-    const relatedProducts = [];
+    if (!product) {
+      return res.status(404).render("error/404", { 
+        title: "Không tìm thấy sản phẩm",
+        user: req.user || null
+      });
+    }
+
+    // Lấy auction info
+    const [auctionRows] = await db.query(
+      `SELECT start_price, step_price, current_price, end_time, status
+       FROM auctions
+       WHERE product_id = ?
+       LIMIT 1`,
+      { replacements: [id], raw: true }
+    );
+    const auction = auctionRows?.[0] || {};
+
+    // Lấy bids
+    const [bids] = await db.query(
+      `SELECT id, bidder_id, amount, is_auto, created_at 
+       FROM bids 
+       WHERE auction_id = (SELECT id FROM auctions WHERE product_id = ?)
+       ORDER BY created_at DESC LIMIT 20`,
+      { replacements: [id], raw: true }
+    );
+
+    const [relatedProducts] = await db.query(
+      `SELECT p.id AS product_id, p.title, p.thumbnail as image, p.short_description
+       FROM products p
+       WHERE p.category_id = ? AND p.id != ? AND p.status = 'APPROVED'
+       ORDER BY p.created_at DESC
+       LIMIT 4`,
+      { replacements: [product.category_id, id], raw: true }
+    );
+
+    const imgBase = `/uploads/products/${product.id}`;
+    const images = [
+      `${imgBase}/0.jpg`,
+      `${imgBase}/1.jpg`,
+      `${imgBase}/2.jpg`,
+      `${imgBase}/3.jpg`,
+    ].filter(Boolean);
+
+    let reviews = [];
+    try {
+      const [ratingRows] = await db.query(
+        `SELECT r.id, r.score, r.comment, r.created_at, u.name as user_name
+         FROM ratings r
+         LEFT JOIN users u ON r.rater_id = u.id
+         WHERE r.target_user_id = ?
+         ORDER BY r.created_at DESC
+         LIMIT 10`,
+        { replacements: [product.seller_id], raw: true }
+      );
+
+      reviews = (ratingRows || []).map((r) => ({
+        ...r,
+        user_name: r.user_name || 'Ẩn danh',
+        comment: r.comment || 'Không có bình luận',
+        rating: r.score === 1 ? 5 : 1,
+        images: [
+          `/uploads/reviews/${product.id}/0.jpg`,
+          `/uploads/reviews/${product.id}/1.jpg`,
+          `/uploads/reviews/${product.id}/2.jpg`,
+        ],
+      }));
+    } catch (err) {
+      console.warn('Skip ratings:', err.message);
+      reviews = [];
+    }
 
     return res.render("home/productDetail", {
       title: product.title,
-      product,
-      bids,
+      user: req.user || null,
+      product: {
+        id: product.id,
+        product_id: product.id,
+        title: product.title,
+        short_description: product.short_description,
+        full_description: product.full_description,
+        thumbnail: product.thumbnail,
+        image: images[0] || product.thumbnail || null,
+        images,
+        category_name: product.category_name,
+        seller_name: product.seller_name,
+        seller_email: product.seller_email,
+        seller_id: product.seller_id,
+        // Auction data
+        start_price: auction.start_price || 0,
+        step_price: auction.step_price || 100000,
+        current_price: auction.current_price || 0,
+        end_time: auction.end_time || new Date(Date.now() + 86400000).toISOString(),
+        auction_status: auction.status || 'PENDING',
+        seller_rating: 100,
+        positive_count: 0,
+        negative_count: 0,
+        total_ratings: reviews.length,
+      },
+      bids: bids || [],
       reviews,
-      relatedProducts,
+      relatedProducts: (relatedProducts || []).map(p => ({
+        ...p,
+        end_time: new Date(Date.now() + 86400000).toISOString(),
+      })),
     });
   } catch (error) {
     console.error("Error in productDetailView:", error);
-    return res.status(500).render("error/500", { title: "Lỗi hệ thống" });
+    return res.status(500).render("error/500", { 
+      title: "Lỗi hệ thống",
+      user: req.user || null
+    });
   }
 };
 

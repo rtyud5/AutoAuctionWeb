@@ -1,33 +1,46 @@
 <% layout('layouts/main') %>
 
-<div class="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-        <!-- Header với background gradient -->
-        <div class="relative bg-gradient-to-br from-blue-100 via-purple-50 to-pink-50 p-8">
-            <!-- Decorative circles -->
-            <div class="absolute top-8 right-1/4 w-32 h-32 bg-gradient-to-br from-blue-200 to-transparent rounded-full opacity-50"></div>
-            <div class="absolute top-4 right-1/3 w-24 h-24 bg-gradient-to-br from-purple-200 to-transparent rounded-full opacity-40"></div>
+    <div class="relative bg-gradient-to-br from-blue-100 via-purple-50 to-pink-50 p-6 overflow-hidden">
+
+            <!-- Background decorations (LUON o SAU) -->
+            <div class="absolute inset-0 pointer-events-none">
+                <div class="absolute top-8 right-1/4 w-32 h-32 bg-gradient-to-br from-blue-200 to-transparent rounded-full opacity-50"></div>
+                <div class="absolute top-4 right-1/3 w-24 h-24 bg-gradient-to-br from-purple-200 to-transparent rounded-full opacity-40"></div>
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-2xl font-bold text-gray-800 text">
+                <%= product.title %>
+            </h1>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 -mt-32 relative z-10">
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 mt-6 relative z-40">
             <!-- Left Column - Product Images -->
             <div>
+                <% const images = (product.images && product.images.length) ? product.images : [product.image].filter(Boolean); %>
                 <div class="bg-white rounded-lg p-4 shadow-md mb-4">
-                    <img src="<%= product.image %>" alt="<%= product.title %>" class="w-full rounded-lg" id="mainImage">
+                <img src="<%= images[0] %>" alt="<%= product.title %>" class="w-full rounded-lg" id="mainImage">
                 </div>
-                
+
                 <!-- Thumbnail Images -->
                 <div class="grid grid-cols-4 gap-2">
-                    <img src="<%= product.image %>" alt="Thumbnail 1" class="rounded-lg cursor-pointer hover:opacity-75 transition" onclick="changeMainImage(this.src)">
-                    <img src="<%= product.image %>" alt="Thumbnail 2" class="rounded-lg cursor-pointer hover:opacity-75 transition" onclick="changeMainImage(this.src)">
-                    <img src="<%= product.image %>" alt="Thumbnail 3" class="rounded-lg cursor-pointer hover:opacity-75 transition" onclick="changeMainImage(this.src)">
-                    <img src="<%= product.image %>" alt="Thumbnail 4" class="rounded-lg cursor-pointer hover:opacity-75 transition" onclick="changeMainImage(this.src)">
+                <% images.forEach((src, i) => { %>
+                    <img
+                    src="<%= src %>"
+                    alt="Thumbnail <%= i + 1 %>"
+                    class="rounded-lg cursor-pointer hover:opacity-75 transition"
+                    onclick="changeMainImage('<%= src %>')">
+                <% }) %>
                 </div>
             </div>
 
             <!-- Right Column - Product Info -->
+            <div class="flex flex-col justify-between">
             <div>
-                <h1 class="text-3xl font-bold text-gray-800 mb-2"><%= product.title %></h1>
                 <p class="text-sm text-gray-500 mb-2">Người bán: <%= product.seller_name %></p>
+                <% if (product.store_name) { %>
+                    <p class="text-sm text-gray-500 mb-2">Cửa hàng: <%= product.store_name %></p>
+                <% } %>
                 
                 <!-- Rating -->
                 <div class="flex items-center mb-4">
@@ -109,168 +122,168 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Auction History Section -->
-        <div class="px-8 pb-8">
-            <h2 class="text-2xl font-bold mb-6">Lịch sử đấu thầu</h2>
-            
-            <!-- Table Headers -->
-            <div class="grid grid-cols-4 gap-4 bg-gray-100 p-4 rounded-t-lg font-semibold text-gray-700">
-                <div>Người thầu</div>
-                <div>Giá cao nhất</div>
-                <div>Thời gian đấu thầu</div>
-                <div>Biểm danh giá</div>
+    <!-- Auction History Section -->
+    <div class="px-8 pb-8">
+        <h2 class="text-2xl font-bold mb-6">Lịch sử đấu thầu</h2>
+        
+        <!-- Table Headers -->
+        <div class="grid grid-cols-4 gap-4 bg-gray-100 p-4 rounded-t-lg font-semibold text-gray-700">
+            <div>Người thầu</div>
+            <div>Giá cao nhất</div>
+            <div>Thời gian đấu thầu</div>
+            <div>Biểm danh giá</div>
+        </div>
+
+        <!-- Table Rows -->
+        <div class="border border-t-0 rounded-b-lg">
+            <% if (bids && bids.length > 0) { %>
+                <% bids.forEach((bid, index) => { %>
+                    <div class="grid grid-cols-4 gap-4 p-4 <%= index < bids.length - 1 ? 'border-b' : '' %> hover:bg-gray-50">
+                        <div class="text-gray-600"><%= bid.bidder_masked %></div>
+                        <div><%= Number(bid.amount).toLocaleString('vi-VN') %> VND</div>
+                        <div class="text-sm text-gray-500"><%= new Date(bid.created_at).toLocaleString('vi-VN') %></div>
+                        <div class="text-yellow-400">
+                            <% const bidRating = Math.floor((bid.bidder_rating || 50) / 20); %>
+                            <% for (let i = 0; i < 5; i++) { %>
+                                <%= i < bidRating ? '★' : '☆' %>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="p-8 text-center text-gray-500">
+                    Chưa có lượt đấu giá nào
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Product Description Section -->
+    <div class="px-8 pb-8">
+        <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Mô tả sản phẩm</h2>
+        
+        <div class="space-y-6">
+            <div>
+                <p class="text-gray-700 leading-relaxed whitespace-pre-line">
+                    <%= product.full_description || product.short_description || 'Chưa có mô tả chi tiết' %>
+                </p>
             </div>
+        </div>
+    </div>
 
-            <!-- Table Rows -->
-            <div class="border border-t-0 rounded-b-lg">
-                <% if (bids && bids.length > 0) { %>
-                    <% bids.forEach((bid, index) => { %>
-                        <div class="grid grid-cols-4 gap-4 p-4 <%= index < bids.length - 1 ? 'border-b' : '' %> hover:bg-gray-50">
-                            <div class="text-gray-600"><%= bid.bidder_masked %></div>
-                            <div><%= Number(bid.amount).toLocaleString('vi-VN') %> VND</div>
-                            <div class="text-sm text-gray-500"><%= new Date(bid.created_at).toLocaleString('vi-VN') %></div>
-                            <div class="text-yellow-400">
-                                <% const bidRating = Math.floor((bid.bidder_rating || 50) / 20); %>
-                                <% for (let i = 0; i < 5; i++) { %>
-                                    <%= i < bidRating ? '★' : '☆' %>
+    <!-- Customer Reviews Section -->
+        <div class="px-8 pb-8">
+            <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Bình luận</h2>
+            
+            <div class="space-y-6">
+                <% if (reviews && reviews.length > 0) { %>
+                    <% reviews.forEach((review, idx) => { %>
+                        <div class="flex gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
+                                    <%= (review.user_name || 'U')[0].toUpperCase() %>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h4 class="font-semibold text-gray-800"><%= review.user_name || 'Ẩn danh' %></h4>
+                                    <span class="text-yellow-400 text-sm">
+                                        <% for (let i = 0; i < review.rating; i++) { %>★<% } %>
+                                        <% for (let i = review.rating; i < 5; i++) { %>☆<% } %>
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 mb-2"><%= new Date(review.created_at).toLocaleString('vi-VN') %></p>
+                                <p class="text-gray-700 text-sm leading-relaxed mb-3">
+                                    <%= review.comment || 'Không có bình luận' %>
+                                </p>
+                                <% if (review.images && review.images.length > 0) { %>
+                                    <div class="flex gap-2">
+                                        <% review.images.forEach((img, i) => { %>
+                                            <img src="<%= img %>" alt="Review <%= i + 1 %>" class="w-20 h-20 object-cover rounded" onerror="this.style.display='none'">
+                                        <% }) %>
+                                    </div>
                                 <% } %>
                             </div>
                         </div>
                     <% }) %>
                 <% } else { %>
                     <div class="p-8 text-center text-gray-500">
-                        Chưa có lượt đấu giá nào
+                        Chưa có bình luận nào
                     </div>
                 <% } %>
             </div>
         </div>
 
-        <!-- Product Description Section -->
-        <div class="px-8 pb-8">
-            <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Mô tả sản phẩm</h2>
-            
-            <div class="space-y-6">
-                <div>
-                    <p class="text-gray-700 leading-relaxed whitespace-pre-line">
-                        <%= product.full_description || product.short_description || 'Chưa có mô tả chi tiết' %>
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Customer Reviews Section -->
-        <div class="px-8 pb-8">
-            <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Bình luận</h2>
-            
-            <div class="space-y-6">
-                <!-- Review 1 -->
-                <div class="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div class="flex-shrink-0">
-                        <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
-                            U
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h4 class="font-semibold text-gray-800">nguyentuananh00</h4>
-                            <span class="text-yellow-400 text-sm">★★★★★</span>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-2">2024-06-14 21:20 | Phân loại: Hàng: Dell i7 - 14 inch</p>
-                        <p class="text-gray-700 text-sm leading-relaxed mb-3">
-                            Shop giao hàng nhanh, sản phẩm được đóng gói cẩn thận nhiều lớp để vận bản. Máy có nhưng vết xài mới mình thích set chống bụi, dùng tạm việc cầm thấy ổn thoải mại không có dấu ấn ứng sau lên phòng ấy cỡ lơn hơn. Giá tiền máy này có điểm ấn là mới dùng làm từ kể đến an phòng a nhét máy ấn.
-                        </p>
-                        <div class="flex gap-2">
-                            <img src="https://via.placeholder.com/80x80/4a5568/ffffff?text=IMG1" alt="Review image 1" class="w-20 h-20 object-cover rounded">
-                            <img src="https://via.placeholder.com/80x80/667eea/ffffff?text=IMG2" alt="Review image 2" class="w-20 h-20 object-cover rounded">
-                            <img src="https://via.placeholder.com/80x80/764ba2/ffffff?text=IMG3" alt="Review image 3" class="w-20 h-20 object-cover rounded">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Review 2 -->
-                <div class="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div class="flex-shrink-0">
-                        <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
-                            N
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h4 class="font-semibold text-gray-800">ngokhanhnguyen6</h4>
-                            <span class="text-yellow-400 text-sm">★★★★★</span>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-2">2024-06-14 20:21 | Phân loại: Hàng: Dell i7 - 14 inch</p>
-                        <p class="text-gray-700 text-sm leading-relaxed mb-3">
-                            máy đẹp, shop nhiệt tình tư vấn đều. giao hàng nhanh chóng, đóng gói chắn máy có đặc chắc chổn, laptop mỏi mát đẹp mọi tính, hàng chuẩn chính hãng set mua lần
-                        </p>
-                        <div class="flex gap-2">
-                            <img src="https://via.placeholder.com/80x80/667eea/ffffff?text=IMG1" alt="Review image 1" class="w-20 h-20 object-cover rounded">
-                            <img src="https://via.placeholder.com/80x80/60a5fa/ffffff?text=IMG2" alt="Review image 2" class="w-20 h-20 object-cover rounded">
-                        </div>
-                        <button class="text-sm text-blue-600 hover:underline mt-2">💬 Trả lời</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Related Products Section -->
-        <div class="px-8 pb-8">
-            <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Các sản phẩm khác</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <% if (relatedProducts && relatedProducts.length > 0) { %>
-                    <% relatedProducts.forEach(related => { %>
-                        <div class="border rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer" onclick="window.location.href='/product/<%= related.id %>'">
-                            <img src="<%= related.image %>" alt="<%= related.title %>" class="w-full h-48 object-cover">
+    <!-- Related Products Section -->
+    <div class="px-8 pb-8">
+        <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Các sản phẩm khác</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <% if (relatedProducts && relatedProducts.length > 0) { %>
+                <% relatedProducts.forEach(related => { 
+                    const rid = related.id || related.product_id;
+                    const imgSrc = related.image && !related.image.includes('placeholder')
+                    ? related.image
+                    : `/uploads/products/${rid}/0.jpg`;
+                %>
+                    <div class="border rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer">
+                        <a href="/product/<%= rid %>" class="block">
+                            <img src="<%= imgSrc %>" alt="<%= related.title %>" class="w-full h-48 object-cover">
                             <div class="p-4">
                                 <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2"><%= related.title %></h3>
-                                <p class="text-sm text-gray-600 mb-1">Giá hiện tại: <span class="font-bold text-red-600"><%= Number(related.current_price).toLocaleString('vi-VN') %>₫</span></p>
+                                <p class="text-sm text-gray-600 mb-1">
+                                    Giá hiện tại: <span class="font-bold text-red-600">
+                                    <%= Number(related.current_price || 0).toLocaleString('vi-VN') %>₫
+                                    </span>
+                                </p>
                                 <p class="text-sm text-green-600 mb-3" data-end-time="<%= related.end_time %>">Đang tính...</p>
                                 <button class="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 transition">
                                     Xem chi tiết
                                 </button>
                             </div>
-                        </div>
-                    <% }) %>
-                <% } else { %>
-                    <p class="col-span-3 text-center text-gray-500 py-8">Không có sản phẩm liên quan</p>
-                <% } %>
+                        </a>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <p class="col-span-3 text-center text-gray-500 py-8">Không có sản phẩm liên quan</p>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t mt-12">
+    <div class="max-w-6xl mx-auto px-8 py-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Logo & Info -->
+            <div>
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-20 h-20 bg-gray-900 flex items-center justify-center">
+                        <svg viewBox="0 0 100 100" class="w-16 h-16 fill-white">
+                            <text x="50" y="60" font-size="50" font-weight="bold" text-anchor="middle" font-family="Arial">UAE</text>
+                        </svg>
+                    </div>
+                </div>
+                <div class="space-y-2 text-sm text-gray-600">
+                    <p><strong>THÔNG TIN LIÊN HỆ</strong></p>
+                    <p>Hotline: 0123456789</p>
+                    <p>Email: baomoc333@gmail.com</p>
+                    <p>Địa chỉ: 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
+                </div>
             </div>
+
+            <!-- Empty space for balance -->
+            <div></div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t mt-12">
-        <div class="max-w-6xl mx-auto px-8 py-12">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Logo & Info -->
-                <div>
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-20 h-20 bg-gray-900 flex items-center justify-center">
-                            <svg viewBox="0 0 100 100" class="w-16 h-16 fill-white">
-                                <text x="50" y="60" font-size="50" font-weight="bold" text-anchor="middle" font-family="Arial">UAE</text>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="space-y-2 text-sm text-gray-600">
-                        <p><strong>THÔNG TIN LIÊN HỆ</strong></p>
-                        <p>Hotline: 0123456789</p>
-                        <p>Email: baomoc333@gmail.com</p>
-                        <p>Địa chỉ: 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
-                    </div>
-                </div>
-
-                <!-- Empty space for balance -->
-                <div></div>
-            </div>
-        </div>
-
-        <!-- Copyright -->
-        <div class="bg-blue-400 text-white text-center py-4">
-            <p class="font-semibold">@ULP2025</p>
-        </div>
-    </footer>
+    <!-- Copyright -->
+    <div class="bg-blue-400 text-white text-center py-4">
+        <p class="font-semibold">@ULP2025</p>
+    </div>
+</footer>
 
 <script>
     // Countdown timer

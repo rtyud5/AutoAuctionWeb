@@ -1,4 +1,4 @@
-<nav class="w-full bg-teal-500 text-white shadow-md">
+<nav class="w-full bg-teal-500 text-white shadow-md relative z-50">
   <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
     <!-- Left: Logo + menu -->
     <div class="flex items-center gap-6">
@@ -29,7 +29,7 @@
 
           <div
             id="catPanel"
-            class="hidden absolute top-9 left-0 w-52 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 z-50 overflow-hidden"
+            class="hidden absolute top-9 left-0 w-52 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 z-50 overflow-visible"
           >
             <a href="/electronics" class="block px-4 py-2 text-sm hover:bg-slate-100 border-b border-slate-100">
               Điện tử
@@ -77,9 +77,8 @@
           </div>
         <% } else { %>
           <!-- Logged-in user view -->
-          <div
-            id="auth-user"
-            class="flex items-center gap-2 relative cursor-pointer text-xs sm:text-sm"
+          <div id="auth-user"
+            class="flex items-center gap-2 relative overflow-visible cursor-pointer text-xs sm:text-sm">
           >
             <!-- Avatar + name + role -->
             <div class="flex items-center gap-2">
@@ -101,14 +100,22 @@
             <!-- Dropdown menu -->
             <div
               id="user-menu"
-              class="hidden absolute top-11 right-0 w-44 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 text-sm"
+              class="hidden absolute top-11 right-0 w-44 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 text-sm z-50"
             >
               <a href="/setting" class="block px-4 py-2 hover:bg-slate-100">
                 Hồ sơ cá nhân
               </a>
               <a href="/itemManager" class="block px-4 py-2 hover:bg-slate-100">
-                Quản lý sản phẩm
+                Quản lý đấu giá
               </a>
+              <% if (role === 'seller') { %>
+                <a href="/seller/products" class="block px-4 py-2 hover:bg-slate-100">
+                  Quản lý sản phẩm
+                </a>
+                <a href="/seller/products/new" class="block px-4 py-2 hover:bg-slate-100">
+                  Đăng sản phẩm
+                </a>
+              <% } %>
               <a href="/itemHistory" class="block px-4 py-2 hover:bg-slate-100">
                 Lịch sử đấu giá
               </a>

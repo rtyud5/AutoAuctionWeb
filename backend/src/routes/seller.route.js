@@ -5,6 +5,7 @@ import sellerController from '../controllers/seller.controller.js';
 import auth from '../middlewares/auth.middleware.js';
 import isAdmin from '../middlewares/admin.middleware.js';
 import isSeller from '../middlewares/seller.middleware.js';
+import upload from '../config/upload.js';
 
 const router = express.Router();
 
@@ -27,6 +28,35 @@ router.post(
   validate,
   sellerController.register
 );
+
+/* --- PRODUCT ROUTES --- */
+router.get('/products/new', auth, isSeller, sellerController.newProductForm);
+
+router.post(
+  '/products',
+  auth,
+  isSeller,
+  upload.single('thumbnail'),
+  [
+    check('title').notEmpty().withMessage('Title is required'),
+    check('category_id').isInt().withMessage('Category is required'),
+  ],
+  validate,
+  sellerController.createProduct
+);
+
+router.get('/products', auth, isSeller, sellerController.listProducts);
+router.get('/products/:id/edit', auth, isSeller, sellerController.editProductForm);
+
+router.put(
+  '/products/:id',
+  auth,
+  isSeller,
+  upload.single('thumbnail'),
+  sellerController.updateProduct
+);
+
+router.delete('/products/:id', auth, isSeller, sellerController.deleteProduct);
 
 // Seller login
 router.post(

@@ -1,0 +1,64 @@
+<% layout('layouts/main') %>
+
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-slate-800">Quản lý sản phẩm</h1>
+    <a href="/seller/products/new" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+      <i class="fas fa-plus"></i> Đăng sản phẩm mới
+    </a>
+  </div>
+
+  <% if (products && products.length > 0) { %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <% products.forEach(p => { %>
+        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+          <img src="<%= p.thumbnail || '/images/placeholder.jpg' %>" alt="<%= p.title %>" class="w-full h-48 object-cover">
+          <div class="p-4">
+            <h3 class="font-semibold text-slate-800 line-clamp-2 mb-1"><%= p.title %></h3>
+            <p class="text-sm text-slate-500 mb-2"><%= p.category_name %></p>
+            <p class="text-sm text-slate-600 mb-3 line-clamp-2"><%= p.short_description || 'Không có mô tả' %></p>
+            <div class="flex gap-2 justify-between">
+              <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                <%= p.status %>
+              </span>
+              <div class="flex gap-2">
+                <a href="/seller/products/<%= p.id %>/edit" class="text-blue-600 hover:underline text-sm">
+                  <i class="fas fa-edit"></i> Sửa
+                </a>
+                <button onclick="deleteProduct(<%= p.id %>)" class="text-red-600 hover:underline text-sm">
+                  <i class="fas fa-trash"></i> Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="text-center py-12 bg-slate-50 rounded-lg">
+      <p class="text-slate-600 mb-4">Chưa có sản phẩm nào</p>
+      <a href="/seller/products/new" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        Đăng sản phẩm đầu tiên
+      </a>
+    </div>
+  <% } %>
+</div>
+
+<script>
+  const deleteProduct = async (id) => {
+    if (!confirm('Bạn có chắc muốn xóa sản phẩm này?')) return;
+    try {
+      const res = await fetch(`/seller/products/${id}`, { method: 'DELETE', credentials: 'include' });
+      const result = await res.json();
+      if (result.success) {
+        alert('✅ Xóa sản phẩm thành công');
+        window.location.reload();
+      } else {
+        alert('❌ ' + result.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Có lỗi xảy ra');
+    }
+  };
+</script>

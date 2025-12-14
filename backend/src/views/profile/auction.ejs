@@ -1,0 +1,55 @@
+<% layout('layouts/main') %>
+
+<div class="max-w-6xl mx-auto px-4 py-10 space-y-10">
+  <h1 class="text-3xl font-bold text-slate-800">Quản lý đấu giá</h1>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4 text-slate-700">Đang diễn ra</h2>
+    <% if (activeAuctions && activeAuctions.length) { %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <% activeAuctions.forEach(a => { %>
+          <div class="bg-white rounded-lg shadow p-4">
+            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= a.image || '/images/placeholder.jpg' %>" alt="<%= a.title %>">
+            <h3 class="font-semibold text-slate-800"><%= a.title %></h3>
+            <p class="text-sm text-slate-500">Kết thúc: <%= a.end_time ? new Date(a.end_time).toLocaleString() : '—' %></p>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="text-slate-500">Không có phiên đấu giá nào.</div>
+    <% } %>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4 text-slate-700">Đã thắng</h2>
+    <% if (wonAuctions && wonAuctions.length) { %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <% wonAuctions.forEach(a => { %>
+          <div class="bg-white rounded-lg shadow p-4">
+            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= a.image || '/images/placeholder.jpg' %>" alt="<%= a.title %>">
+            <h3 class="font-semibold text-slate-800"><%= a.title %></h3>
+            <p class="text-sm text-slate-500">Thời gian: <%= a.win_time ? new Date(a.win_time).toLocaleString() : '—' %></p>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="text-slate-500">Chưa có mục đã thắng.</div>
+    <% } %>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4 text-slate-700">Yêu thích</h2>
+    <% if (favoriteProducts && favoriteProducts.length) { %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <% favoriteProducts.forEach(p => { %>
+          <div class="bg-white rounded-lg shadow p-4">
+            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= p.image || '/images/placeholder.jpg' %>" alt="<%= p.title %>">
+            <h3 class="font-semibold text-slate-800"><%= p.title %></h3>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="text-slate-500">Chưa có sản phẩm yêu thích.</div>
+    <% } %>
+  </section>
+</div>
