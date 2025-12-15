@@ -114,6 +114,7 @@ router.get('/upgrade-requests', adminController.listUpgradeRequests);
 
 router.post('/upgrade-requests/:id/approve', adminController.approveUpgradeRequest);
 router.post('/upgrade-requests/:id/reject', adminController.rejectUpgradeRequest);
+router.post('/upgrade-requests/:id/delete', adminController.deleteUpgradeRequest);
 
 // Stats / dashboard
 router.get('/stats', adminController.getStats);

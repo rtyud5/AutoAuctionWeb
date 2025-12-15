@@ -108,6 +108,11 @@
               <a href="/itemManager" class="block px-4 py-2 hover:bg-slate-100">
                 Quản lý đấu giá
               </a>
+              <% if (role === 'bidder') { %>
+                <a href="/me/upgrade-request" class="block px-4 py-2 hover:bg-slate-100">
+                  Yêu cầu nâng cấp Seller
+                </a>
+              <% } %>
               <% if (role === 'seller') { %>
                 <a href="/seller/products" class="block px-4 py-2 hover:bg-slate-100">
                   Quản lý sản phẩm

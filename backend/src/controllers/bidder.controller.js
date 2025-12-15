@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import UpgradeRequest from '../models/upgradeRequest.model.js';
 
 /*
   Bidder controller — 1:1 map to routes in routes/bidder.route.js
@@ -277,21 +278,48 @@ const listWon = async (req, res) => {
   }
 };
 
-const createUpgradeRequest = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const message = req.body.message || null;
-    await db.query('INSERT INTO upgrade_requests (user_id, message, status, created_at) VALUES (?, ?, ?, NOW())', [
-      userId,
-      message,
-      'pending'
-    ]);
-    return res.json({ success: true });
-  } catch (err) {
-    console.error('bidder.createUpgradeRequest', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
+const showUpgradeRequestForm = (req, res) => {
+  return res.render('profile/upgradeRequestPage', { title: 'Yêu cầu nâng cấp Seller' });
 };
+
+async function createUpgradeRequest(req, res, next) {
+  try {
+    const { message = '' } = req.body;
+    if (!message.trim()) {
+      return res.render('profile/upgradeRequestPage', {
+        title: 'Yêu cầu nâng cấp Seller',
+        error: 'Vui lòng nhập lý do nâng cấp',
+      });
+    }
+
+    // không cho tạo mới nếu đang PENDING hoặc đã APPROVED
+    const existing = await UpgradeRequest.findOne({
+      where: { user_id: req.user.id, status: ['PENDING', 'APPROVED'] },
+    });
+    if (existing) {
+      return res.render('profile/upgradeRequestPage', {
+        title: 'Yêu cầu nâng cấp Seller',
+        error: existing.status === 'PENDING'
+          ? 'Bạn đã gửi yêu cầu và đang chờ duyệt.'
+          : 'Tài khoản đã được duyệt nâng cấp.',
+      });
+    }
+
+    await UpgradeRequest.create({
+      user_id: req.user.id,
+      status: 'PENDING',
+      note: message.trim(),
+    });
+
+    return res.render('profile/upgradeRequestPage', {
+      title: 'Yêu cầu nâng cấp Seller',
+      success: 'Đã gửi yêu cầu, vui lòng chờ admin duyệt.',
+    });
+  } catch (err) {
+    console.error('createUpgradeRequest error:', err);
+    return next(err);
+  }
+}
 
 export default {
   getProfile,
@@ -302,5 +330,6 @@ export default {
   setAutoBid,
   listBids,
   listWon,
+  showUpgradeRequestForm,
   createUpgradeRequest
 };

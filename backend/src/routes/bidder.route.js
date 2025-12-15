@@ -19,6 +19,7 @@ router.post('/auctions/:id/auto-bid', auth, bidderController.setAutoBid);
 
 router.get('/me/bids', auth, bidderController.listBids);
 router.get('/me/won', auth, bidderController.listWon);
+router.get('/me/upgrade-request', auth, bidderController.showUpgradeRequestForm);
 router.post('/me/upgrade-request', auth, bidderController.createUpgradeRequest);
 
 // ...existing code...

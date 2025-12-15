@@ -45,10 +45,13 @@
               <th class="px-4 py-3 font-medium text-slate-400">Lý do / Ghi chú</th>
               <th class="px-4 py-3 font-medium text-slate-400">Trạng thái</th>
               <th class="px-4 py-3 font-medium text-slate-400">Thời gian</th>
+              <th class="px-4 py-3 font-medium text-slate-400">Hành động</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800/80">
             <% requests.forEach(function(req, idx) { %>
+              <% const status = (req.status || '').toLowerCase(); %>
+              <% const isPending = status === 'pending'; %>
               <tr class="hover:bg-slate-900/80 transition-colors">
                 <!-- STT -->
                 <td class="px-4 py-3 text-slate-400">
@@ -72,16 +75,15 @@
                   </span>
                 </td>
 
-                <!-- Message -->
+                <!-- Ghi chú -->
                 <td class="px-4 py-3 max-w-md">
                   <p class="text-xs sm:text-sm text-slate-200">
-                    <%= req.message || 'Không có ghi chú' %>
+                    <%= req.note || 'Không có ghi chú' %>
                   </p>
                 </td>
 
                 <!-- Trạng thái -->
                 <td class="px-4 py-3">
-                  <% var status = (req.status || '').toLowerCase(); %>
                   <% if (status === 'approved') { %>
                     <span class="inline-flex items-center rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-3 py-1 text-xs font-medium">
                       Đã duyệt
@@ -104,6 +106,48 @@
                   <% } else { %>
                     —
                   <% } %>
+                </td>
+
+                <!-- Hành động -->
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <!-- Duyệt -->
+                    <form method="POST" action="/admin/upgrade-requests/<%= req.id %>/approve" class="inline">
+                      <button 
+                        type="submit" 
+                        class="px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition" 
+                        <%= isPending ? '' : 'disabled' %>
+                      >
+                        Duyệt
+                      </button>
+                    </form>
+
+                    <!-- Từ chối -->
+                    <form method="POST" action="/admin/upgrade-requests/<%= req.id %>/reject" class="inline">
+                      <button 
+                        type="submit" 
+                        class="px-3 py-1.5 rounded-md text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition" 
+                        <%= isPending ? '' : 'disabled' %>
+                      >
+                        Từ chối
+                      </button>
+                    </form>
+
+                    <!-- Xóa -->
+                    <form 
+                      method="POST" 
+                      action="/admin/upgrade-requests/<%= req.id %>/delete" 
+                      class="inline" 
+                      onsubmit="return confirm('Bạn chắc chắn muốn xóa yêu cầu này?');"
+                    >
+                      <button 
+                        type="submit" 
+                        class="px-3 py-1.5 rounded-md text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition"
+                      >
+                        Xóa
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             <% }); %>
