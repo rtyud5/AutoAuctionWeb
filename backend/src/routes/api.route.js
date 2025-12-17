@@ -16,16 +16,16 @@ router.get("/auctions", apiController.listAuctions);
 router.get("/auctions/:id", apiController.getAuction);
 
 /**
- * GET /categories
- * Returns category tree
- */
-router.get("/categories", apiController.listCategories);
-
-/**
  * GET /categories/:slug
  * List auctions in category (JSON) with pagination + sort
  */
 router.get("/categories/:slug", apiController.listAuctionsByCategory);
+
+/**
+ * GET /categories
+ * Returns category tree
+ */
+router.get("/categories", apiController.listCategories);
 
 /**
  * GET /search

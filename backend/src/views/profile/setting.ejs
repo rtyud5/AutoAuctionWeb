@@ -1,79 +1,158 @@
-<!-- profile.html -->
 <div class="p-10 w-full font-inter">
+  <!-- FORM 1: Update Name & Email -->
+  <form id="form-info" class="space-y-6 mb-6">
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
 
     <div class="border-2 border-[#BEEAFF] rounded-2xl p-6 bg-gradient-to-r from-[#ECF4FB] to-[#FFF8EB]">
+      <!-- Header -->
+      <div class="flex items-center gap-4 mb-6">
+        <img src="https://i.ibb.co/2Pn7gG6/user.jpg" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg">
+        <div>
+          <h3 class="text-lg font-semibold" id="display-name"><%= user && user.name ? user.name : "User" %></h3>
+          <p class="text-gray-500 text-sm" id="display-email"><%= user && user.email ? user.email : "" %></p>
+        </div>
+      </div>
 
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-6">
-            <img src="https://i.ibb.co/2Pn7gG6/user.jpg"
-                 class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg">
+      <!-- Basic Info -->
+      <div class="bg-[#EAF2FF] p-6 rounded-xl mb-6">
+        <div class="grid grid-cols-2 gap-6 mb-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-sm text-gray-700">Full Name</label>
+            <input id="input-name" name="name" type="text" class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none" value="<%= user?.name || '' %>" required>
+          </div>
 
-            <div>
-                <h3 class="text-lg font-semibold"><%= user && user.name ? user.name : "User" %></h3>
-                <p class="text-gray-500 text-sm"><%= user && user.email ? user.email : "" %></p>
-            </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-sm text-gray-700">Email address</label>
+            <input id="input-email" name="email" type="email" class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none" value="<%= user?.email || '' %>" required>
+          </div>
         </div>
 
-        <!-- Basic Info -->
-        <div class="bg-[#EAF2FF] p-6 rounded-xl mb-6">
-            <div class="grid grid-cols-2 gap-6 mb-4">
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-sm text-gray-700">Full Name</label>
-                    <input type="text"
-                           class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none"
-                           value="<%= user && user.name ? user.name : "" %>">
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-sm text-gray-700">Email address</label>
-                    <input type="text"
-                           class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none"
-                           value="<%= user && user.email ? user.email : "" %>">
-                </div>
-
-            </div>
-
-            <button class="float-right bg-[#4D8BFF] text-white py-2 px-4 rounded-lg">
-                Save change
-            </button>
-
-            <div class="clear-both"></div>
-        </div>
-
-        <!-- Password Section -->
-        <div class="bg-[#EAF2FF] p-6 rounded-xl">
-            <div class="grid grid-cols-3 gap-6 mb-4">
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-sm text-gray-700">Current password</label>
-                    <input type="password"
-                           placeholder="••••••"
-                           class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none">
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-sm text-gray-700">New password</label>
-                    <input type="password"
-                           placeholder="••••••"
-                           class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none">
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-sm text-gray-700">Confirm new password</label>
-                    <input type="password"
-                           placeholder="••••••"
-                           class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none">
-                </div>
-
-            </div>
-
-            <button class="float-right bg-[#4D8BFF] text-white py-2 px-4 rounded-lg">
-                Save change
-            </button>
-
-            <div class="clear-both"></div>
-        </div>
-
+        <button type="submit" class="float-right bg-[#4D8BFF] text-white py-2 px-4 rounded-lg" id="btn-save-info">
+          Save change
+        </button>
+        <div id="msg-info" class="float-right mr-3 text-sm text-green-600"></div>
+        <div class="clear-both"></div>
+      </div>
     </div>
+  </form>
+
+  <!-- FORM 2: Change Password -->
+  <form id="form-password" class="space-y-6">
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+
+    <div class="border-2 border-[#BEEAFF] rounded-2xl p-6 bg-gradient-to-r from-[#ECF4FB] to-[#FFF8EB]">
+      <!-- Password Section -->
+      <div class="bg-[#EAF2FF] p-6 rounded-xl">
+        <div class="grid grid-cols-3 gap-6 mb-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-sm text-gray-700">Current password</label>
+            <input id="input-current-pwd" name="currentPassword" type="password" placeholder="••••••" class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none" required>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-sm text-gray-700">New password</label>
+            <input id="input-new-pwd" name="newPassword" type="password" placeholder="••••••" class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none" required>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-sm text-gray-700">Confirm new password</label>
+            <input id="input-confirm-pwd" name="confirmPassword" type="password" placeholder="••••••" class="bg-[#F9FAFC] h-10 rounded-md px-3 outline-none" required>
+          </div>
+        </div>
+
+        <button type="submit" class="float-right bg-[#4D8BFF] text-white py-2 px-4 rounded-lg" id="btn-save-pwd">
+          Save change
+        </button>
+        <div id="msg-password" class="float-right mr-3 text-sm text-green-600"></div>
+        <div class="clear-both"></div>
+      </div>
+    </div>
+  </form>
 </div>
+
+<script>
+  // Form 1: Update Name & Email
+  document.getElementById('form-info').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('input-name').value;
+    const email = document.getElementById('input-email').value;
+    const msgEl = document.getElementById('msg-info');
+    const btnEl = document.getElementById('btn-save-info');
+
+    btnEl.disabled = true;
+    msgEl.textContent = 'Saving...';
+
+    try {
+      const res = await fetch('/update-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
+      });
+
+      if (res.ok) {
+        msgEl.textContent = '✓ Saved successfully';
+        msgEl.classList.add('text-green-600');
+        document.getElementById('display-name').textContent = name;
+        document.getElementById('display-email').textContent = email;
+
+        // Cập nhật navbar ngay
+        const navbarNameEls = document.querySelectorAll('[data-user-name]');
+        navbarNameEls.forEach(el => el.textContent = name);
+
+        setTimeout(() => msgEl.textContent = '', 3000);
+      } else {
+        const text = await res.text();
+        msgEl.textContent = '✗ ' + text;
+        msgEl.classList.add('text-red-600');
+      }
+    } catch (err) {
+      msgEl.textContent = '✗ Error: ' + err.message;
+      msgEl.classList.add('text-red-600');
+    } finally {
+      btnEl.disabled = false;
+    }
+  });
+
+  // Form 2: Change Password
+  document.getElementById('form-password').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById('input-current-pwd').value;
+    const newPassword = document.getElementById('input-new-pwd').value;
+    const confirmPassword = document.getElementById('input-confirm-pwd').value;
+    const msgEl = document.getElementById('msg-password');
+    const btnEl = document.getElementById('btn-save-pwd');
+
+    btnEl.disabled = true;
+    msgEl.textContent = 'Saving...';
+
+    try {
+      const res = await fetch('/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `currentPassword=${encodeURIComponent(currentPassword)}&newPassword=${encodeURIComponent(newPassword)}&confirmPassword=${encodeURIComponent(confirmPassword)}`
+      });
+
+      if (res.ok) {
+        msgEl.textContent = '✓ Password changed successfully';
+        msgEl.classList.add('text-green-600');
+        document.getElementById('input-current-pwd').value = '';
+        document.getElementById('input-new-pwd').value = '';
+        document.getElementById('input-confirm-pwd').value = '';
+        setTimeout(() => msgEl.textContent = '', 3000);
+      } else {
+        const text = await res.text();
+        msgEl.textContent = '✗ ' + text;
+        msgEl.classList.add('text-red-600');
+      }
+    } catch (err) {
+      msgEl.textContent = '✗ Error: ' + err.message;
+      msgEl.classList.add('text-red-600');
+    } finally {
+      btnEl.disabled = false;
+    }
+  });
+</script>

@@ -80,73 +80,53 @@ const showAuction = async (req, res) => {
   }
 };
 
-const listByCategory = async (req, res, categoryId, view) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = 9;
-  const offset = (page - 1) * limit;
-
+export const categoryView = async (req, res) => {
   try {
-    const [countRows] = await db.query(
-      "SELECT COUNT(*) as count FROM products WHERE category_id = ? AND status = 'APPROVED'",
-      { replacements: [categoryId], raw: true }
-    );
-    const total = countRows?.[0]?.count || 0;
+    const slug = req.params.slug || null;
+    const origin = `${req.protocol}://${req.get('host')}`;
 
-    const [rows] = await db.query(
-      `SELECT 
-        p.id AS product_id,
-        p.title,
-        p.thumbnail as image,
-        p.short_description,
-        c.name as category_name,
-        u.name as seller_name
-       FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
-       LEFT JOIN users u ON p.seller_id = u.id
-       WHERE p.category_id = ? AND p.status = 'APPROVED'
-       ORDER BY p.created_at DESC 
-       LIMIT ? OFFSET ?`,
-      { replacements: [categoryId, limit, offset], raw: true }
-    );
+    const catRes = await fetch(`${origin}/api/categories`);
+    const catJson = await catRes.json();
+    const categories = Array.isArray(catJson) ? catJson : (catJson.categories || []);
 
-    const [catRows] = await db.query(
-      "SELECT name FROM categories WHERE id = ? LIMIT 1",
-      { replacements: [categoryId], raw: true }
-    );
-    const category = catRows?.[0];
-    const title = category?.name || "Danh mục";
+    const listUrl = slug ? `${origin}/api/categories/${slug}` : `${origin}/api/auctions`;
+    const aucRes = await fetch(listUrl);
+    const aucJson = await aucRes.json();
+    const auctions = Array.isArray(aucJson.data) ? aucJson.data : (aucJson.items || []);
+    const pagination = aucJson.pagination || null;
 
-    const totalPages = Math.ceil(total / limit) || 1;
-    const pages = Array.from({ length: totalPages }, (_, i) => ({
-      num: i + 1,
-      url: `?page=${i + 1}`,
-      current: i + 1 === page,
-    }));
+    // Tìm tên danh mục theo slug
+    const flat = [];
+    (function walk(arr = []) {
+      arr.forEach(c => { flat.push(c); if (Array.isArray(c.children)) walk(c.children); });
+    })(categories);
+    const found = flat.find(c => c.slug === slug);
+    const title = slug ? (found?.name || slug) : 'Tất cả danh mục';
 
-    const pagination = {
-      pages,
-      prev: page > 1 ? `?page=${page - 1}` : null,
-      next: page < totalPages ? `?page=${page + 1}` : null,
-      currentPage: page,
-      totalPages,
-    };
-
-    return res.render(view, { title, auctions: rows || [], category: categoryId, pagination });
-  } catch (e) {
-    console.error(`Error in listByCategory:`, e);
-    return res.render(view, { 
-      title: "Danh mục", 
-      auctions: [], 
-      category: categoryId, 
-      pagination: { pages: [], currentPage: 1, totalPages: 1, prev: null, next: null } 
+    return res.render("categories/categories", {
+      title,
+      categorySlug: slug,
+      categories,
+      auctions,
+      pagination,
+      isAuthenticated: !!req.user,
+      currentUser: req.user || null,
+      role: (req.user?.role || '').toLowerCase(),
+    });
+  } catch (err) {
+    console.error("page.categoryView", err);
+    return res.render("categories/categories", {
+      title: "Danh mục",
+      categorySlug: null,
+      categories: [],
+      auctions: [],
+      pagination: null,
+      isAuthenticated: !!req.user,
+      currentUser: req.user || null,
+      role: (req.user?.role || '').toLowerCase(),
     });
   }
 };
-
-const listElectronics = (req, res) =>
-  listByCategory(req, res, "electronics", "categories/electronics");
-const listFashion = (req, res) =>
-  listByCategory(req, res, "fashion", "categories/fashion");
 
 const profileView = async (req, res) => {
   try {
@@ -158,7 +138,7 @@ const profileView = async (req, res) => {
 
     const [rows] = await db.query(
       "SELECT id, name, email, role FROM users WHERE id = ?",
-      [userId]
+      { replacements: [userId], raw: true }
     );
 
     const dbUser = rows && rows[0];
@@ -532,8 +512,7 @@ export default {
   loginView,
   registerView,
   showAuction,
-  listElectronics,
-  listFashion,
+  categoryView,
   profileView,
   reviewView,
   profileProductView,

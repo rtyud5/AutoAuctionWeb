@@ -9,6 +9,9 @@ import UpgradeRequest from '../models/upgradeRequest.model.js';
 
 import { runAutoBidEngine } from '../services/autoBid.service.js';
 
+import bcrypt from "bcrypt";
+import User from "../models/user.model.js";
+
 const toNum = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -422,6 +425,56 @@ async function createUpgradeRequest(req, res, next) {
   }
 }
 
+export const updateProfileInfo = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).send("Unauthorized");
+
+    const { name, email } = req.body;
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).send("User not found");
+
+    if (email && email !== user.email) {
+      const exists = await User.findOne({ where: { email } });
+      if (exists) return res.status(400).send("Email already used");
+      user.email = email;
+    }
+
+    user.name = name;
+    await user.save();
+
+    return res.json({ success: true, message: "Updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message || "Server error");
+  }
+};
+
+export const updateProfilePassword = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).send("Unauthorized");
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).send("User not found");
+
+    const ok = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!ok) return res.status(400).send("Current password incorrect");
+
+    if (newPassword !== confirmPassword) return res.status(400).send("Password not match");
+    if (newPassword.length < 6) return res.status(400).send("Password too short");
+
+    user.password_hash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.json({ success: true, message: "Password changed successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message || "Server error");
+  }
+};
+
 export default {
   getProfile,
   getWatchlist,
@@ -434,4 +487,6 @@ export default {
   listWon,
   showUpgradeRequestForm,
   createUpgradeRequest,
+  updateProfileInfo,
+  updateProfilePassword,
 };

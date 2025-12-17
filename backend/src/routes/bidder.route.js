@@ -21,6 +21,8 @@ router.get('/me/bids', auth, bidderController.listBids);
 router.get('/me/won', auth, bidderController.listWon);
 router.get('/me/upgrade-request', auth, bidderController.showUpgradeRequestForm);
 router.post('/me/upgrade-request', auth, bidderController.createUpgradeRequest);
+router.post("/update-info", auth, bidderController.updateProfileInfo);
+router.post("/update-password", auth, bidderController.updateProfilePassword);
 
 // ...existing code...
 export default router;

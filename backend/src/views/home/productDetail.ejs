@@ -95,7 +95,11 @@
                         Mua ngay với giá <b><%= Number(product.buy_now_price || (product.current_price * 1.5)).toLocaleString('vi-VN') %> VND</b>. Hành động này sẽ kết thúc phiên đấu giá.
                     </p>
                     <form method="post" action="/auctions/<%= product.auction_id %>/buy" onsubmit="return confirm('Bạn chắc chắn muốn MUA NGAY sản phẩm này? Phiên đấu giá sẽ kết thúc.');">
-                        <button type="submit" class="w-full bg-red-600 text-white rounded px-4 py-2 hover:bg-red-700 transition">
+                        <button 
+                            type="submit" 
+                            id="buyNowBtn"
+                            class="w-full bg-red-600 text-white rounded px-4 py-2 hover:bg-red-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            data-end-time="<%= product.end_time %>">
                             Mua ngay
                         </button>
                     </form>
@@ -113,15 +117,20 @@
                             <input 
                                 type="number" 
                                 id="autoBidMax"
-                                class="flex-1 border border-gray-300 rounded px-4 py-2"
+                                class="flex-1 border border-gray-300 rounded px-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 min="<%= Number(product.current_price) %>"
                                 max="<%= Math.max(0, Number(product.buy_now_price || (product.current_price * 1.5)) - 1) %>"
                                 step="<%= product.step_price %>"
                                 value="<%= myAutoBid ? myAutoBid.max_amount : '' %>"
                                 placeholder="Nhập giá tối đa (VND)"
                                 required
+                                data-end-time="<%= product.end_time %>"
                             />
-                            <button type="submit" class="flex-1 bg-gray-900 text-white rounded px-4 py-2 hover:bg-gray-800 transition">
+                            <button 
+                                type="submit" 
+                                id="autoBidBtn"
+                                class="flex-1 bg-gray-900 text-white rounded px-4 py-2 hover:bg-gray-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                data-end-time="<%= product.end_time %>">
                                 Lưu auto-bid
                             </button>
                         </div>
@@ -332,6 +341,7 @@
             document.getElementById('hours').textContent = '00';
             document.getElementById('minutes').textContent = '00';
             document.getElementById('seconds').textContent = '00';
+            disableAuctionButtons(); // Disable nút khi hết giờ
             return;
         }
 
@@ -346,25 +356,36 @@
         document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
     }
 
-    // Update related products countdown
-    document.querySelectorAll('[data-end-time]').forEach(el => {
-        if (el.id === 'countdown') return;
-        
-        const endTime = new Date(el.getAttribute('data-end-time')).getTime();
-        const now = new Date().getTime();
-        const distance = endTime - now;
+    // Disable auction buttons khi hết giờ
+    function disableAuctionButtons() {
+        const buyNowBtn = document.getElementById('buyNowBtn');
+        const autoBidBtn = document.getElementById('autoBidBtn');
+        const autoBidInput = document.getElementById('autoBidMax');
 
-        if (distance < 0) {
-            el.textContent = 'Đã kết thúc';
-            return;
+        if (buyNowBtn) {
+            buyNowBtn.disabled = true;
+            buyNowBtn.textContent = 'Phiên đấu giá đã kết thúc';
         }
+        if (autoBidBtn) {
+            autoBidBtn.disabled = true;
+            autoBidBtn.textContent = 'Phiên đã kết thúc';
+        }
+        if (autoBidInput) {
+            autoBidInput.disabled = true;
+        }
+    }
 
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        el.textContent = `Còn ${days} ngày ${hours} giờ`;
-    });
+    // Check on page load
+    function checkAuctionStatus() {
+        const endTime = new Date(document.getElementById('countdown')?.getAttribute('data-end-time')).getTime();
+        const now = new Date().getTime();
+        if (endTime - now < 0) {
+            disableAuctionButtons();
+        }
+    }
 
     updateCountdown();
+    checkAuctionStatus();
     setInterval(updateCountdown, 1000);
 
     // Change main image

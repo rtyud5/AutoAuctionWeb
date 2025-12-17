@@ -29,14 +29,11 @@
 
           <div
             id="catPanel"
-            class="hidden absolute top-9 left-0 w-52 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 z-50 overflow-visible"
+            class="hidden absolute top-9 left-0 w-64 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 z-50 overflow-visible"
           >
-            <a href="/electronics" class="block px-4 py-2 text-sm hover:bg-slate-100 border-b border-slate-100">
-              Điện tử
-            </a>
-            <a href="/fashion" class="block px-4 py-2 text-sm hover:bg-slate-100">
-              Thời trang
-            </a>
+            <div id="catList" class="py-1">
+              <div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -87,7 +84,7 @@
                 👤
               </div>
               <div class="hidden sm:flex flex-col text-left">
-                <span class="text-xs font-semibold">
+                <span class="text-xs font-semibold" data-user-name>
                   <%= (currentUser && (currentUser.name || currentUser.username)) ? (currentUser.name || currentUser.username) : "Tài khoản" %>
                 </span>
                 <span class="text-[11px] text-teal-100/80 capitalize">
@@ -164,15 +161,57 @@
   const CategoryDropdown = {
     init() {
       this.toggleBtn = document.getElementById('catToggle');
-      this.panel = document.getElementById('catPanel');
-      this.arrow = document.getElementById('catArrow');
+      this.panel     = document.getElementById('catPanel');
+      this.arrow     = document.getElementById('catArrow');
+      this.list      = document.getElementById('catList');
+      this.loaded    = false;
 
-      if (!this.toggleBtn || !this.panel || !this.arrow) {
+      if (!this.toggleBtn || !this.panel || !this.arrow || !this.list) {
         console.error('Category dropdown elements not found');
         return;
       }
 
       this.bindEvents();
+    },
+
+    // bổ sung: tải danh mục từ API (lazy load, chỉ tải lần đầu)
+    async loadCategories() {
+      if (this.loaded) return;
+      try {
+        this.list.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>';
+        const res = await fetch('/api/categories');
+        const data = await res.json();
+        const cats = Array.isArray(data) ? data : (data.categories || []);
+        this.list.innerHTML = this.renderList(cats);
+        this.loaded = true;
+      } catch (e) {
+        console.error('Load categories failed:', e);
+        this.list.innerHTML = '<div class="px-4 py-2 text-sm text-rose-600">Không tải được danh mục</div>';
+      }
+    },
+
+    // bổ sung: dựng HTML cho danh mục (có children nếu là cây 2 cấp)
+    renderList(cats) {
+      if (!Array.isArray(cats) || !cats.length) {
+        return '<div class="px-4 py-2 text-sm text-gray-500">Chưa có danh mục</div>';
+      }
+      return cats.map(c => `
+        <div class="py-1 border-b border-slate-100">
+          <a href="/categories/${c.slug}" class="block px-4 py-2 text-sm hover:bg-slate-100 font-medium">${c.name}</a>
+          ${Array.isArray(c.children) && c.children.length
+            ? c.children.map(s => `
+                <a href="/categories/${s.slug}" class="block pl-8 pr-4 py-2 text-sm hover:bg-slate-100">${s.name}</a>
+              `).join('')
+            : ''
+          }
+        </div>
+      `).join('');
+    },
+
+    // tùy chọn: làm mới danh sách (gọi khi cần reload lại)
+    refresh() {
+      this.loaded = false;
+      this.list.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>';
     },
 
     isVisible() {
@@ -189,11 +228,13 @@
       this.arrow.style.transform = 'rotate(0deg)';
     },
 
-    toggleDropdown() {
-      if (this.isVisible()) {
-        this.hide();
-      } else {
+    // điều chỉnh: trước khi mở, tải danh mục
+    async toggleDropdown() {
+      if (!this.isVisible()) {
+        await this.loadCategories();
         this.show();
+      } else {
+        this.hide();
       }
     },
 
