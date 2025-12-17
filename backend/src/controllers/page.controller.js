@@ -389,7 +389,7 @@ const productDetailView = async (req, res) => {
 
     // Lấy auction info
     const [auctionRows] = await db.query(
-      `SELECT start_price, step_price, current_price, end_time, status
+      `SELECT id, start_price, step_price, current_price, current_winner_id, end_time, status
        FROM auctions
        WHERE product_id = ?
        LIMIT 1`,
@@ -397,14 +397,43 @@ const productDetailView = async (req, res) => {
     );
     const auction = auctionRows?.[0] || {};
 
-    // Lấy bids
-    const [bids] = await db.query(
-      `SELECT id, bidder_id, amount, is_auto, created_at 
-       FROM bids 
-       WHERE auction_id = (SELECT id FROM auctions WHERE product_id = ?)
-       ORDER BY created_at DESC LIMIT 20`,
-      { replacements: [id], raw: true }
+    // Lấy auto-bid rule của user hiện tại (nếu đã đăng nhập)
+    let myAutoBid = null;
+    if (req.user && auction.id) {
+      const [ruleRows] = await db.query(
+        `SELECT max_amount, is_active
+         FROM auto_bid_rules
+         WHERE auction_id = ? AND bidder_id = ?
+         LIMIT 1`,
+        { replacements: [auction.id, req.user.id], raw: true }
+      );
+      myAutoBid = ruleRows?.[0] || null;
+    }
+
+
+    // Lấy bids (join users để hiển thị bidder_masked)
+    const [bidRows] = await db.query(
+      `SELECT b.id, b.bidder_id, b.amount, b.is_auto, b.created_at, u.name AS bidder_name
+       FROM bids b
+       LEFT JOIN users u ON b.bidder_id = u.id
+       WHERE b.auction_id = ?
+       ORDER BY b.created_at DESC
+       LIMIT 20`,
+      { replacements: [auction.id || 0], raw: true }
     );
+
+    const maskName = (name) => {
+      const s = String(name || '').trim();
+      if (!s) return 'Ẩn danh';
+      if (s.length <= 2) return s[0] + '*';
+      return s[0] + '*'.repeat(Math.min(6, s.length - 2)) + s[s.length - 1];
+    };
+
+    const bids = (bidRows || []).map((b) => ({
+      ...b,
+      bidder_masked: maskName(b.bidder_name),
+      bidder_rating: 50, // placeholder để UI không lỗi
+    }));
 
     const [relatedProducts] = await db.query(
       `SELECT p.id AS product_id, p.title, p.thumbnail as image, p.short_description
@@ -468,9 +497,12 @@ const productDetailView = async (req, res) => {
         seller_email: product.seller_email,
         seller_id: product.seller_id,
         // Auction data
+        auction_id: auction.id || null,
+        current_winner_id: auction.current_winner_id || null,
         start_price: auction.start_price || 0,
         step_price: auction.step_price || 100000,
         current_price: auction.current_price || 0,
+        buy_now_price: Math.floor(Number(auction.current_price || auction.start_price || 0) * 1.5),
         end_time: auction.end_time || new Date(Date.now() + 86400000).toISOString(),
         auction_status: auction.status || 'PENDING',
         seller_rating: 100,
@@ -478,6 +510,7 @@ const productDetailView = async (req, res) => {
         negative_count: 0,
         total_ratings: reviews.length,
       },
+      myAutoBid,
       bids: bids || [],
       reviews,
       relatedProducts: (relatedProducts || []).map(p => ({
@@ -492,7 +525,7 @@ const productDetailView = async (req, res) => {
       user: req.user || null
     });
   }
-};
+}
 
 export default {
   index,

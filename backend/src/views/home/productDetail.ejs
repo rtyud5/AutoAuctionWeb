@@ -55,7 +55,7 @@
                 <!-- Price Info -->
                 <div class="mb-6">
                     <p class="text-blue-500 text-lg">Giá thầu hiện tại: <span class="font-bold"><%= Number(product.current_price).toLocaleString('vi-VN') %> VND</span></p>
-                    <p class="text-red-500 text-xl font-bold">Giá mua ngay: <%= Number(product.current_price * 1.5).toLocaleString('vi-VN') %> VND</p>
+                    <p class="text-red-500 text-xl font-bold">Giá mua ngay: <%= Number(product.buy_now_price || (product.current_price * 1.5)).toLocaleString('vi-VN') %> VND</p>
                 </div>
 
                 <!-- Time Remaining -->
@@ -88,22 +88,51 @@
                     <span>Yêu thích</span>
                 </button>
 
-                <!-- Bid Options -->
+                <!-- Buy Now -->
                 <div class="mb-6">
-                    <p class="font-semibold mb-3">Giá cược của bạn</p>
-                    <form onsubmit="placeBid(event, '<%= product.id %>')">
+                    <p class="font-semibold mb-3">Mua ngay</p>
+                    <p class="text-sm text-gray-600 mb-2">
+                        Mua ngay với giá <b><%= Number(product.buy_now_price || (product.current_price * 1.5)).toLocaleString('vi-VN') %> VND</b>. Hành động này sẽ kết thúc phiên đấu giá.
+                    </p>
+                    <form method="post" action="/auctions/<%= product.auction_id %>/buy" onsubmit="return confirm('Bạn chắc chắn muốn MUA NGAY sản phẩm này? Phiên đấu giá sẽ kết thúc.');">
+                        <button type="submit" class="w-full bg-red-600 text-white rounded px-4 py-2 hover:bg-red-700 transition">
+                            Mua ngay
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Auto Bid Options -->
+                <div class="mb-6">
+                    <p class="font-semibold mb-3">Tự động đấu giá (Auto-bid)</p>
+                    <p class="text-sm text-gray-600 mb-2">
+                        Nhập mức giá tối đa (<b>nhỏ hơn giá mua ngay</b>). Hệ thống sẽ tự tăng theo <b>bước giá tối thiểu</b> (<%= Number(product.step_price || 0).toLocaleString('vi-VN') %> VND) khi có người vượt bạn, nhưng không vượt quá max.
+                    </p>
+
+                    <form onsubmit="setAutoBid(event)">
                         <div class="flex gap-2">
                             <input 
                                 type="number" 
-                                id="bidAmount"
+                                id="autoBidMax"
                                 class="flex-1 border border-gray-300 rounded px-4 py-2"
-                                min="<%= Number(product.current_price) + Number(product.step_price) %>"
+                                min="<%= Number(product.current_price) %>"
+                                max="<%= Math.max(0, Number(product.buy_now_price || (product.current_price * 1.5)) - 1) %>"
                                 step="<%= product.step_price %>"
-                                placeholder="Nhập giá đấu"
+                                value="<%= myAutoBid ? myAutoBid.max_amount : '' %>"
+                                placeholder="Nhập giá tối đa (VND)"
+                                required
                             />
-                            <button type="submit" class="flex-1 bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 transition">Đặt giá</button>
+                            <button type="submit" class="flex-1 bg-gray-900 text-white rounded px-4 py-2 hover:bg-gray-800 transition">
+                                Lưu auto-bid
+                            </button>
                         </div>
                     </form>
+
+                    <% if (myAutoBid) { %>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Trạng thái: <b><%= myAutoBid.is_active ? 'Đang bật' : 'Đang tắt' %></b> |
+                            Max: <b><%= Number(myAutoBid.max_amount).toLocaleString('vi-VN') %> VND</b>
+                        </p>
+                    <% } %>
                 </div>
 
                 <!-- Ask Question Section -->
@@ -286,6 +315,9 @@
 </footer>
 
 <script>
+    const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
+    const IS_AUTH = <%= user ? 'true' : 'false' %>;
+
     // Countdown timer
     function updateCountdown() {
         const countdown = document.getElementById('countdown');
@@ -346,15 +378,6 @@
         icon.textContent = icon.textContent === '☆' ? '★' : '☆';
         // TODO: Implement AJAX call
     }
-
-    // Place bid
-    function placeBid(event, productId) {
-        event.preventDefault();
-        const amount = document.getElementById('bidAmount').value;
-        alert('Đặt giá: ' + Number(amount).toLocaleString('vi-VN') + ' VND');
-        // TODO: Implement AJAX call
-    }
-
     // Ask question
     function askQuestion(event, productId) {
         event.preventDefault();
@@ -364,6 +387,29 @@
             document.getElementById('questionText').value = '';
         }
         // TODO: Implement AJAX call
+    }
+
+    function setAutoBid(event) {
+        event.preventDefault();
+        if (!IS_AUTH) return window.location.href = '/login';
+        if (!AUCTION_ID) return alert('Không tìm thấy phiên đấu giá.');
+
+        const max_amount = Number(document.getElementById('autoBidMax')?.value || 0);
+        if (!max_amount || max_amount <= 0) return alert('Vui lòng nhập max hợp lệ.');
+
+        fetch(`/auctions/${AUCTION_ID}/auto-bid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ max_amount })
+        })
+        .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok || !d.success) return alert(d.message || d.error || 'Lưu auto-bid thất bại');
+            if (d.note) alert(d.note);
+            window.location.reload();
+        })
+        .catch(() => alert('Lưu auto-bid thất bại'));
     }
 </script>
 </body>

@@ -1,280 +1,384 @@
 import db from '../config/db.js';
+
+import Auction from '../models/auction.model.js';
+import Bid from '../models/bid.model.js';
+import AutoBidRule from '../models/autoBidRule.model.js';
+import BlockedBidder from '../models/blocked_bidder.js';
+import Order from '../models/order.model.js';
 import UpgradeRequest from '../models/upgradeRequest.model.js';
 
-/*
-  Bidder controller — 1:1 map to routes in routes/bidder.route.js
-  Functions mirror logic previously inline in route file.
-*/
+import { runAutoBidEngine } from '../services/autoBid.service.js';
+
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// Giá mua ngay hiện tại (theo UI đang hiển thị ở trang chi tiết)
+// NOTE: Dự án chưa có cột buy_now_price trong DB, nên dùng công thức nhất quán.
+const calcBuyNowPrice = (auction) => {
+  const base = toNum(auction?.current_price || auction?.start_price || 0);
+  return Math.floor(base * 1.5);
+};
 
 const getProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const [[user]] = await db.query('SELECT id, username, email, is_blocked FROM users WHERE id = ?', [userId]);
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const [[watchRes]] = await db.query('SELECT COUNT(*) AS cnt FROM watchlists WHERE user_id = ?', [userId]);
-    const [[activeBidsRes]] = await db.query(
-      `SELECT COUNT(DISTINCT b.auction_id) AS cnt
-       FROM bids b
-       JOIN auctions a ON a.id = b.auction_id
-       WHERE b.user_id = ? AND a.end_time > NOW()`,
-      [userId]
+    const [rows] = await db.query(
+      'SELECT id, name, email, role, is_blocked FROM users WHERE id = ? LIMIT 1',
+      { replacements: [userId], raw: true }
     );
-    const [[wonRes]] = await db.query(
-      `SELECT COUNT(*) AS cnt FROM auctions WHERE (winner_id = ? OR (end_time < NOW() AND highest_bidder = ?))`,
-      [userId, userId]
-    );
+    const user = rows?.[0];
 
-    return res.json({
-      user: { id: user.id, username: user.username, email: user.email, is_blocked: !!user.is_blocked },
-      counts: { watchlist: watchRes.cnt || 0, activeBids: activeBidsRes.cnt || 0, won: wonRes.cnt || 0 }
-    });
+    return res.json({ success: true, user: user || null });
   } catch (err) {
     console.error('bidder.getProfile', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 const getWatchlist = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
     const [rows] = await db.query(
-      `SELECT w.auction_id, a.title, a.current_price, a.end_time
+      `SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
        FROM watchlists w
        JOIN auctions a ON a.id = w.auction_id
+       JOIN products p ON p.id = a.product_id
        WHERE w.user_id = ?
        ORDER BY w.created_at DESC`,
-      [userId]
+      { replacements: [userId], raw: true }
     );
-    return res.json({ watchlist: rows });
+    return res.json({ success: true, watchlist: rows || [] });
   } catch (err) {
     console.error('bidder.getWatchlist', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 const addToWatchlist = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const auctionId = req.params.auctionId;
-    await db.query('INSERT IGNORE INTO watchlists (user_id, auction_id, created_at) VALUES (?, ?, NOW())', [
-      userId,
-      auctionId
-    ]);
+    const userId = req.user?.id;
+    const auctionId = Number(req.params.auctionId);
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
+
+    await db.query(
+      'INSERT IGNORE INTO watchlists (user_id, auction_id, created_at) VALUES (?, ?, NOW())',
+      { replacements: [userId, auctionId], raw: true }
+    );
     return res.json({ success: true });
   } catch (err) {
     console.error('bidder.addToWatchlist', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 const removeFromWatchlist = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const auctionId = req.params.auctionId;
-    await db.query('DELETE FROM watchlists WHERE user_id = ? AND auction_id = ?', [userId, auctionId]);
+    const userId = req.user?.id;
+    const auctionId = Number(req.params.auctionId);
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
+
+    await db.query('DELETE FROM watchlists WHERE user_id = ? AND auction_id = ?', {
+      replacements: [userId, auctionId],
+      raw: true,
+    });
     return res.json({ success: true });
   } catch (err) {
     console.error('bidder.removeFromWatchlist', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-
-// Auto-bid engine: after any manual bid, system will simulate automatic bids
-// from all users who have configured auto-bid rules for this auction.
-const runAutoBidEngine = async (conn, auctionId) => {
-  // Lock the auction row and get latest state
-  const [[auction]] = await conn.query(
-    'SELECT id, current_price, bid_step, highest_bidder, end_time, status FROM auctions WHERE id = ? FOR UPDATE',
-    [auctionId]
-  );
-
-  if (!auction) {
-    return;
-  }
-
-  // Only run auto-bid on active, non-ended auctions
-  if (auction.status && auction.status !== 'active') {
-    return;
-  }
-  const now = new Date();
-  if (auction.end_time && new Date(auction.end_time) <= now) {
-    return;
-  }
-
-  const step = Number(auction.bid_step || 0);
-  if (!step || step <= 0) {
-    // no step configured -> skip auto-bid
-    return;
-  }
-
-  // Load all active auto-bid rules for this auction
-  const [rules] = await conn.query(
-    `SELECT user_id, max_amount, is_active
-     FROM auto_bid_rules
-     WHERE auction_id = ? AND is_active = 1
-     ORDER BY max_amount DESC`,
-    [auctionId]
-  );
-
-  if (!rules || rules.length === 0) {
-    return;
-  }
-
-  let changed = true;
-
-  // Loop until no rule can outbid the current winner
-  while (changed) {
-    changed = false;
-
-    for (const rule of rules) {
-      if (!rule.is_active) continue;
-
-      // Skip current winner; they are already holding the highest price
-      if (rule.user_id === auction.highest_bidder) continue;
-
-      const nextPrice = Number(auction.current_price || 0) + step;
-
-      // Rule cannot cover the next step price
-      if (nextPrice > Number(rule.max_amount)) continue;
-
-      // Place an auto bid on behalf of this user
-      await conn.query(
-        'INSERT INTO bids (auction_id, user_id, amount, is_auto, created_at) VALUES (?, ?, ?, 1, NOW())',
-        [auctionId, rule.user_id, nextPrice]
-      );
-
-      // Update auction current price / highest bidder / bids_count
-      await conn.query(
-        'UPDATE auctions SET current_price = ?, highest_bidder = ?, bids_count = COALESCE(bids_count,0) + 1 WHERE id = ?',
-        [nextPrice, rule.user_id, auctionId]
-      );
-
-      auction.current_price = nextPrice;
-      auction.highest_bidder = rule.user_id;
-      changed = true;
-    }
-  }
-};
-
-
+/**
+ * Manual bid (API only).
+ * UI đã chuyển sang Auto-bid + Mua ngay, nhưng endpoint này vẫn giữ để tránh break.
+ */
 const placeBid = async (req, res) => {
-  const userId = req.user.id;
-  const auctionId = req.params.id;
-  const { amount } = req.body;
+  const userId = req.user?.id;
+  const auctionId = Number(req.params.id);
+  const amount = Number(req.body.amount);
 
-  if (!amount || isNaN(amount) || Number(amount) <= 0) return res.status(400).json({ error: 'Invalid amount' });
+  if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
 
-  const conn = await db.getConnection();
   try {
-    await conn.beginTransaction();
+    await db.transaction(async (t) => {
+      const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!auction) throw Object.assign(new Error('Auction not found'), { statusCode: 404 });
 
-    const [[user]] = await conn.query('SELECT id, is_blocked FROM users WHERE id = ? FOR UPDATE', [userId]);
-    if (!user) {
-      await conn.rollback();
-      return res.status(404).json({ error: 'User not found' });
-    }
-    if (user.is_blocked) {
-      await conn.rollback();
-      return res.status(403).json({ error: 'User is blocked' });
-    }
+      const now = new Date();
+      if (auction.end_time && new Date(auction.end_time) <= now) {
+        throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
+      }
+      const st = String(auction.status || '').toUpperCase();
+      if (st === 'ENDED' || st === 'CANCELLED') {
+        throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
+      }
 
-    const [[auction]] = await conn.query('SELECT id, current_price, end_time, bid_step, status FROM auctions WHERE id = ? FOR UPDATE', [auctionId]);
-    if (!auction) {
-      await conn.rollback();
-      return res.status(404).json({ error: 'Auction not found' });
-    }
-    if (new Date(auction.end_time) <= new Date()) {
-      await conn.rollback();
-      return res.status(400).json({ error: 'Auction already ended' });
-    }
+      const blocked = await BlockedBidder.findOne({
+        where: { auction_id: auctionId, bidder_id: userId },
+        transaction: t,
+        lock: t.LOCK.KEY_SHARE,
+      });
+      if (blocked) throw Object.assign(new Error('You are blocked from this auction'), { statusCode: 403 });
 
-    const step = auction.bid_step || 0;
-    const minAllowed = Number(auction.current_price || 0) + Number(step || 0);
-    if (Number(amount) <= Number(auction.current_price || 0) || (step && Number(amount) < minAllowed)) {
-      await conn.rollback();
-      return res.status(400).json({ error: `Bid must be greater than current price${step ? ` by at least ${step}` : ''}` });
-    }
+      const current = toNum(auction.current_price);
+      const step = Math.max(1, toNum(auction.step_price));
+      const minAllowed = current + step;
 
-    await conn.query('INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (?, ?, ?, NOW())', [
-      auctionId,
-      userId,
-      amount
-    ]);
+      if (amount < minAllowed) {
+        throw Object.assign(new Error(`Bid must be at least ${minAllowed.toLocaleString('vi-VN')} VND`), { statusCode: 400 });
+      }
 
-    await conn.query(
-      'UPDATE auctions SET current_price = ?, highest_bidder = ?, bids_count = COALESCE(bids_count,0) + 1 WHERE id = ?',
-      [amount, userId, auctionId]
-    );
+      // Bid must be < buy-now price
+      const buyNowPrice = calcBuyNowPrice(auction);
+      if (buyNowPrice > 0 && amount >= buyNowPrice) {
+        throw Object.assign(
+          new Error(`Bid phải nhỏ hơn giá mua ngay (${buyNowPrice.toLocaleString('vi-VN')} VND). Nếu muốn mua ngay hãy bấm Mua ngay.`),
+          { statusCode: 400 }
+        );
+      }
 
-    // After manual bid, trigger auto-bid engine for other bidders
-    await runAutoBidEngine(conn, auctionId);
+      const bid = await Bid.create(
+        { auction_id: auctionId, bidder_id: userId, amount, is_auto: false },
+        { transaction: t }
+      );
 
-    await conn.commit();
+      await auction.update(
+        { current_price: amount, current_winner_id: userId, winner_bid_id: bid.id },
+        { transaction: t }
+      );
+
+      // Trigger auto-bid competition after manual bid
+      await runAutoBidEngine({ transaction: t, auctionId });
+    });
+
     return res.json({ success: true });
   } catch (err) {
-    await conn.rollback().catch(() => {});
+    const code = err.statusCode || 500;
     console.error('bidder.placeBid', err);
-    return res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
+    return res.status(code).json({ success: false, message: err.message || 'Server error' });
   }
 };
 
+/**
+ * Set auto-bid max.
+ * Constraints:
+ * - max_amount must be < buy-now price.
+ */
 const setAutoBid = async (req, res) => {
+  const userId = req.user?.id;
+  const auctionId = Number(req.params.id);
+  const maxAmount = Number(req.body.max_amount);
+
+  if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
+  if (!Number.isFinite(maxAmount) || maxAmount <= 0) return res.status(400).json({ success: false, message: 'Invalid max_amount' });
+
   try {
-    const userId = req.user.id;
-    const auctionId = req.params.id;
-    const maxAmount = Number(req.body.max_amount);
-    if (!maxAmount || maxAmount <= 0) return res.status(400).json({ error: 'Invalid max_amount' });
+    let note = null;
 
-    await db.query(
-      `INSERT INTO auto_bid_rules (user_id, auction_id, max_amount, updated_at)
-       VALUES (?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE max_amount = VALUES(max_amount), updated_at = NOW()`,
-      [userId, auctionId, maxAmount]
-    );
+    await db.transaction(async (t) => {
+      const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!auction) throw Object.assign(new Error('Auction not found'), { statusCode: 404 });
 
-    return res.json({ success: true });
+      const now = new Date();
+      if (auction.end_time && new Date(auction.end_time) <= now) {
+        throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
+      }
+      const st = String(auction.status || '').toUpperCase();
+      if (st === 'ENDED' || st === 'CANCELLED') {
+        throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
+      }
+
+      const blocked = await BlockedBidder.findOne({
+        where: { auction_id: auctionId, bidder_id: userId },
+        transaction: t,
+        lock: t.LOCK.KEY_SHARE,
+      });
+      if (blocked) throw Object.assign(new Error('You are blocked from this auction'), { statusCode: 403 });
+
+      const buyNowPrice = calcBuyNowPrice(auction);
+      if (buyNowPrice > 0 && maxAmount >= buyNowPrice) {
+        throw Object.assign(
+          new Error(`Max auto-bid phải nhỏ hơn giá mua ngay (${buyNowPrice.toLocaleString('vi-VN')} VND).`),
+          { statusCode: 400 }
+        );
+      }
+
+      const existing = await AutoBidRule.findOne({
+        where: { auction_id: auctionId, bidder_id: userId },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (existing) {
+        await existing.update({ max_amount: maxAmount, is_active: true }, { transaction: t });
+      } else {
+        await AutoBidRule.create(
+          { auction_id: auctionId, bidder_id: userId, max_amount: maxAmount, is_active: true },
+          { transaction: t }
+        );
+      }
+
+      const current = toNum(auction.current_price);
+      const step = Math.max(1, toNum(auction.step_price));
+      const minAllowed = current + step;
+      if (maxAmount < minAllowed) {
+        note = `Đã lưu auto-bid, nhưng max hiện tại nhỏ hơn giá tối thiểu để outbid (${minAllowed.toLocaleString('vi-VN')} VND).`;
+      }
+
+      // Run engine to resolve competition immediately
+      await runAutoBidEngine({ transaction: t, auctionId });
+    });
+
+    return res.json({ success: true, note });
   } catch (err) {
+    const code = err.statusCode || 500;
     console.error('bidder.setAutoBid', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(code).json({ success: false, message: err.message || 'Server error' });
+  }
+};
+
+/**
+ * Buy now (kết thúc phiên đấu giá và tạo Order).
+ */
+const buyNow = async (req, res) => {
+  const userId = req.user?.id;
+  const auctionId = Number(req.params.id);
+
+  if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
+
+  try {
+    const result = await db.transaction(async (t) => {
+      const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!auction) throw Object.assign(new Error('Auction not found'), { statusCode: 404 });
+
+      const now = new Date();
+      if (auction.end_time && new Date(auction.end_time) <= now) {
+        throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
+      }
+      const st = String(auction.status || '').toUpperCase();
+      if (st === 'ENDED' || st === 'CANCELLED') {
+        throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
+      }
+
+      const blocked = await BlockedBidder.findOne({
+        where: { auction_id: auctionId, bidder_id: userId },
+        transaction: t,
+        lock: t.LOCK.KEY_SHARE,
+      });
+      if (blocked) throw Object.assign(new Error('You are blocked from this auction'), { statusCode: 403 });
+
+      const buyNowPrice = calcBuyNowPrice(auction);
+      if (buyNowPrice <= 0) {
+        throw Object.assign(new Error('Buy-now price is not available'), { statusCode: 400 });
+      }
+
+      // Place final bid
+      const bid = await Bid.create(
+        {
+          auction_id: auctionId,
+          bidder_id: userId,
+          amount: buyNowPrice,
+          is_auto: false,
+        },
+        { transaction: t }
+      );
+
+      // End auction
+      await auction.update(
+        {
+          current_price: buyNowPrice,
+          current_winner_id: userId,
+          winner_id: userId,
+          winner_bid_id: bid.id,
+          status: 'ENDED',
+          end_time: now,
+        },
+        { transaction: t }
+      );
+
+      // Create order if not exists
+      const existingOrder = await Order.findOne({ where: { auction_id: auctionId }, transaction: t, lock: t.LOCK.UPDATE });
+      if (existingOrder) {
+        return { orderId: existingOrder.id, buyNowPrice, productId: auction.product_id };
+      }
+
+      const order = await Order.create(
+        {
+          auction_id: auctionId,
+          seller_id: auction.seller_id,
+          buyer_id: userId,
+          status: 'WAIT_BUYER_INFO',
+        },
+        { transaction: t }
+      );
+
+      return { orderId: order.id, buyNowPrice, productId: auction.product_id };
+    });
+
+    // If request comes from a normal HTML form, redirect.
+    const acceptsHtml = String(req.headers.accept || '').includes('text/html');
+    if (acceptsHtml && !req.xhr) {
+      return res.redirect(`/orders/${result.orderId}`);
+    }
+    return res.json({ success: true, orderId: result.orderId, buy_now_price: result.buyNowPrice, productId: result.productId });
+  } catch (err) {
+    const code = err.statusCode || 500;
+    console.error('bidder.buyNow', err);
+    if (String(req.headers.accept || '').includes('text/html') && !req.xhr) {
+      return res.status(code).redirect(`/?error=${encodeURIComponent(err.message || 'Server error')}`);
+    }
+    return res.status(code).json({ success: false, message: err.message || 'Server error' });
   }
 };
 
 const listBids = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
     const [rows] = await db.query(
-      `SELECT b.id, b.auction_id, b.amount, b.created_at, a.title
+      `SELECT b.id, b.auction_id, b.amount, b.is_auto, b.created_at
        FROM bids b
-       JOIN auctions a ON a.id = b.auction_id
-       WHERE b.user_id = ?
+       WHERE b.bidder_id = ?
        ORDER BY b.created_at DESC`,
-      [userId]
+      { replacements: [userId], raw: true }
     );
-    return res.json({ bids: rows });
+    return res.json({ success: true, bids: rows || [] });
   } catch (err) {
     console.error('bidder.listBids', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 const listWon = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
     const [rows] = await db.query(
-      `SELECT a.id AS auction_id, a.title, a.end_time, a.winner_id, o.id AS order_id
+      `SELECT a.id AS auction_id, a.product_id, a.current_price, a.end_time, a.winner_id, o.id AS order_id
        FROM auctions a
        LEFT JOIN orders o ON o.auction_id = a.id
-       WHERE (a.winner_id = ? OR (a.end_time < NOW() AND a.highest_bidder = ?))
+       WHERE a.winner_id = ?
        ORDER BY a.end_time DESC`,
-      [userId, userId]
+      { replacements: [userId], raw: true }
     );
-    return res.json({ won: rows });
+    return res.json({ success: true, won: rows || [] });
   } catch (err) {
     console.error('bidder.listWon', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -292,16 +396,13 @@ async function createUpgradeRequest(req, res, next) {
       });
     }
 
-    // không cho tạo mới nếu đang PENDING hoặc đã APPROVED
     const existing = await UpgradeRequest.findOne({
       where: { user_id: req.user.id, status: ['PENDING', 'APPROVED'] },
     });
     if (existing) {
       return res.render('profile/upgradeRequestPage', {
         title: 'Yêu cầu nâng cấp Seller',
-        error: existing.status === 'PENDING'
-          ? 'Bạn đã gửi yêu cầu và đang chờ duyệt.'
-          : 'Tài khoản đã được duyệt nâng cấp.',
+        error: existing.status === 'PENDING' ? 'Bạn đã gửi yêu cầu và đang chờ duyệt.' : 'Tài khoản đã được duyệt nâng cấp.',
       });
     }
 
@@ -328,8 +429,9 @@ export default {
   removeFromWatchlist,
   placeBid,
   setAutoBid,
+  buyNow,
   listBids,
   listWon,
   showUpgradeRequestForm,
-  createUpgradeRequest
+  createUpgradeRequest,
 };

@@ -1,6 +1,5 @@
 import express from 'express';
 const router = express.Router();
-import db from '../config/db.js';
 import auth from '../middlewares/auth.middleware.js';
 
 // import controller
@@ -16,6 +15,7 @@ router.post('/watchlist/:auctionId/delete', auth, bidderController.removeFromWat
 
 router.post('/auctions/:id/bid', auth, bidderController.placeBid);
 router.post('/auctions/:id/auto-bid', auth, bidderController.setAutoBid);
+router.post('/auctions/:id/buy', auth, bidderController.buyNow);
 
 router.get('/me/bids', auth, bidderController.listBids);
 router.get('/me/won', auth, bidderController.listWon);
