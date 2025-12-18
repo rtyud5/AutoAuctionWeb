@@ -37,4 +37,10 @@ router.post("/questions/:id/answer", answerQuestion);
  */
 router.get("/search", apiController.search);
 
+/**
+ * GET /search/suggestions
+ * Autocomplete suggestions for search
+ */
+router.get("/search/suggestions", apiController.getSearchSuggestions);
+
 export default router;

@@ -1,10 +1,16 @@
 <nav class="w-full bg-teal-500 text-white shadow-md relative z-50">
-  <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-center gap-4">
+  <div
+    class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-center gap-4"
+  >
     <!-- Left: Logo + menu -->
     <div class="flex items-center gap-6">
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2">
-        <img src="/images/logo.png" alt="PTUDW Auction" class="h-9 w-auto object-contain">
+        <img
+          src="/images/logo.png"
+          alt="PTUDW Auction"
+          class="h-9 w-auto object-contain"
+        />
         <span class="hidden sm:inline text-sm font-semibold tracking-wide">
           PTUDW Online Auction
         </span>
@@ -12,7 +18,11 @@
 
       <!-- Main menu -->
       <div class="hidden md:flex items-center gap-5 text-sm">
-        <a href="/" class="font-medium hover:text-slate-900/90 transition-colors">Trang chủ</a>
+        <a
+          href="/"
+          class="font-medium hover:text-slate-900/90 transition-colors"
+          >Trang chủ</a
+        >
 
         <!-- Category dropdown -->
         <div class="relative">
@@ -24,7 +34,12 @@
             class="inline-flex items-center gap-1 text-sm font-medium hover:text-slate-900/90 transition-colors"
           >
             <span>danh sách danh mục</span>
-            <span id="catArrow" aria-hidden="true" class="transition-transform origin-center">▾</span>
+            <span
+              id="catArrow"
+              aria-hidden="true"
+              class="transition-transform origin-center"
+              >▾</span
+            >
           </button>
 
           <div
@@ -41,115 +56,158 @@
 
     <!-- Right: Search + Auth -->
     <div class="flex items-center gap-3 flex-1 justify-start">
-      <!-- Search (UI only) -->
-      <div class="hidden sm:flex items-center bg-teal-400/30 rounded-full px-4 py-1.5 max-w-xs w-full">
-        <input
-          type="text"
-          placeholder="Search..."
-          class="flex-1 bg-transparent placeholder-white/70 text-xs sm:text-sm focus:outline-none"
+      <!-- Search Form with Autocomplete -->
+      <div class="hidden sm:block relative max-w-xs w-full">
+        <form
+          action="/search"
+          method="GET"
+          class="flex items-center bg-teal-400/30 rounded-full px-4 py-1.5"
+          id="searchForm"
         >
-        <button
-          type="button"
-          class="ml-2 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 w-7 h-7 transition-colors"
+          <input
+            type="text"
+            name="q"
+            id="searchInput"
+            value="<%= locals.query || '' %>"
+            placeholder="Tìm kiếm sản phẩm..."
+            autocomplete="off"
+            class="flex-1 bg-transparent placeholder-white/70 text-xs sm:text-sm focus:outline-none text-white"
+          />
+          <button
+            type="submit"
+            class="ml-2 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 w-7 h-7 transition-colors"
+            aria-label="Search"
+          >
+            <span class="text-lg leading-none">🔍</span>
+          </button>
+        </form>
+
+        <!-- Autocomplete Dropdown -->
+        <div
+          id="searchSuggestions"
+          class="hidden absolute top-full mt-2 w-full bg-white text-slate-800 rounded-lg shadow-xl border border-slate-200 z-50 max-h-80 overflow-y-auto"
         >
-          <!-- simple search icon -->
-          <span class="text-lg leading-none">🔍</span>
-        </button>
+          <!-- Suggestions will be inserted here by JavaScript -->
+        </div>
       </div>
 
       <!-- Auth zone -->
       <div class="flex items-center gap-3">
         <% if (!isAuthenticated) { %>
-          <!-- Guest view -->
-          <div class="flex items-center gap-3 text-xs sm:text-sm">
-            <a href="/login" class="hover:text-slate-900/90 font-medium transition-colors">
-              Sign In
+        <!-- Guest view -->
+        <div class="flex items-center gap-3 text-xs sm:text-sm">
+          <a
+            href="/login"
+            class="hover:text-slate-900/90 font-medium transition-colors"
+          >
+            Sign In
+          </a>
+          <a
+            href="/register"
+            class="inline-flex items-center rounded-full border border-white/80 px-3 py-1 hover:bg-white hover:text-teal-600 text-xs sm:text-sm font-medium transition-colors"
+          >
+            Register
+          </a>
+        </div>
+        <% } else { %> <% if (role === 'seller') { %>
+        <a
+          href="/seller/questions"
+          class="inline-flex items-center justify-center rounded-full bg-white/90 hover:bg-white w-7 h-7 transition-colors text-teal-700 text-lg mr-2"
+          title="Câu hỏi của người mua"
+        >
+          💬
+        </a>
+        <% } %>
+        <!-- Logged-in user view -->
+        <div
+          id="auth-user"
+          class="flex items-center gap-2 relative overflow-visible cursor-pointer text-xs sm:text-sm"
+        >
+          >
+          <!-- Avatar + name + role -->
+          <div class="flex items-center gap-2">
+            <!-- Placeholder avatar icon -->
+            <div
+              class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg"
+            >
+              👤
+            </div>
+            <div class="hidden sm:flex flex-col text-left">
+              <span class="text-xs font-semibold" data-user-name>
+                <%= (currentUser && (currentUser.name || currentUser.username))
+                ? (currentUser.name || currentUser.username) : "Tài khoản" %>
+              </span>
+              <span class="text-[11px] text-teal-100/80 capitalize">
+                <%= role || "guest" %>
+              </span>
+            </div>
+            <span class="text-xs sm:text-sm">▼</span>
+          </div>
+
+          <!-- Dropdown menu -->
+          <div
+            id="user-menu"
+            class="hidden absolute top-11 right-0 w-44 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 text-sm z-50"
+          >
+            <a href="/setting" class="block px-4 py-2 hover:bg-slate-100">
+              Hồ sơ cá nhân
+            </a>
+            <a href="/itemManager" class="block px-4 py-2 hover:bg-slate-100">
+              Quản lý đấu giá
+            </a>
+            <% if (role === 'bidder') { %>
+            <a
+              href="/me/upgrade-request"
+              class="block px-4 py-2 hover:bg-slate-100"
+            >
+              Yêu cầu nâng cấp Seller
+            </a>
+            <% } %> <% if (role === 'seller') { %>
+            <a
+              href="/seller/products"
+              class="block px-4 py-2 hover:bg-slate-100"
+            >
+              Quản lý sản phẩm
             </a>
             <a
-              href="/register"
-              class="inline-flex items-center rounded-full border border-white/80 px-3 py-1 hover:bg-white hover:text-teal-600 text-xs sm:text-sm font-medium transition-colors"
+              href="/seller/products/new"
+              class="block px-4 py-2 hover:bg-slate-100"
             >
-              Register
+              Đăng sản phẩm
+            </a>
+            <% } %>
+            <a href="/itemHistory" class="block px-4 py-2 hover:bg-slate-100">
+              Lịch sử đấu giá
+            </a>
+            <a href="/review" class="block px-4 py-2 hover:bg-slate-100">
+              Đánh giá
+            </a>
+            <div class="border-t border-slate-100 my-1"></div>
+            <a
+              href="/auth/logout"
+              class="block px-4 py-2 hover:bg-slate-100 text-rose-600"
+            >
+              Đăng xuất
             </a>
           </div>
-        <% } else { %>
-          <% if (role === 'seller') { %>
-            <a href="/seller/questions"
-              class="inline-flex items-center justify-center rounded-full bg-white/90 hover:bg-white w-7 h-7 transition-colors text-teal-700 text-lg mr-2"
-              title="Câu hỏi của người mua">
-              💬
-            </a>
-          <% } %>
-          <!-- Logged-in user view -->
-          <div id="auth-user"
-            class="flex items-center gap-2 relative overflow-visible cursor-pointer text-xs sm:text-sm">
-          >
-            <!-- Avatar + name + role -->
-            <div class="flex items-center gap-2">
-              <!-- Placeholder avatar icon -->
-              <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
-                👤
-              </div>
-              <div class="hidden sm:flex flex-col text-left">
-                <span class="text-xs font-semibold" data-user-name>
-                  <%= (currentUser && (currentUser.name || currentUser.username)) ? (currentUser.name || currentUser.username) : "Tài khoản" %>
-                </span>
-                <span class="text-[11px] text-teal-100/80 capitalize">
-                  <%= role || "guest" %>
-                </span>
-              </div>
-              <span class="text-xs sm:text-sm">▼</span>
-            </div>
-
-            <!-- Dropdown menu -->
-            <div
-              id="user-menu"
-              class="hidden absolute top-11 right-0 w-44 bg-white text-slate-800 rounded-lg shadow-lg border border-slate-100 text-sm z-50"
-            >
-              <a href="/setting" class="block px-4 py-2 hover:bg-slate-100">
-                Hồ sơ cá nhân
-              </a>
-              <a href="/itemManager" class="block px-4 py-2 hover:bg-slate-100">
-                Quản lý đấu giá
-              </a>
-              <% if (role === 'bidder') { %>
-                <a href="/me/upgrade-request" class="block px-4 py-2 hover:bg-slate-100">
-                  Yêu cầu nâng cấp Seller
-                </a>
-              <% } %>
-              <% if (role === 'seller') { %>
-                <a href="/seller/products" class="block px-4 py-2 hover:bg-slate-100">
-                  Quản lý sản phẩm
-                </a>
-                <a href="/seller/products/new" class="block px-4 py-2 hover:bg-slate-100">
-                  Đăng sản phẩm
-                </a>
-              <% } %>
-              <a href="/itemHistory" class="block px-4 py-2 hover:bg-slate-100">
-                Lịch sử đấu giá
-              </a>
-              <a href="/review" class="block px-4 py-2 hover:bg-slate-100">
-                Đánh giá
-              </a>
-              <div class="border-t border-slate-100 my-1"></div>
-              <a href="/auth/logout" class="block px-4 py-2 hover:bg-slate-100 text-rose-600">
-                Đăng xuất
-              </a>
-            </div>
-          </div>
+        </div>
         <% } %>
       </div>
     </div>
   </div>
 
   <!-- Mobile menu (chỉ logo & search đơn giản) -->
-  <div class="md:hidden px-4 pb-3 space-y-2 bg-teal-500/95 border-t border-teal-400/40">
-    <div class="flex items-center gap-2 bg-teal-400/30 rounded-full px-3 py-1.5">
+  <div
+    class="md:hidden px-4 pb-3 space-y-2 bg-teal-500/95 border-t border-teal-400/40"
+  >
+    <div
+      class="flex items-center gap-2 bg-teal-400/30 rounded-full px-3 py-1.5"
+    >
       <input
         type="text"
         placeholder="Search..."
         class="flex-1 bg-transparent placeholder-white/70 text-xs focus:outline-none"
-      >
+      />
       <button
         type="button"
         class="ml-1 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 w-7 h-7 transition-colors"
@@ -161,166 +219,185 @@
 </nav>
 
 <script>
-(function() {
-  'use strict';
+  (function () {
+    "use strict";
 
-  // === Category Dropdown Module ===
-  const CategoryDropdown = {
-    init() {
-      this.toggleBtn = document.getElementById('catToggle');
-      this.panel     = document.getElementById('catPanel');
-      this.arrow     = document.getElementById('catArrow');
-      this.list      = document.getElementById('catList');
-      this.loaded    = false;
+    // === Category Dropdown Module ===
+    const CategoryDropdown = {
+      init() {
+        this.toggleBtn = document.getElementById("catToggle");
+        this.panel = document.getElementById("catPanel");
+        this.arrow = document.getElementById("catArrow");
+        this.list = document.getElementById("catList");
+        this.loaded = false;
 
-      if (!this.toggleBtn || !this.panel || !this.arrow || !this.list) {
-        console.error('Category dropdown elements not found');
-        return;
-      }
+        if (!this.toggleBtn || !this.panel || !this.arrow || !this.list) {
+          console.error("Category dropdown elements not found");
+          return;
+        }
 
-      this.bindEvents();
-    },
+        this.bindEvents();
+      },
 
-    // bổ sung: tải danh mục từ API (lazy load, chỉ tải lần đầu)
-    async loadCategories() {
-      if (this.loaded) return;
-      try {
-        this.list.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>';
-        const res = await fetch('/api/categories');
-        const data = await res.json();
-        const cats = Array.isArray(data) ? data : (data.categories || []);
-        this.list.innerHTML = this.renderList(cats);
-        this.loaded = true;
-      } catch (e) {
-        console.error('Load categories failed:', e);
-        this.list.innerHTML = '<div class="px-4 py-2 text-sm text-rose-600">Không tải được danh mục</div>';
-      }
-    },
+      // bổ sung: tải danh mục từ API (lazy load, chỉ tải lần đầu)
+      async loadCategories() {
+        if (this.loaded) return;
+        try {
+          this.list.innerHTML =
+            '<div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>';
+          const res = await fetch("/api/categories");
+          const data = await res.json();
+          const cats = Array.isArray(data) ? data : data.categories || [];
+          this.list.innerHTML = this.renderList(cats);
+          this.loaded = true;
+        } catch (e) {
+          console.error("Load categories failed:", e);
+          this.list.innerHTML =
+            '<div class="px-4 py-2 text-sm text-rose-600">Không tải được danh mục</div>';
+        }
+      },
 
-    // bổ sung: dựng HTML cho danh mục (có children nếu là cây 2 cấp)
-    renderList(cats) {
-      if (!Array.isArray(cats) || !cats.length) {
-        return '<div class="px-4 py-2 text-sm text-gray-500">Chưa có danh mục</div>';
-      }
-      return cats.map(c => `
+      // bổ sung: dựng HTML cho danh mục (có children nếu là cây 2 cấp)
+      renderList(cats) {
+        if (!Array.isArray(cats) || !cats.length) {
+          return '<div class="px-4 py-2 text-sm text-gray-500">Chưa có danh mục</div>';
+        }
+        return cats
+          .map(
+            (c) => `
         <div class="py-1 border-b border-slate-100">
-          <a href="/categories/${c.slug}" class="block px-4 py-2 text-sm hover:bg-slate-100 font-medium">${c.name}</a>
-          ${Array.isArray(c.children) && c.children.length
-            ? c.children.map(s => `
+          <a href="/categories/${
+            c.slug
+          }" class="block px-4 py-2 text-sm hover:bg-slate-100 font-medium">${
+              c.name
+            }</a>
+          ${
+            Array.isArray(c.children) && c.children.length
+              ? c.children
+                  .map(
+                    (s) => `
                 <a href="/categories/${s.slug}" class="block pl-8 pr-4 py-2 text-sm hover:bg-slate-100">${s.name}</a>
-              `).join('')
-            : ''
+              `
+                  )
+                  .join("")
+              : ""
           }
         </div>
-      `).join('');
-    },
+      `
+          )
+          .join("");
+      },
 
-    // tùy chọn: làm mới danh sách (gọi khi cần reload lại)
-    refresh() {
-      this.loaded = false;
-      this.list.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>';
-    },
+      // tùy chọn: làm mới danh sách (gọi khi cần reload lại)
+      refresh() {
+        this.loaded = false;
+        this.list.innerHTML =
+          '<div class="px-4 py-2 text-sm text-gray-500">Đang tải...</div>';
+      },
 
-    isVisible() {
-      return !this.panel.classList.contains('hidden');
-    },
+      isVisible() {
+        return !this.panel.classList.contains("hidden");
+      },
 
-    show() {
-      this.panel.classList.remove('hidden');
-      this.arrow.style.transform = 'rotate(180deg)';
-    },
+      show() {
+        this.panel.classList.remove("hidden");
+        this.arrow.style.transform = "rotate(180deg)";
+      },
 
-    hide() {
-      this.panel.classList.add('hidden');
-      this.arrow.style.transform = 'rotate(0deg)';
-    },
+      hide() {
+        this.panel.classList.add("hidden");
+        this.arrow.style.transform = "rotate(0deg)";
+      },
 
-    // điều chỉnh: trước khi mở, tải danh mục
-    async toggleDropdown() {
-      if (!this.isVisible()) {
-        await this.loadCategories();
-        this.show();
-      } else {
-        this.hide();
-      }
-    },
-
-    bindEvents() {
-      // Toggle on click
-      this.toggleBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.toggleDropdown();
-      });
-
-      // Close on Escape
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.isVisible()) {
+      // điều chỉnh: trước khi mở, tải danh mục
+      async toggleDropdown() {
+        if (!this.isVisible()) {
+          await this.loadCategories();
+          this.show();
+        } else {
           this.hide();
         }
-      });
+      },
 
-      // Close on outside click
-      document.addEventListener('click', (e) => {
-        if (!this.toggleBtn.contains(e.target) && !this.panel.contains(e.target)) {
-          this.hide();
+      bindEvents() {
+        // Toggle on click
+        this.toggleBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleDropdown();
+        });
+
+        // Close on Escape
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && this.isVisible()) {
+            this.hide();
+          }
+        });
+
+        // Close on outside click
+        document.addEventListener("click", (e) => {
+          if (
+            !this.toggleBtn.contains(e.target) &&
+            !this.panel.contains(e.target)
+          ) {
+            this.hide();
+          }
+        });
+      },
+    };
+
+    // === User dropdown menu (only when logged in) ===
+    const UserMenu = {
+      init() {
+        this.userArea = document.getElementById("auth-user");
+        this.menu = document.getElementById("user-menu");
+
+        if (!this.userArea || !this.menu) {
+          return;
         }
-      });
-    }
-  };
 
-  // === User dropdown menu (only when logged in) ===
-  const UserMenu = {
-    init() {
-      this.userArea = document.getElementById('auth-user');
-      this.menu = document.getElementById('user-menu');
+        this.bindEvents();
+      },
 
-      if (!this.userArea || !this.menu) {
-        return;
-      }
-
-      this.bindEvents();
-    },
-
-    toggleMenu() {
-      const isHidden = this.menu.classList.contains('hidden');
-      if (isHidden) {
-        this.menu.classList.remove('hidden');
-      } else {
-        this.menu.classList.add('hidden');
-      }
-    },
-
-    hideMenu() {
-      if (!this.menu) return;
-      this.menu.classList.add('hidden');
-    },
-
-    bindEvents() {
-      this.userArea.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleMenu();
-      });
-
-      document.addEventListener('click', () => this.hideMenu());
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          this.hideMenu();
+      toggleMenu() {
+        const isHidden = this.menu.classList.contains("hidden");
+        if (isHidden) {
+          this.menu.classList.remove("hidden");
+        } else {
+          this.menu.classList.add("hidden");
         }
-      });
+      },
+
+      hideMenu() {
+        if (!this.menu) return;
+        this.menu.classList.add("hidden");
+      },
+
+      bindEvents() {
+        this.userArea.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.toggleMenu();
+        });
+
+        document.addEventListener("click", () => this.hideMenu());
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            this.hideMenu();
+          }
+        });
+      },
+    };
+
+    // === Initialize ===
+    const init = () => {
+      CategoryDropdown.init();
+      UserMenu.init();
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
     }
-  };
-
-  // === Initialize ===
-  const init = () => {
-    CategoryDropdown.init();
-    UserMenu.init();
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
+  })();
 </script>

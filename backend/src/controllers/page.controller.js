@@ -40,7 +40,7 @@ const index = async (req, res) => {
     );
 
     const fixImage = (p) => {
-      if (p.image && !p.image.includes('placeholder')) return;
+      if (p.image && !p.image.includes("placeholder")) return;
       p.image = `/uploads/products/${p.product_id}/0.jpg`;
     };
 
@@ -52,7 +52,11 @@ const index = async (req, res) => {
   } catch (e) {
     console.error("Error in index controller:", e);
   }
-  return res.render("home/index", { title: "Online Auction", auctions, user: req.user || null });
+  return res.render("home/index", {
+    title: "Online Auction",
+    auctions,
+    user: req.user || null,
+  });
 };
 
 const loginView = (req, res) => {
@@ -83,25 +87,34 @@ const showAuction = async (req, res) => {
 export const categoryView = async (req, res) => {
   try {
     const slug = req.params.slug || null;
-    const origin = `${req.protocol}://${req.get('host')}`;
+    const origin = `${req.protocol}://${req.get("host")}`;
 
     const catRes = await fetch(`${origin}/api/categories`);
     const catJson = await catRes.json();
-    const categories = Array.isArray(catJson) ? catJson : (catJson.categories || []);
+    const categories = Array.isArray(catJson)
+      ? catJson
+      : catJson.categories || [];
 
-    const listUrl = slug ? `${origin}/api/categories/${slug}` : `${origin}/api/auctions`;
+    const listUrl = slug
+      ? `${origin}/api/categories/${slug}`
+      : `${origin}/api/auctions`;
     const aucRes = await fetch(listUrl);
     const aucJson = await aucRes.json();
-    const auctions = Array.isArray(aucJson.data) ? aucJson.data : (aucJson.items || []);
+    const auctions = Array.isArray(aucJson.data)
+      ? aucJson.data
+      : aucJson.items || [];
     const pagination = aucJson.pagination || null;
 
     // Tìm tên danh mục theo slug
     const flat = [];
     (function walk(arr = []) {
-      arr.forEach(c => { flat.push(c); if (Array.isArray(c.children)) walk(c.children); });
+      arr.forEach((c) => {
+        flat.push(c);
+        if (Array.isArray(c.children)) walk(c.children);
+      });
     })(categories);
-    const found = flat.find(c => c.slug === slug);
-    const title = slug ? (found?.name || slug) : 'Tất cả danh mục';
+    const found = flat.find((c) => c.slug === slug);
+    const title = slug ? found?.name || slug : "Tất cả danh mục";
 
     return res.render("categories/categories", {
       title,
@@ -111,7 +124,7 @@ export const categoryView = async (req, res) => {
       pagination,
       isAuthenticated: !!req.user,
       currentUser: req.user || null,
-      role: (req.user?.role || '').toLowerCase(),
+      role: (req.user?.role || "").toLowerCase(),
     });
   } catch (err) {
     console.error("page.categoryView", err);
@@ -123,7 +136,7 @@ export const categoryView = async (req, res) => {
       pagination: null,
       isAuthenticated: !!req.user,
       currentUser: req.user || null,
-      role: (req.user?.role || '').toLowerCase(),
+      role: (req.user?.role || "").toLowerCase(),
     });
   }
 };
@@ -206,7 +219,7 @@ const reviewView = async (req, res) => {
 const profileProductView = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.redirect('/login');
+    if (!userId) return res.redirect("/login");
 
     // --- SẢN PHẨM YÊU THÍCH ---
     const [favoriteList] = await db.query(
@@ -231,7 +244,7 @@ const profileProductView = async (req, res) => {
       );
       biddingList = bidData || [];
     } catch (e) {
-      console.warn('Skip biddingList:', e.message);
+      console.warn("Skip biddingList:", e.message);
     }
 
     // --- SẢN PHẨM ĐÃ THẮNG (nếu có bảng winners) ---
@@ -246,7 +259,7 @@ const profileProductView = async (req, res) => {
       );
       wonList = wonData || [];
     } catch (e) {
-      console.warn('Skip wonList:', e.message);
+      console.warn("Skip wonList:", e.message);
     }
 
     return res.render("profile/product", {
@@ -428,7 +441,6 @@ const profileAuctionView = async (req, res) => {
   }
 };
 
-
 const productDetailView = async (req, res) => {
   const { id } = req.params;
 
@@ -450,9 +462,9 @@ const productDetailView = async (req, res) => {
     const product = prodRows?.[0];
 
     if (!product) {
-      return res.status(404).render("error/404", { 
+      return res.status(404).render("error/404", {
         title: "Không tìm thấy sản phẩm",
-        user: req.user || null
+        user: req.user || null,
       });
     }
 
@@ -479,7 +491,6 @@ const productDetailView = async (req, res) => {
       myAutoBid = ruleRows?.[0] || null;
     }
 
-
     // Lấy bids (join users để hiển thị bidder_masked)
     const [bidRows] = await db.query(
       `SELECT b.id, b.bidder_id, b.amount, b.is_auto, b.created_at, u.name AS bidder_name
@@ -492,10 +503,10 @@ const productDetailView = async (req, res) => {
     );
 
     const maskName = (name) => {
-      const s = String(name || '').trim();
-      if (!s) return 'Ẩn danh';
-      if (s.length <= 2) return s[0] + '*';
-      return s[0] + '*'.repeat(Math.min(6, s.length - 2)) + s[s.length - 1];
+      const s = String(name || "").trim();
+      if (!s) return "Ẩn danh";
+      if (s.length <= 2) return s[0] + "*";
+      return s[0] + "*".repeat(Math.min(6, s.length - 2)) + s[s.length - 1];
     };
 
     const bids = (bidRows || []).map((b) => ({
@@ -568,8 +579,8 @@ const productDetailView = async (req, res) => {
 
       reviews = (ratingRows || []).map((r) => ({
         ...r,
-        user_name: r.user_name || 'Ẩn danh',
-        comment: r.comment || 'Không có bình luận',
+        user_name: r.user_name || "Ẩn danh",
+        comment: r.comment || "Không có bình luận",
         rating: r.score === 1 ? 5 : 1,
         images: [
           `/uploads/reviews/${product.id}/0.jpg`,
@@ -578,7 +589,7 @@ const productDetailView = async (req, res) => {
         ],
       }));
     } catch (err) {
-      console.warn('Skip ratings:', err.message);
+      console.warn("Skip ratings:", err.message);
       reviews = [];
     }
 
@@ -604,9 +615,12 @@ const productDetailView = async (req, res) => {
         start_price: auction.start_price || 0,
         step_price: auction.step_price || 100000,
         current_price: auction.current_price || 0,
-        buy_now_price: Math.floor(Number(auction.current_price || auction.start_price || 0) * 1.5),
-        end_time: auction.end_time || new Date(Date.now() + 86400000).toISOString(),
-        auction_status: auction.status || 'PENDING',
+        buy_now_price: Math.floor(
+          Number(auction.current_price || auction.start_price || 0) * 1.5
+        ),
+        end_time:
+          auction.end_time || new Date(Date.now() + 86400000).toISOString(),
+        auction_status: auction.status || "PENDING",
         seller_rating: 100,
         positive_count: 0,
         negative_count: 0,
@@ -620,21 +634,194 @@ const productDetailView = async (req, res) => {
         page: qpage,
         limit: qlimit,
         total: totalQna,
-        totalPages: Math.max(1, Math.ceil(totalQna / qlimit))
+        totalPages: Math.max(1, Math.ceil(totalQna / qlimit)),
       },
-      relatedProducts: (relatedProducts || []).map(p => ({
+      relatedProducts: (relatedProducts || []).map((p) => ({
         ...p,
         end_time: new Date(Date.now() + 86400000).toISOString(),
       })),
     });
   } catch (error) {
     console.error("Error in productDetailView:", error);
-    return res.status(500).render("error/500", { 
+    return res.status(500).render("error/500", {
       title: "Lỗi hệ thống",
-      user: req.user || null
+      user: req.user || null,
     });
   }
-}
+};
+
+/**
+ * Search View - Full-text search cho products
+ */
+const searchView = async (req, res) => {
+  try {
+    const query = req.query.q || "";
+    const categoryId = req.query.category || "";
+    const sortBy = req.query.sort || "relevance"; // relevance, price_asc, price_desc, newest
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 12;
+    const offset = (page - 1) * limit;
+
+    let results = [];
+    let total = 0;
+    let categories = [];
+
+    // Lấy danh sách categories để hiển thị filter
+    try {
+      const [catRows] = await db.query(
+        `SELECT id, name, slug FROM categories WHERE parent_id IS NULL ORDER BY name ASC`,
+        { raw: true }
+      );
+      categories = catRows || [];
+    } catch (e) {
+      console.warn("Skip categories:", e.message);
+    }
+
+    // Nếu có query search
+    if (query.trim()) {
+      const searchWords = query.trim().replace(/\s+/g, " ");
+      const searchPattern = `%${searchWords}%`;
+
+      // Kiểm tra FULLTEXT index có sẵn không
+      let hasFulltext = false;
+      try {
+        await db.query(
+          `SELECT 1 FROM products 
+           WHERE MATCH(title, short_description, full_description) AGAINST(? IN NATURAL LANGUAGE MODE) LIMIT 1`,
+          { replacements: [searchWords], raw: true }
+        );
+        hasFulltext = true;
+      } catch (e) {
+        console.warn("FULLTEXT index not available, using LIKE fallback");
+        hasFulltext = false;
+      }
+
+      // Build WHERE clause và replacements cho COUNT query
+      let whereClause = `p.status = 'APPROVED'`;
+      let whereReplacements = [];
+
+      if (hasFulltext) {
+        whereClause += ` AND MATCH(p.title, p.short_description, p.full_description) AGAINST(? IN NATURAL LANGUAGE MODE)`;
+        whereReplacements.push(searchWords);
+      } else {
+        whereClause += ` AND (p.title LIKE ? OR p.short_description LIKE ? OR p.full_description LIKE ?)`;
+        whereReplacements.push(searchPattern, searchPattern, searchPattern);
+      }
+
+      if (categoryId) {
+        whereClause += ` AND p.category_id = ?`;
+        whereReplacements.push(categoryId);
+      }
+
+      // COUNT total
+      const [[{ total: totalCount }]] = await db.query(
+        `SELECT COUNT(*) AS total FROM products p WHERE ${whereClause}`,
+        { replacements: whereReplacements, raw: true }
+      );
+      total = totalCount || 0;
+
+      // Build SELECT clause, ORDER BY, và replacements cho main query
+      let selectRelevance = "0";
+      let orderBy = "p.created_at DESC";
+      let selectReplacements = []; // Replacements cho SELECT clause
+      let orderReplacements = []; // Replacements cho ORDER BY
+
+      if (sortBy === "relevance") {
+        if (hasFulltext) {
+          selectRelevance = `MATCH(p.title, p.short_description, p.full_description) AGAINST(? IN NATURAL LANGUAGE MODE)`;
+          selectReplacements.push(searchWords);
+          orderBy = `relevance_score DESC, p.created_at DESC`;
+        } else {
+          selectRelevance = `(CASE 
+            WHEN p.title LIKE ? THEN 3 
+            WHEN p.short_description LIKE ? THEN 2 
+            WHEN p.full_description LIKE ? THEN 1 
+            ELSE 0 END)`;
+          selectReplacements.push(searchPattern, searchPattern, searchPattern);
+          orderBy = `relevance_score DESC, p.created_at DESC`;
+        }
+      } else if (sortBy === "price_asc") {
+        orderBy = "a.current_price ASC, p.created_at DESC";
+      } else if (sortBy === "price_desc") {
+        orderBy = "a.current_price DESC, p.created_at DESC";
+      } else if (sortBy === "newest") {
+        orderBy = "p.created_at DESC";
+      }
+
+      // Query lấy kết quả - build replacements theo đúng thứ tự trong SQL
+      const [rows] = await db.query(
+        `SELECT 
+          p.id AS product_id, 
+          p.title, 
+          p.thumbnail AS image, 
+          p.short_description,
+          c.name AS category_name,
+          u.name AS seller_name,
+          a.current_price,
+          a.end_time,
+          ${selectRelevance} AS relevance_score
+         FROM products p
+         LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN users u ON p.seller_id = u.id
+         LEFT JOIN auctions a ON a.product_id = p.id
+         WHERE ${whereClause}
+         ORDER BY ${orderBy}
+         LIMIT ? OFFSET ?`,
+        {
+          replacements: [
+            ...selectReplacements, // Cho SELECT clause
+            ...whereReplacements, // Cho WHERE clause
+            limit, // Cho LIMIT
+            offset, // Cho OFFSET
+          ],
+          raw: true,
+        }
+      );
+
+      results = (rows || []).map((p) => {
+        // Fix image path
+        if (!p.image || p.image.includes("placeholder")) {
+          p.image = `/uploads/products/${p.product_id}/0.jpg`;
+        }
+        return p;
+      });
+    }
+
+    const pagination = {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
+
+    return res.render("search/results", {
+      title: query ? `Tìm kiếm: ${query}` : "Tìm kiếm sản phẩm",
+      query,
+      categoryId,
+      sortBy,
+      results,
+      categories,
+      pagination,
+      isAuthenticated: !!req.user,
+      currentUser: req.user || null,
+      role: (req.user?.role || "").toLowerCase(),
+    });
+  } catch (err) {
+    console.error("page.searchView error:", err);
+    return res.render("search/results", {
+      title: "Tìm kiếm sản phẩm",
+      query: req.query.q || "",
+      categoryId: "",
+      sortBy: "relevance",
+      results: [],
+      categories: [],
+      pagination: { page: 1, limit: 12, total: 0, totalPages: 1 },
+      isAuthenticated: !!req.user,
+      currentUser: req.user || null,
+      role: (req.user?.role || "").toLowerCase(),
+    });
+  }
+};
 
 export default {
   index,
@@ -647,4 +834,5 @@ export default {
   profileProductView,
   profileAuctionView,
   productDetailView,
+  searchView,
 };

@@ -1,0 +1,203 @@
+<%- contentFor('body') %>
+
+<div class="py-8 min-h-screen">
+  <!-- Search Header -->
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-2">
+      <% if (query) { %>
+        Kết quả tìm kiếm: "<%= query %>"
+      <% } else { %>
+        Tìm kiếm sản phẩm
+      <% } %>
+    </h1>
+    <p class="text-gray-600">
+      Tìm thấy <%= pagination.total %> sản phẩm
+    </p>
+  </div>
+
+  <!-- Search Form + Filters -->
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <form action="/search" method="GET" class="space-y-4">
+      <!-- Search Input -->
+      <div>
+        <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">
+          Tìm kiếm
+        </label>
+        <input
+          id="search-input"
+          type="text"
+          name="q"
+          value="<%= query %>"
+          placeholder="Nhập từ khóa tìm kiếm..."
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+        >
+      </div>
+
+      <!-- Filters Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Category Filter -->
+        <div>
+          <label for="category-select" class="block text-sm font-medium text-gray-700 mb-2">
+            Danh mục
+          </label>
+          <select
+            id="category-select"
+            name="category"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          >
+            <option value="">Tất cả danh mục</option>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat.id %>" <%= categoryId == cat.id ? 'selected' : '' %>>
+                <%= cat.name %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+
+        <!-- Sort By -->
+        <div>
+          <label for="sort-select" class="block text-sm font-medium text-gray-700 mb-2">
+            Sắp xếp theo
+          </label>
+          <select
+            id="sort-select"
+            name="sort"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          >
+            <option value="relevance" <%= sortBy === 'relevance' ? 'selected' : '' %>>Liên quan nhất</option>
+            <option value="newest" <%= sortBy === 'newest' ? 'selected' : '' %>>Mới nhất</option>
+            <option value="price_asc" <%= sortBy === 'price_asc' ? 'selected' : '' %>>Giá thấp đến cao</option>
+            <option value="price_desc" <%= sortBy === 'price_desc' ? 'selected' : '' %>>Giá cao đến thấp</option>
+          </select>
+        </div>
+
+        <!-- Search Button -->
+        <div class="flex items-end">
+          <button
+            type="submit"
+            class="w-full px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors font-medium"
+          >
+            🔍 Tìm kiếm
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Results Grid -->
+  <% if (results.length > 0) { %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+      <% results.forEach(product => { %>
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden">
+          <a href="/product/<%= product.product_id %>" class="block">
+            <!-- Product Image -->
+            <div class="relative aspect-square bg-gray-100">
+              <img
+                src="<%= product.image %>"
+                alt="<%= product.title %>"
+                class="w-full h-full object-cover"
+                onerror="this.src='/images/placeholder.jpg'"
+              >
+              <% if (product.relevance_score && sortBy === 'relevance') { %>
+                <div class="absolute top-2 right-2 bg-teal-500 text-white text-xs px-2 py-1 rounded">
+                  ⭐ <%= (product.relevance_score * 100).toFixed(0) %>%
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Product Info -->
+            <div class="p-4">
+              <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-teal-600">
+                <%= product.title %>
+              </h3>
+              
+              <% if (product.short_description) { %>
+                <p class="text-sm text-gray-600 mb-3 line-clamp-2">
+                  <%= product.short_description %>
+                </p>
+              <% } %>
+
+              <div class="flex items-center justify-between text-sm text-gray-500 mb-2">
+                <span class="flex items-center gap-1">
+                  📁 <%= product.category_name || 'Khác' %>
+                </span>
+                <% if (product.seller_name) { %>
+                  <span class="flex items-center gap-1">
+                    👤 <%= product.seller_name %>
+                  </span>
+                <% } %>
+              </div>
+
+              <% if (product.current_price) { %>
+                <div class="flex items-center justify-between pt-3 border-t">
+                  <span class="text-sm text-gray-600">Giá hiện tại:</span>
+                  <span class="text-lg font-bold text-teal-600">
+                    <%= new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.current_price) %>
+                  </span>
+                </div>
+              <% } %>
+
+              <% if (product.end_time) { %>
+                <div class="mt-2 text-xs text-gray-500">
+                  ⏰ Kết thúc: <%= new Date(product.end_time).toLocaleString('vi-VN') %>
+                </div>
+              <% } %>
+            </div>
+          </a>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Pagination -->
+    <% if (pagination.totalPages > 1) { %>
+      <div class="flex justify-center items-center gap-2">
+        <% if (pagination.page > 1) { %>
+          <a
+            href="/search?q=<%= encodeURIComponent(query) %>&category=<%= categoryId %>&sort=<%= sortBy %>&page=<%= pagination.page - 1 %>"
+            class="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50"
+          >
+            ← Trước
+          </a>
+        <% } %>
+
+        <span class="px-4 py-2 text-gray-700">
+          Trang <%= pagination.page %> / <%= pagination.totalPages %>
+        </span>
+
+        <% if (pagination.page < pagination.totalPages) { %>
+          <a
+            href="/search?q=<%= encodeURIComponent(query) %>&category=<%= categoryId %>&sort=<%= sortBy %>&page=<%= pagination.page + 1 %>"
+            class="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50"
+          >
+            Sau →
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+
+  <% } else { %>
+    <!-- No Results -->
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <div class="text-6xl mb-4">🔍</div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-2">
+        Không tìm thấy kết quả
+      </h3>
+      <p class="text-gray-600 mb-6">
+        <% if (query) { %>
+          Không tìm thấy sản phẩm nào cho từ khóa "<%= query %>"
+        <% } else { %>
+          Vui lòng nhập từ khóa để tìm kiếm
+        <% } %>
+      </p>
+      <div class="space-y-2 text-sm text-gray-600">
+        <p>💡 Gợi ý:</p>
+        <ul class="list-disc list-inside text-left max-w-md mx-auto">
+          <li>Kiểm tra lỗi chính tả</li>
+          <li>Thử sử dụng từ khóa khác</li>
+          <li>Sử dụng từ khóa tổng quát hơn</li>
+          <li>Thử bỏ bớt bộ lọc</li>
+        </ul>
+      </div>
+    </div>
+  <% } %>
+</div>
