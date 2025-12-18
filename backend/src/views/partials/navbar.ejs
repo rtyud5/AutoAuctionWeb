@@ -1,5 +1,5 @@
 <nav class="w-full bg-teal-500 text-white shadow-md relative z-50">
-  <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+  <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-center gap-4">
     <!-- Left: Logo + menu -->
     <div class="flex items-center gap-6">
       <!-- Logo -->
@@ -40,9 +40,9 @@
     </div>
 
     <!-- Right: Search + Auth -->
-    <div class="flex items-center gap-3 flex-1 justify-end">
+    <div class="flex items-center gap-3 flex-1 justify-start">
       <!-- Search (UI only) -->
-      <div class="hidden sm:flex items-center bg-teal-400/30 rounded-full px-4 py-1.5 max-w-md w-full">
+      <div class="hidden sm:flex items-center bg-teal-400/30 rounded-full px-4 py-1.5 max-w-xs w-full">
         <input
           type="text"
           placeholder="Search..."
@@ -73,6 +73,13 @@
             </a>
           </div>
         <% } else { %>
+          <% if (role === 'seller') { %>
+            <a href="/seller/questions"
+              class="inline-flex items-center justify-center rounded-full bg-white/90 hover:bg-white w-7 h-7 transition-colors text-teal-700 text-lg mr-2"
+              title="Câu hỏi của người mua">
+              💬
+            </a>
+          <% } %>
           <!-- Logged-in user view -->
           <div id="auth-user"
             class="flex items-center gap-2 relative overflow-visible cursor-pointer text-xs sm:text-sm">
@@ -116,9 +123,6 @@
                 </a>
                 <a href="/seller/products/new" class="block px-4 py-2 hover:bg-slate-100">
                   Đăng sản phẩm
-                </a>
-                <a href="/seller/questions" class="block px-4 py-2 hover:bg-slate-100">
-                  Câu hỏi của người mua
                 </a>
               <% } %>
               <a href="/itemHistory" class="block px-4 py-2 hover:bg-slate-100">
