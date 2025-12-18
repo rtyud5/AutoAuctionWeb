@@ -436,11 +436,11 @@
 
 
 <script>
-    const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
-    const IS_AUTH = <%= user ? 'true' : 'false' %>;
-    const PRODUCT_ID = <%= product.id %>;
-    const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
-    const BUY_NOW_PRICE = <%= Number(product.buy_now_price || (product.current_price * 1.5)) %>;
+    AUCTION_ID =  product.auction_id ? Number(product.auction_id) : 'null' ;
+    IS_AUTH =  user ? 'true' : 'false';
+    PRODUCT_ID = product.id;
+    HAD_AUTOBID = myAutoBid ? 'true' : 'false';
+    BUY_NOW_PRICE = Number(product.buy_now_price || (product.current_price * 1.5));
 
     let __pendingPaymentAction = null;
 
