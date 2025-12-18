@@ -94,7 +94,7 @@
                     <p class="text-sm text-gray-600 mb-2">
                         Mua ngay với giá <b><%= Number(product.buy_now_price || (product.current_price * 1.5)).toLocaleString('vi-VN') %> VND</b>. Hành động này sẽ kết thúc phiên đấu giá.
                     </p>
-                    <form method="post" action="/auctions/<%= product.auction_id %>/buy" onsubmit="return confirm('Bạn chắc chắn muốn MUA NGAY sản phẩm này? Phiên đấu giá sẽ kết thúc.');">
+                    <form method="post" action="/auctions/<%= product.auction_id %>/buy" onsubmit="return openPaymentModal(event, 'buyNow');">
                         <button 
                             type="submit" 
                             id="buyNowBtn"
@@ -112,7 +112,7 @@
                         Nhập mức giá tối đa (<b>nhỏ hơn giá mua ngay</b>). Hệ thống sẽ tự tăng theo <b>bước giá tối thiểu</b> (<%= Number(product.step_price || 0).toLocaleString('vi-VN') %> VND) khi có người vượt bạn, nhưng không vượt quá max.
                     </p>
 
-                    <form onsubmit="setAutoBid(event)">
+                    <form onsubmit="return openPaymentModal(event, 'autoBid');">
                         <div class="flex gap-2">
                             <input 
                                 type="number" 
@@ -323,9 +323,203 @@
     </div>
 </footer>
 
+
+    <!-- Demo Payment Modal -->
+    <div id="paymentModal" class="fixed inset-0 hidden z-50">
+        <div class="absolute inset-0 bg-black/50" onclick="closePaymentModal()"></div>
+        <div class="relative mx-auto mt-24 w-[92%] max-w-md bg-white rounded-xl shadow-lg p-6">
+            <h3 id="paymentTitle" class="text-lg font-semibold mb-2">Xác nhận thanh toán</h3>
+            <p id="paymentDesc" class="text-sm text-gray-600 mb-4"></p>
+
+            <div class="flex justify-center mb-3">
+                <!-- QR DEMO (SVG) -->
+                <svg width="180" height="180" viewBox="0 0 180 180" class="border border-gray-200 rounded">
+                    <rect width="180" height="180" fill="#fff"/>
+                    <!-- Finder patterns -->
+                    <rect x="10" y="10" width="50" height="50" fill="#000"/>
+                    <rect x="18" y="18" width="34" height="34" fill="#fff"/>
+                    <rect x="26" y="26" width="18" height="18" fill="#000"/>
+
+                    <rect x="120" y="10" width="50" height="50" fill="#000"/>
+                    <rect x="128" y="18" width="34" height="34" fill="#fff"/>
+                    <rect x="136" y="26" width="18" height="18" fill="#000"/>
+
+                    <rect x="10" y="120" width="50" height="50" fill="#000"/>
+                    <rect x="18" y="128" width="34" height="34" fill="#fff"/>
+                    <rect x="26" y="136" width="18" height="18" fill="#000"/>
+
+                    <!-- Random modules (demo) -->
+                    <g fill="#000">
+                        <rect x="70" y="20" width="10" height="10"/>
+                        <rect x="90" y="20" width="10" height="10"/>
+                        <rect x="70" y="40" width="10" height="10"/>
+                        <rect x="80" y="50" width="10" height="10"/>
+                        <rect x="90" y="60" width="10" height="10"/>
+                        <rect x="60" y="70" width="10" height="10"/>
+                        <rect x="80" y="70" width="10" height="10"/>
+                        <rect x="100" y="70" width="10" height="10"/>
+                        <rect x="70" y="90" width="10" height="10"/>
+                        <rect x="90" y="90" width="10" height="10"/>
+                        <rect x="110" y="90" width="10" height="10"/>
+                        <rect x="70" y="110" width="10" height="10"/>
+                        <rect x="90" y="110" width="10" height="10"/>
+                        <rect x="110" y="110" width="10" height="10"/>
+                        <rect x="130" y="110" width="10" height="10"/>
+                        <rect x="70" y="130" width="10" height="10"/>
+                        <rect x="90" y="130" width="10" height="10"/>
+                        <rect x="110" y="130" width="10" height="10"/>
+                        <rect x="130" y="130" width="10" height="10"/>
+                        <rect x="150" y="130" width="10" height="10"/>
+                    </g>
+                    <text x="90" y="175" text-anchor="middle" font-size="10" fill="#666">QR DEMO</text>
+                </svg>
+            </div>
+
+            <p class="text-xs text-gray-500 text-center mb-4">
+                Đây là thanh toán demo. Bấm “Xác nhận đã thanh toán” để tiếp tục.
+            </p>
+
+            <div class="flex gap-2">
+                <button type="button"
+                        class="flex-1 border border-gray-300 rounded px-4 py-2 hover:bg-gray-50 transition"
+                        onclick="closePaymentModal()">
+                    Hủy
+                </button>
+                <button type="button"
+                        id="paymentConfirmBtn"
+                        class="flex-1 bg-gray-900 text-white rounded px-4 py-2 hover:bg-gray-800 transition"
+                        onclick="confirmPayment()">
+                    Xác nhận đã thanh toán
+                </button>
+            </div>
+        </div>
+    </div>
+
+
 <script>
     const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
     const IS_AUTH = <%= user ? 'true' : 'false' %>;
+    const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
+    const BUY_NOW_PRICE = <%= Number(product.buy_now_price || (product.current_price * 1.5)) %>;
+
+    let __pendingPaymentAction = null;
+
+
+    function openPaymentModal(event, action) {
+        if (event && event.preventDefault) event.preventDefault();
+
+        if (!IS_AUTH) {
+            window.location.href = '/login';
+            return false;
+        }
+        if (!AUCTION_ID) {
+            alert('Không tìm thấy phiên đấu giá.');
+            return false;
+        }
+
+        __pendingPaymentAction = action;
+
+        const modal = document.getElementById('paymentModal');
+        const title = document.getElementById('paymentTitle');
+        const desc  = document.getElementById('paymentDesc');
+
+        if (action === 'autoBid') {
+            const max_amount = Number(document.getElementById('autoBidMax')?.value || 0);
+            if (!max_amount || max_amount <= 0) {
+                alert('Vui lòng nhập max hợp lệ.');
+                return false;
+            }
+            title.textContent = 'Xác nhận thanh toán Auto-bid';
+            desc.textContent = HAD_AUTOBID
+                ? `Thanh toán demo để cập nhật auto-bid. Max mới: ${max_amount.toLocaleString('vi-VN')} VND. Sau khi thanh toán sẽ hoàn tiền auto-bid trước đó.`
+                : `Thanh toán demo để kích hoạt auto-bid. Max: ${max_amount.toLocaleString('vi-VN')} VND.`;
+        } else if (action === 'buyNow') {
+            title.textContent = 'Xác nhận thanh toán Mua ngay';
+            desc.textContent = `Thanh toán demo để mua ngay sản phẩm với giá ${BUY_NOW_PRICE.toLocaleString('vi-VN')} VND. Hành động này sẽ kết thúc phiên đấu giá.`;
+        } else {
+            title.textContent = 'Xác nhận thanh toán';
+            desc.textContent = '';
+        }
+
+        modal.classList.remove('hidden');
+        return false;
+    }
+
+    function closePaymentModal() {
+        const modal = document.getElementById('paymentModal');
+        if (modal) modal.classList.add('hidden');
+        __pendingPaymentAction = null;
+    }
+
+    async function confirmPayment() {
+        const btn = document.getElementById('paymentConfirmBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            if (__pendingPaymentAction === 'autoBid') {
+                await apiSetAutoBidAfterPayment();
+            } else if (__pendingPaymentAction === 'buyNow') {
+                await apiBuyNowAfterPayment();
+            } else {
+                closePaymentModal();
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async function apiSetAutoBidAfterPayment() {
+        const max_amount = Number(document.getElementById('autoBidMax')?.value || 0);
+
+        const res = await fetch(`/auctions/${AUCTION_ID}/auto-bid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ max_amount })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.message || data.error || 'Lưu auto-bid thất bại');
+            return;
+        }
+
+        closePaymentModal();
+
+        if (HAD_AUTOBID) {
+            alert('Đã thanh toán AutoBid thành công và đã hoàn tiền AutoBid trước đó (demo).');
+        } else {
+            alert('Đã thanh toán AutoBid thành công (demo).');
+        }
+
+        if (data.note) alert(data.note);
+
+        window.location.reload();
+    }
+
+    async function apiBuyNowAfterPayment() {
+        const res = await fetch(`/auctions/${AUCTION_ID}/buy`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.message || 'Mua ngay thất bại');
+            return;
+        }
+
+        closePaymentModal();
+
+        alert('Đã mua sản phẩm thành công (demo).');
+        if (data.orderId) {
+            window.location.href = `/orders/${data.orderId}`;
+        } else {
+            window.location.reload();
+        }
+    }
+
 
     // Countdown timer
     function updateCountdown() {
@@ -408,29 +602,6 @@
             document.getElementById('questionText').value = '';
         }
         // TODO: Implement AJAX call
-    }
-
-    function setAutoBid(event) {
-        event.preventDefault();
-        if (!IS_AUTH) return window.location.href = '/login';
-        if (!AUCTION_ID) return alert('Không tìm thấy phiên đấu giá.');
-
-        const max_amount = Number(document.getElementById('autoBidMax')?.value || 0);
-        if (!max_amount || max_amount <= 0) return alert('Vui lòng nhập max hợp lệ.');
-
-        fetch(`/auctions/${AUCTION_ID}/auto-bid`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ max_amount })
-        })
-        .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (!ok || !d.success) return alert(d.message || d.error || 'Lưu auto-bid thất bại');
-            if (d.note) alert(d.note);
-            window.location.reload();
-        })
-        .catch(() => alert('Lưu auto-bid thất bại'));
     }
 </script>
 </body>
