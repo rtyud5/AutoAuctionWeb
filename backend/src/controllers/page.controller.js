@@ -666,7 +666,7 @@ const searchView = async (req, res) => {
     let total = 0;
     let categories = [];
 
-    // Lấy danh sách categories để hiển thị filter
+    // Lấy danh sách categories để hiển thị filters
     try {
       const [catRows] = await db.query(
         `SELECT id, name, slug FROM categories WHERE parent_id IS NULL ORDER BY name ASC`,
