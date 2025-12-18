@@ -619,7 +619,7 @@ const listQuestions = async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT q.id, q.content AS question, q.created_at,
-              u.name AS user_name, p.title AS product_title, a.id AS auction_id,
+              u.name AS user_name, p.title AS product_title, p.id AS product_id, a.id AS auction_id,
               ans.content AS answer, ans.created_at AS answered_at
        FROM questions q
        JOIN auctions a ON a.id = q.auction_id

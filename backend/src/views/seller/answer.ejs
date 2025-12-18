@@ -11,7 +11,14 @@
             <div>
               <p class="font-semibold text-gray-900"><%= q.user_name || 'Ẩn danh' %></p>
               <p class="text-xs text-gray-500"><%= new Date(q.created_at).toLocaleString('vi-VN') %></p>
-              <p class="text-sm text-gray-600 mt-1">Sản phẩm: <strong><%= q.product_title %></strong></p>
+              <p class="text-sm text-gray-600 mt-1">
+                Sản phẩm:
+                <strong>
+                  <a href="/product/<%= q.product_id %>" class="text-blue-600 hover:underline">
+                    <%= q.product_title %>
+                  </a>
+                </strong>
+              </p>
             </div>
             <% if (q.answer) { %>
               <span class="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Đã trả lời</span>
