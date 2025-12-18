@@ -271,67 +271,155 @@ const profileProductView = async (req, res) => {
 const profileAuctionView = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.redirect('/login');
+    if (!userId) return res.redirect("/login");
 
-    // 1. Sản phẩm đang đấu giá (APPROVED, chưa kết thúc)
+    // Helper: ảnh fallback theo convention uploads/products/<product_id>/0.jpg
+    const ensureImage = (row) => {
+      if (row && (!row.image || String(row.image).includes("placeholder"))) {
+        const pid = row.product_id || row.id;
+        if (pid) row.image = `/uploads/products/${pid}/0.jpg`;
+      }
+      return row;
+    };
+
+    // 1) Đang diễn ra: các phiên mà user đang tham gia (đã bid hoặc đang bật auto-bid)
     let activeAuctions = [];
     try {
-      const [activeData] = await db.query(
-        `SELECT id, title, thumbnail AS image, end_time
-         FROM products
-         WHERE status = 'APPROVED' AND end_time > NOW()
-         ORDER BY end_time ASC
-         LIMIT 10`,
-        { raw: true }
+      const [rows] = await db.query(
+        `
+        SELECT DISTINCT
+          p.id AS product_id,
+          p.title,
+          p.thumbnail AS image,
+          a.id AS auction_id,
+          a.current_price,
+          a.end_time
+        FROM auctions a
+        JOIN products p ON p.id = a.product_id
+        LEFT JOIN bids b
+          ON b.auction_id = a.id AND b.bidder_id = ?
+        LEFT JOIN auto_bid_rules r
+          ON r.auction_id = a.id AND r.bidder_id = ? AND r.is_active = 1
+        WHERE p.status = 'APPROVED'
+          AND a.end_time > NOW()
+          AND (b.id IS NOT NULL OR r.id IS NOT NULL)
+        ORDER BY a.end_time ASC
+        LIMIT 30
+        `,
+        { replacements: [userId, userId], raw: true }
       );
-      activeAuctions = activeData || [];
+      activeAuctions = (rows || []).map(ensureImage);
     } catch (e) {
-      console.warn('Skip activeAuctions:', e.message);
+      console.warn("Skip activeAuctions:", e.message);
+      activeAuctions = [];
     }
 
-    // 2. Sản phẩm đã thắng (SOLD)
+    // 2) Đã thắng: ưu tiên lấy theo orders (buyer_id = user)
     let wonAuctions = [];
     try {
-      const [wonData] = await db.query(
-        `SELECT id, title, thumbnail AS image, updated_at AS win_time
-         FROM products
-         WHERE status = 'SOLD'
-         ORDER BY updated_at DESC
-         LIMIT 10`,
-        { raw: true }
-      );
-      wonAuctions = wonData || [];
-    } catch (e) {
-      console.warn('Skip wonAuctions:', e.message);
-    }
-
-    // 3. Yêu thích (nếu có bảng favorites)
-    let favoriteProducts = [];
-    try {
-      const [favData] = await db.query(
-        `SELECT p.id, p.title, p.thumbnail AS image
-         FROM favorites f
-         JOIN products p ON p.id = f.product_id
-         WHERE f.user_id = ?`,
+      const [rows] = await db.query(
+        `
+        SELECT
+          p.id AS product_id,
+          p.title,
+          p.thumbnail AS image,
+          o.id AS order_id,
+          o.created_at AS win_time,
+          a.current_price
+        FROM orders o
+        JOIN auctions a ON a.id = o.auction_id
+        JOIN products p ON p.id = a.product_id
+        WHERE o.buyer_id = ?
+        ORDER BY o.created_at DESC
+        LIMIT 30
+        `,
         { replacements: [userId], raw: true }
       );
-      favoriteProducts = favData || [];
+      wonAuctions = (rows || []).map(ensureImage);
     } catch (e) {
-      console.warn('Skip favoriteProducts:', e.message);
-      favoriteProducts = [];
+      // Fallback: nếu chưa có orders thì lấy theo winner_id và đã kết thúc
+      console.warn("orders query failed, fallback wonAuctions:", e.message);
+      try {
+        const [rows2] = await db.query(
+          `
+          SELECT
+            p.id AS product_id,
+            p.title,
+            p.thumbnail AS image,
+            a.end_time AS win_time,
+            a.current_price
+          FROM auctions a
+          JOIN products p ON p.id = a.product_id
+          WHERE a.current_winner_id = ?
+            AND a.end_time <= NOW()
+          ORDER BY a.end_time DESC
+          LIMIT 30
+          `,
+          { replacements: [userId], raw: true }
+        );
+        wonAuctions = (rows2 || []).map(ensureImage);
+      } catch (e2) {
+        console.warn("Skip wonAuctions:", e2.message);
+        wonAuctions = [];
+      }
     }
 
-    return res.render('profile/auction', {
-      title: 'Quản lý đấu giá',
+    // 3) Yêu thích: ưu tiên watch_list (schema đã có model), fallback favorites (nếu bạn có bảng khác)
+    let favoriteProducts = [];
+    try {
+      const [rows] = await db.query(
+        `
+        SELECT DISTINCT
+          p.id AS product_id,
+          p.title,
+          p.thumbnail AS image,
+          a.id AS auction_id,
+          w.created_at AS liked_at
+        FROM watch_list w
+        JOIN auctions a ON a.id = w.auction_id
+        JOIN products p ON p.id = a.product_id
+        WHERE w.user_id = ?
+        ORDER BY w.created_at DESC
+        LIMIT 60
+        `,
+        { replacements: [userId], raw: true }
+      );
+      favoriteProducts = (rows || []).map(ensureImage);
+    } catch (e) {
+      console.warn("watch_list query failed, fallback favorites:", e.message);
+      try {
+        const [rows2] = await db.query(
+          `
+          SELECT DISTINCT
+            p.id AS product_id,
+            p.title,
+            p.thumbnail AS image
+          FROM favorites f
+          JOIN products p ON p.id = f.product_id
+          WHERE f.user_id = ?
+          ORDER BY f.created_at DESC
+          LIMIT 60
+          `,
+          { replacements: [userId], raw: true }
+        );
+        favoriteProducts = (rows2 || []).map(ensureImage);
+      } catch (e2) {
+        console.warn("Skip favoriteProducts:", e2.message);
+        favoriteProducts = [];
+      }
+    }
+
+    return res.render("profile/auction", {
+      title: "Quản lý đấu giá",
       activeAuctions,
       wonAuctions,
       favoriteProducts,
       user: req.user || null,
     });
   } catch (err) {
-    console.error('profileAuctionView error:', err);
-    return res.render('profile/auction', {
-      title: 'Quản lý đấu giá',
+    console.error("profileAuctionView error:", err);
+    return res.render("profile/auction", {
+      title: "Quản lý đấu giá",
       activeAuctions: [],
       wonAuctions: [],
       favoriteProducts: [],
@@ -339,6 +427,7 @@ const profileAuctionView = async (req, res) => {
     });
   }
 };
+
 
 const productDetailView = async (req, res) => {
   const { id } = req.params;

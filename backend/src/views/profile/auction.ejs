@@ -8,11 +8,14 @@
     <% if (activeAuctions && activeAuctions.length) { %>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% activeAuctions.forEach(a => { %>
-          <div class="bg-white rounded-lg shadow p-4">
-            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= a.image || '/images/placeholder.jpg' %>" alt="<%= a.title %>">
+          <a href="/product/<%= a.product_id %>" class="block bg-white rounded-lg shadow p-4 hover:shadow-md transition">
+            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= a.image || ('/uploads/products/' + a.product_id + '/0.jpg') %>" alt="<%= a.title %>">
             <h3 class="font-semibold text-slate-800"><%= a.title %></h3>
+            <% if (typeof a.current_price !== 'undefined') { %>
+              <p class="text-sm text-slate-600">Giá hiện tại: <%= Number(a.current_price || 0).toLocaleString('vi-VN') %> VND</p>
+            <% } %>
             <p class="text-sm text-slate-500">Kết thúc: <%= a.end_time ? new Date(a.end_time).toLocaleString() : '—' %></p>
-          </div>
+          </a>
         <% }) %>
       </div>
     <% } else { %>
@@ -25,11 +28,17 @@
     <% if (wonAuctions && wonAuctions.length) { %>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% wonAuctions.forEach(a => { %>
-          <div class="bg-white rounded-lg shadow p-4">
-            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= a.image || '/images/placeholder.jpg' %>" alt="<%= a.title %>">
+          <a href="/product/<%= a.product_id %>" class="block bg-white rounded-lg shadow p-4 hover:shadow-md transition">
+            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= a.image || ('/uploads/products/' + a.product_id + '/0.jpg') %>" alt="<%= a.title %>">
             <h3 class="font-semibold text-slate-800"><%= a.title %></h3>
+            <% if (typeof a.current_price !== 'undefined') { %>
+              <p class="text-sm text-slate-600">Giá chốt: <%= Number(a.current_price || 0).toLocaleString('vi-VN') %> VND</p>
+            <% } %>
             <p class="text-sm text-slate-500">Thời gian: <%= a.win_time ? new Date(a.win_time).toLocaleString() : '—' %></p>
-          </div>
+            <% if (a.order_id) { %>
+              <p class="text-xs text-slate-400 mt-1">Order: #<%= a.order_id %></p>
+            <% } %>
+          </a>
         <% }) %>
       </div>
     <% } else { %>
@@ -42,10 +51,10 @@
     <% if (favoriteProducts && favoriteProducts.length) { %>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% favoriteProducts.forEach(p => { %>
-          <div class="bg-white rounded-lg shadow p-4">
-            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= p.image || '/images/placeholder.jpg' %>" alt="<%= p.title %>">
+          <a href="/product/<%= p.product_id %>" class="block bg-white rounded-lg shadow p-4 hover:shadow-md transition">
+            <img class="w-full h-40 object-cover rounded-md mb-3" src="<%= p.image || ('/uploads/products/' + p.product_id + '/0.jpg') %>" alt="<%= p.title %>">
             <h3 class="font-semibold text-slate-800"><%= p.title %></h3>
-          </div>
+          </a>
         <% }) %>
       </div>
     <% } else { %>
