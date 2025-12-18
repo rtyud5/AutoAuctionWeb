@@ -72,6 +72,8 @@ router.post(
 // Logout
 router.post('/logout', auth, sellerController.logout);
 
+router.get('/questions', auth, sellerController.listQuestions);
+
 // Seller profile
 router.get('/me', auth, isSeller, sellerController.getProfile);
 router.put(

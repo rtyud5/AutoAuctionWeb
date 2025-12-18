@@ -11,7 +11,6 @@ import bidderRoutes from "./routes/bidder.route.js";
 import sellerRoutes from "./routes/seller.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import orderRoutes from "./routes/order.route.js";
-import sellerRouter from './routes/seller.route.js';
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { attachUser } from "./middlewares/auth.middleware.js";
 
@@ -52,7 +51,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 // Routes
 app.use("/", pageRoutes);
 app.use("/api", apiRoutes);
-app.use('/seller', sellerRouter);
 
 // auth routes (login/register/logout API)
 app.use("/auth", authRoutes);

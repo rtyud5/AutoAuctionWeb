@@ -220,6 +220,78 @@ const listAuctionsByCategory = async (req, res) => {
   }
 };
 
+const askQuestion = async (req, res) => {
+  try {
+    const productId = req.params.productId;
+    const { question } = req.body;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!question || !question.trim()) return res.status(400).json({ success: false, message: 'Question cannot be empty' });
+
+    // tìm auction_id theo product_id
+    const [auctionRows] = await db.query(
+      'SELECT id FROM auctions WHERE product_id = ? LIMIT 1',
+      { replacements: [productId], raw: true }
+    );
+    const auctionId = auctionRows?.[0]?.id;
+    if (!auctionId) return res.status(404).json({ success: false, message: 'Auction not found' });
+
+    await db.query(
+      'INSERT INTO questions (auction_id, asker_id, content, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+      { replacements: [auctionId, userId, question.trim()] }
+    );
+
+    return res.json({ success: true, message: 'Question submitted successfully' });
+  } catch (e) {
+    console.error('askQuestion error:', e);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+const answerQuestion = async (req, res) => {
+  try {
+    const questionId = req.params.id;
+    const { answer } = req.body;
+    const sellerId = req.user?.id;
+    if (!sellerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!answer || !answer.trim()) return res.status(400).json({ success: false, message: 'Answer cannot be empty' });
+
+    // xác minh câu hỏi thuộc auction của seller
+    const [rows] = await db.query(
+      `SELECT q.id
+       FROM questions q
+       JOIN auctions a ON a.id = q.auction_id
+       WHERE q.id = ? AND a.seller_id = ?
+       LIMIT 1`,
+      { replacements: [questionId, sellerId], raw: true }
+    );
+    if (!rows?.length) return res.status(403).json({ success: false, message: 'Unauthorized' });
+
+    // nếu đã có answer thì cập nhật, chưa có thì tạo mới
+    const [hasAnswer] = await db.query(
+      `SELECT id FROM answers WHERE question_id = ? LIMIT 1`,
+      { replacements: [questionId], raw: true }
+    );
+
+    if (hasAnswer?.length) {
+      await db.query(
+        `UPDATE answers SET content = ?, seller_id = ?, updated_at = NOW() WHERE question_id = ?`,
+        { replacements: [answer.trim(), sellerId, questionId] }
+      );
+    } else {
+      await db.query(
+        `INSERT INTO answers (question_id, seller_id, content, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
+        { replacements: [questionId, sellerId, answer.trim()] }
+      );
+    }
+
+    return res.json({ success: true, message: 'Answer submitted successfully' });
+  } catch (e) {
+    console.error('answerQuestion error:', e);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 const search = async (req, res) => {
   // reuse listAuctions logic
   return listAuctions(req, res);
@@ -230,5 +302,7 @@ export default {
   getAuction,
   listCategories,
   listAuctionsByCategory,
-  search
+  search,
+  askQuestion,
+  answerQuestion
 };

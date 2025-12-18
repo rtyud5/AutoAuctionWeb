@@ -611,6 +611,51 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+const listQuestions = async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page || '1', 10));
+  const limit = Math.min(50, Math.max(5, parseInt(req.query.limit || '10', 10)));
+  const offset = (page - 1) * limit;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT q.id, q.content AS question, q.created_at,
+              u.name AS user_name, p.title AS product_title, a.id AS auction_id,
+              ans.content AS answer, ans.created_at AS answered_at
+       FROM questions q
+       JOIN auctions a ON a.id = q.auction_id
+       JOIN products p ON p.id = a.product_id
+       LEFT JOIN users u ON u.id = q.asker_id
+       LEFT JOIN answers ans ON ans.question_id = q.id
+       WHERE a.seller_id = ?
+       ORDER BY q.created_at DESC
+       LIMIT ? OFFSET ?`,
+      { replacements: [req.user.id, limit, offset], raw: true }
+    );
+
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM questions q JOIN auctions a ON a.id = q.auction_id
+       WHERE a.seller_id = ?`,
+      { replacements: [req.user.id], raw: true }
+    );
+
+    return res.render('seller/answer', {
+      title: 'Câu hỏi của người mua',
+      user: req.user || null,
+      questions: rows || [],
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    });
+  } catch (err) {
+    console.error('listQuestions error:', err);
+    return res.status(500).render('error/500', { title: 'Lỗi hệ thống', user: req.user || null });
+  }
+};
+
 export default {
   register,
   login,
@@ -636,5 +681,6 @@ export default {
   listProducts,
   editProductForm,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  listQuestions
 };

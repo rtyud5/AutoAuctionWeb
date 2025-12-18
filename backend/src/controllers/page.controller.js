@@ -424,6 +424,31 @@ const productDetailView = async (req, res) => {
       { replacements: [product.category_id, id], raw: true }
     );
 
+    // Lấy Q&A từ database
+    let qnas = [];
+    try {
+      const [qaRows] = await db.query(
+        `SELECT 
+           q.id,
+           q.content AS question,
+           q.created_at,
+           u.name AS user_name,
+           a.content AS answer,
+           a.created_at AS answered_at
+         FROM questions q
+         LEFT JOIN users u ON u.id = q.asker_id
+         LEFT JOIN answers a ON a.question_id = q.id
+         WHERE q.auction_id = ?
+         ORDER BY q.created_at DESC
+         LIMIT 50`,
+        { replacements: [auction?.id || 0], raw: true }
+      );
+      qnas = qaRows || [];
+    } catch (err) {
+      console.warn('Error fetching QNA:', err.message);
+      qnas = [];
+    }
+
     const imgBase = `/uploads/products/${product.id}`;
     const images = [
       `${imgBase}/0.jpg`,
@@ -493,6 +518,7 @@ const productDetailView = async (req, res) => {
       myAutoBid,
       bids: bids || [],
       reviews,
+      qnas,
       relatedProducts: (relatedProducts || []).map(p => ({
         ...p,
         end_time: new Date(Date.now() + 86400000).toISOString(),

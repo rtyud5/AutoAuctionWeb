@@ -1,6 +1,7 @@
 import { Router } from "express";
 import apiController from "../controllers/api.controller.js";
 
+const { askQuestion, answerQuestion } = apiController;
 const router = Router();
 
 /**
@@ -26,6 +27,9 @@ router.get("/categories/:slug", apiController.listAuctionsByCategory);
  * Returns category tree
  */
 router.get("/categories", apiController.listCategories);
+
+router.post("/products/:productId/questions", askQuestion);
+router.post("/questions/:id/answer", answerQuestion);
 
 /**
  * GET /search
