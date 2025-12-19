@@ -366,6 +366,19 @@ const createProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Thiếu/không hợp lệ: title, category_id, starting_price, step_price' });
     }
 
+    // Seller must upload exactly 4 images to match product detail gallery (0.jpg..3.jpg)
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (files.length !== 4) {
+      // Clean up any temp uploaded files
+      for (const f of files) {
+        try { fs.unlinkSync(f.path); } catch (_) {}
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng tải lên đúng 4 ảnh sản phẩm (bắt buộc 4 ảnh).',
+      });
+    }
+
     let thumbnail = null;
 
     // 1) Product
@@ -382,25 +395,26 @@ const createProduct = async (req, res) => {
       { transaction: t }
     );
 
-    // 2) Lưu ảnh vào folder theo product ID
-    if (req.file) {
-      const productDir = path.join(process.cwd(), 'public', 'uploads', 'products', String(product.id));
-      
-      if (!fs.existsSync(productDir)) {
-        fs.mkdirSync(productDir, { recursive: true });
-      }
-
-      const newFilePath = path.join(productDir, '0.jpg');
-      fs.copyFileSync(req.file.path, newFilePath);
-      fs.unlinkSync(req.file.path);
-      
-      thumbnail = `/uploads/products/${product.id}/0.jpg`;
-
-      await product.update(
-        { thumbnail },
-        { transaction: t }
-      );
+    // 2) Lưu 4 ảnh vào folder theo product ID (0.jpg..3.jpg)
+    const productDir = path.join(process.cwd(), 'public', 'uploads', 'products', String(product.id));
+    if (!fs.existsSync(productDir)) {
+      fs.mkdirSync(productDir, { recursive: true });
     }
+
+    // Save images in deterministic order
+    for (let i = 0; i < 4; i++) {
+      const f = files[i];
+      const newFilePath = path.join(productDir, `${i}.jpg`);
+      try {
+        // Use copy+unlink to be consistent with existing code
+        fs.copyFileSync(f.path, newFilePath);
+      } finally {
+        try { fs.unlinkSync(f.path); } catch (_) {}
+      }
+    }
+
+    thumbnail = `/uploads/products/${product.id}/0.jpg`;
+    await product.update({ thumbnail }, { transaction: t });
 
     // 3) Auction
     const auction = await Auction.create(

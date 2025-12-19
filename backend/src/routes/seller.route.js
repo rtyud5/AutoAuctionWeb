@@ -9,6 +9,25 @@ import upload from '../config/upload.js';
 
 const router = express.Router();
 
+// Multer wrapper: ensure JSON errors for fetch() clients
+const uploadProductImages = (req, res, next) => {
+  const handler = upload.array('images', 4);
+  handler(req, res, (err) => {
+    if (!err) return next();
+
+    // Multer-specific errors typically expose `code`
+    const code = err.code;
+    let message = err.message || 'Upload error';
+    if (code === 'LIMIT_FILE_SIZE') {
+      message = 'Kích thước mỗi ảnh tối đa 5MB.';
+    } else if (code === 'LIMIT_UNEXPECTED_FILE') {
+      message = 'Chỉ được chọn tối đa 4 ảnh.';
+    }
+
+    return res.status(400).json({ success: false, message });
+  });
+};
+
 // helper xử lý kết quả validation
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -36,7 +55,8 @@ router.post(
   '/products',
   auth,
   isSeller,
-  upload.single('thumbnail'),
+  // Require exactly 4 images for product detail gallery (0.jpg..3.jpg)
+  uploadProductImages,
   [
     check('title').notEmpty().withMessage('Title is required'),
     check('category_id').isInt().withMessage('Category is required'),
