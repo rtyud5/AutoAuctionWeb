@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import Category from "../models/category.model.js";
 import { QueryTypes } from "sequelize";
+import { notifyQuestionAsked, notifyQuestionAnswered } from "../services/notification.service.js";
 
 const listAuctions = async (req, res) => {
   try {
@@ -287,6 +288,13 @@ const askQuestion = async (req, res) => {
       { replacements: [auctionId, userId, question.trim()] }
     );
 
+    // Email notify seller
+    await notifyQuestionAsked({
+      auctionId,
+      askerId: userId,
+      question: question.trim(),
+    });
+
     return res.json({
       success: true,
       message: "Question submitted successfully",
@@ -340,6 +348,13 @@ const answerQuestion = async (req, res) => {
         { replacements: [questionId, sellerId, answer.trim()] }
       );
     }
+
+    // Email notify asker
+    await notifyQuestionAnswered({
+      questionId,
+      sellerId,
+      answer: answer.trim(),
+    });
 
     return res.json({
       success: true,

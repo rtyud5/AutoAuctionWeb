@@ -56,6 +56,10 @@ export async function runAutoBidEngine({ transaction, auctionId }) {
   const currentPrice = toNum(auction.current_price);
   const minToBeat = currentPrice + step;
 
+  // For notifications (previous holder before auto-bid updates)
+  const previousWinnerId = auction.current_winner_id || null;
+  const previousPrice = currentPrice;
+
   // bidders bị block khỏi phiên
   const blocked = await BlockedBidder.findAll({
     where: { auction_id: auctionId },
@@ -88,6 +92,8 @@ export async function runAutoBidEngine({ transaction, auctionId }) {
       changed: false,
       finalPrice: currentPrice,
       finalWinnerId: auction.current_winner_id || null,
+      previousWinnerId,
+      previousPrice,
     };
   }
 
@@ -122,11 +128,23 @@ export async function runAutoBidEngine({ transaction, auctionId }) {
   // No change
   const currentWinnerId = auction.current_winner_id || null;
   if (winnerId === currentWinnerId && finalPrice <= currentPrice) {
-    return { changed: false, finalPrice: currentPrice, finalWinnerId: currentWinnerId };
+    return {
+      changed: false,
+      finalPrice: currentPrice,
+      finalWinnerId: currentWinnerId,
+      previousWinnerId,
+      previousPrice,
+    };
   }
   if (finalPrice <= currentPrice) {
     // Cannot improve the auction price, skip.
-    return { changed: false, finalPrice: currentPrice, finalWinnerId: currentWinnerId };
+    return {
+      changed: false,
+      finalPrice: currentPrice,
+      finalWinnerId: currentWinnerId,
+      previousWinnerId,
+      previousPrice,
+    };
   }
 
   const bid = await Bid.create(
@@ -148,5 +166,12 @@ export async function runAutoBidEngine({ transaction, auctionId }) {
     { transaction: t }
   );
 
-  return { changed: true, finalPrice, finalWinnerId: winnerId, bidId: bid.id };
+  return {
+    changed: true,
+    finalPrice,
+    finalWinnerId: winnerId,
+    bidId: bid.id,
+    previousWinnerId,
+    previousPrice,
+  };
 }

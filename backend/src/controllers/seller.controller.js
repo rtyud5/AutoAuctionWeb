@@ -5,6 +5,7 @@ import path from 'path';
 import Product from '../models/product.model.js';
 import Auction from '../models/auction.model.js';
 import BlockedBidder from '../models/blocked_bidder.js';
+import { notifyQuestionAnswered } from '../services/notification.service.js';
 
 /*
   Seller controller — 1:1 map to routes/seller.route.js
@@ -314,11 +315,31 @@ const answerQuestion = async (req, res) => {
   try {
     const questionId = req.params.id;
     const { answer } = req.body;
-    await db.query('INSERT INTO answers (question_id, seller_id, answer, created_at) VALUES (?, ?, ?, NOW())', [
-      questionId,
-      req.user?.id,
-      answer
-    ]);
+    const sellerId = req.user?.id;
+    if (!sellerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!answer || !String(answer).trim()) {
+      return res.status(400).json({ success: false, message: 'Answer cannot be empty' });
+    }
+
+    // Upsert answer by question_id
+    const [hasAnswer] = await db.query(
+      'SELECT id FROM answers WHERE question_id = ? LIMIT 1',
+      { replacements: [questionId], raw: true }
+    );
+
+    if (hasAnswer?.length) {
+      await db.query(
+        'UPDATE answers SET content = ?, seller_id = ?, updated_at = NOW() WHERE question_id = ?',
+        { replacements: [String(answer).trim(), sellerId, questionId] }
+      );
+    } else {
+      await db.query(
+        'INSERT INTO answers (question_id, seller_id, content, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+        { replacements: [questionId, sellerId, String(answer).trim()] }
+      );
+    }
+
+    await notifyQuestionAnswered({ questionId, sellerId, answer: String(answer).trim() });
     return res.json({ success: true });
   } catch (err) {
     console.error('seller.answerQuestion', err);
