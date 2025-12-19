@@ -700,8 +700,8 @@ const productDetailView = async (req, res) => {
         buy_now_price: Math.floor(
           Number(auction.current_price || auction.start_price || 0) * 1.5
         ),
-        end_time:
-          auction.end_time || new Date(Date.now() + 86400000).toISOString(),
+        end_time: auction.end_time ? new Date(auction.end_time).toISOString() : new Date(Date.now() + 86400000).toISOString(),
+        end_time_ms: auction.end_time ? new Date(auction.end_time).getTime() : (Date.now() + 86400000),
         auction_status: auction.status || "PENDING",
         status: auction.status || "PENDING",    
         winner_id: auction.winner_id || null,   

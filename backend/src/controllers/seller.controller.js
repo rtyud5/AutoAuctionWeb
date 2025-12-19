@@ -5,7 +5,6 @@ import path from 'path';
 import Product from '../models/product.model.js';
 import Auction from '../models/auction.model.js';
 import BlockedBidder from '../models/blocked_bidder.js';
-import { notifyQuestionAnswered } from '../services/notification.service.js';
 
 /*
   Seller controller — 1:1 map to routes/seller.route.js
@@ -315,31 +314,11 @@ const answerQuestion = async (req, res) => {
   try {
     const questionId = req.params.id;
     const { answer } = req.body;
-    const sellerId = req.user?.id;
-    if (!sellerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!answer || !String(answer).trim()) {
-      return res.status(400).json({ success: false, message: 'Answer cannot be empty' });
-    }
-
-    // Upsert answer by question_id
-    const [hasAnswer] = await db.query(
-      'SELECT id FROM answers WHERE question_id = ? LIMIT 1',
-      { replacements: [questionId], raw: true }
-    );
-
-    if (hasAnswer?.length) {
-      await db.query(
-        'UPDATE answers SET content = ?, seller_id = ?, updated_at = NOW() WHERE question_id = ?',
-        { replacements: [String(answer).trim(), sellerId, questionId] }
-      );
-    } else {
-      await db.query(
-        'INSERT INTO answers (question_id, seller_id, content, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
-        { replacements: [questionId, sellerId, String(answer).trim()] }
-      );
-    }
-
-    await notifyQuestionAnswered({ questionId, sellerId, answer: String(answer).trim() });
+    await db.query('INSERT INTO answers (question_id, seller_id, answer, created_at) VALUES (?, ?, ?, NOW())', [
+      questionId,
+      req.user?.id,
+      answer
+    ]);
     return res.json({ success: true });
   } catch (err) {
     console.error('seller.answerQuestion', err);
@@ -383,7 +362,32 @@ const createProduct = async (req, res) => {
     const stepPriceNum = step_price ? Number(step_price) : 100000;
     const autoExtendVal = auto_extend === undefined ? true : Boolean(auto_extend);
     const allowNegativeUserVal = String(allow_negative_user || "").toLowerCase() === "true" || allow_negative_user === "on" || allow_negative_user === "1";
-    const endTimeVal = end_time ? new Date(end_time) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+
+    // Parse <input type="datetime-local"> safely as *local time* (no timezone shift).
+    // This keeps behaviour consistent with the old countdown logic and MySQL NOW() comparisons.
+    const parseDatetimeLocal = (s) => {
+      if (!s || typeof s !== "string") return null;
+      if (!s.includes("T")) return null;
+      const [dPart, tPart] = s.split("T");
+      if (!dPart || !tPart) return null;
+      const [y, m, d] = dPart.split("-").map(Number);
+      const [hh, mm] = tPart.split(":").map(Number);
+      if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return null;
+      const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    };
+
+    const endTimeVal = end_time
+      ? (parseDatetimeLocal(end_time) || new Date(end_time))
+      : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+
+    if (end_time && (!endTimeVal || Number.isNaN(endTimeVal.getTime()))) {
+      return res.status(400).json({ success: false, message: "Thời gian kết thúc không hợp lệ." });
+    }
+
+    if (endTimeVal && endTimeVal.getTime() < Date.now() + 60 * 1000) {
+      return res.status(400).json({ success: false, message: "Thời gian kết thúc phải lớn hơn thời điểm hiện tại." });
+    }
 
     if (!title || !category_id || isNaN(startPriceNum) || startPriceNum <= 0 || isNaN(stepPriceNum) || stepPriceNum <= 0) {
       return res.status(400).json({ success: false, message: 'Thiếu/không hợp lệ: title, category_id, starting_price, step_price' });

@@ -61,7 +61,7 @@
                 <!-- Time Remaining -->
                 <div class="mb-6">
                     <p class="text-sm text-gray-600 mb-2">Thời gian còn lại</p>
-                    <div class="flex gap-2" id="countdown" data-end-time="<%= product.end_time %>">
+                    <div class="flex gap-2" id="countdown" data-end-time="<%= product.end_time %>" data-end-ms="<%= product.end_time_ms %>">
                         <div class="bg-teal-800 text-white px-4 py-3 rounded text-center">
                             <div class="text-2xl font-bold" id="days">00</div>
                             <div class="text-xs">Ngày</div>
@@ -797,7 +797,10 @@
         const countdown = document.getElementById('countdown');
         if (!countdown) return;
         
-        const endTime = new Date(countdown.getAttribute('data-end-time')).getTime();
+        const endMsAttr = Number(countdown.getAttribute("data-end-ms"));
+        const endTime = Number.isFinite(endMsAttr) && endMsAttr > 0
+          ? endMsAttr
+          : new Date(countdown.getAttribute("data-end-time")).getTime();
         const now = new Date().getTime();
         const distance = endTime - now;
 
@@ -842,7 +845,11 @@
 
     // Check on page load
     function checkAuctionStatus() {
-        const endTime = new Date(document.getElementById('countdown')?.getAttribute('data-end-time')).getTime();
+        const c = document.getElementById("countdown");
+        const endMsAttr = Number(c?.getAttribute("data-end-ms"));
+        const endTime = Number.isFinite(endMsAttr) && endMsAttr > 0
+          ? endMsAttr
+          : new Date(c?.getAttribute("data-end-time")).getTime();
         const now = new Date().getTime();
         if (endTime - now < 0) {
             disableAuctionButtons();

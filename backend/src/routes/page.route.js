@@ -3,26 +3,34 @@ import pageController from "../controllers/page.controller.js";
 
 const router = Router();
 
-router.get("/", pageController.index);
-router.get("/login", pageController.loginView);
-router.get("/register", pageController.registerView);
-router.get("/setting", pageController.profileView);
-router.get("/review", pageController.reviewView);
-// NOTE: Tránh crash khi controller thiếu handler (đã từng gặp lỗi: Route.get() got undefined)
-// Ưu tiên itemHistoryView (timeline mới), fallback về profileProductView (legacy)
-router.get("/itemHistory", (req, res, next) => {
-  const fn =
-    (typeof pageController?.itemHistoryView === "function" && pageController.itemHistoryView) ||
-    (typeof pageController?.profileProductView === "function" && pageController.profileProductView);
+/**
+ * Safety wrapper: tránh crash khi controller thiếu handler (undefined).
+ * Express yêu cầu callback là function tại thời điểm define route.
+ */
+const safe = (primaryName, fallbackName = null) => (req, res, next) => {
+  const primary = pageController?.[primaryName];
+  const fallback = fallbackName ? pageController?.[fallbackName] : null;
+  const fn = typeof primary === "function" ? primary : typeof fallback === "function" ? fallback : null;
 
-  if (!fn) return res.status(500).send("Missing itemHistory handler");
+  if (!fn) {
+    console.error(`[page.route] Missing handler: ${primaryName}${fallbackName ? ` (fallback: ${fallbackName})` : ""}`);
+    return res.status(500).send("Missing route handler");
+  }
   return fn(req, res, next);
-});
-router.get("/itemManager", pageController.profileAuctionView);
-router.get("/categories/:slug?", pageController.categoryView);
-router.get("/product/:id", pageController.productDetailView);
-router.post("/auctions/:id/rate-seller", pageController.rateSeller);
-router.get("/search", pageController.searchView);
+};
+
+router.get("/", safe("index"));
+router.get("/login", safe("loginView"));
+router.get("/register", safe("registerView"));
+router.get("/setting", safe("profileView"));
+router.get("/review", safe("reviewView"));
+// Ưu tiên itemHistoryView (timeline mới), fallback về profileProductView (legacy)
+router.get("/itemHistory", safe("itemHistoryView", "profileProductView"));
+router.get("/itemManager", safe("profileAuctionView"));
+router.get("/categories/:slug?", safe("categoryView"));
+router.get("/product/:id", safe("productDetailView"));
+router.post("/auctions/:id/rate-seller", safe("rateSeller"));
+router.get("/search", safe("searchView"));
 // Trang xác minh OTP – chỉ render giao diện
 router.get("/verify-otp", (req, res) => {
   const email = req.query.email || "";
@@ -35,6 +43,6 @@ router.get("/verify-otp", (req, res) => {
   });
 });
 
-router.get("/auctions/:id", pageController.showAuction);
+router.get("/auctions/:id", safe("showAuction"));
 
 export default router;
