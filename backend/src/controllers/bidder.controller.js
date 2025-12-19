@@ -258,6 +258,12 @@ const buyNow = async (req, res) => {
   const userId = req.user?.id;
   const auctionId = Number(req.params.id);
 
+  // Optional buyer shipping info (captured before demo payment in UI)
+  // Expected shape: { fullName, phone, address, note }
+  const buyerInfoRaw = req.body?.buyer_info;
+  const buyerInfo = buyerInfoRaw && typeof buyerInfoRaw === 'object' ? buyerInfoRaw : null;
+  const buyerInfoStr = buyerInfo ? JSON.stringify(buyerInfo) : null;
+
   if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
   if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
@@ -314,6 +320,14 @@ const buyNow = async (req, res) => {
       // Create order if not exists
       const existingOrder = await Order.findOne({ where: { auction_id: auctionId }, transaction: t, lock: t.LOCK.UPDATE });
       if (existingOrder) {
+        // If UI already collected address, persist it for the order (idempotent)
+        if (buyerInfoStr) {
+          const nextStatus = existingOrder.status === 'WAIT_BUYER_INFO' ? 'WAIT_SELLER_CONFIRM' : existingOrder.status;
+          await existingOrder.update(
+            { buyer_info: buyerInfoStr, status: nextStatus },
+            { transaction: t }
+          );
+        }
         return { orderId: existingOrder.id, buyNowPrice, productId: auction.product_id };
       }
 
@@ -322,7 +336,8 @@ const buyNow = async (req, res) => {
           auction_id: auctionId,
           seller_id: auction.seller_id,
           buyer_id: userId,
-          status: 'WAIT_BUYER_INFO',
+          status: buyerInfoStr ? 'WAIT_SELLER_CONFIRM' : 'WAIT_BUYER_INFO',
+          buyer_info: buyerInfoStr,
         },
         { transaction: t }
       );

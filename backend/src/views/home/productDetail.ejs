@@ -472,29 +472,143 @@
         </div>
     </div>
 
+    <!-- Shipping Address Modal (required before payment) -->
+    <div id="shippingModal" class="fixed inset-0 hidden z-50">
+        <div class="absolute inset-0 bg-black/50" onclick="closeShippingModal()"></div>
+        <div class="relative mx-auto mt-20 w-[92%] max-w-lg bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold mb-1">Địa chỉ giao hàng</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Vui lòng nhập địa chỉ giao hàng trước khi thanh toán.
+            </p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="shipFullName">Họ và tên người nhận</label>
+                    <input id="shipFullName" type="text" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Nguyễn Văn A" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="shipPhone">Số điện thoại</label>
+                    <input id="shipPhone" type="tel" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="09xxxxxxxx" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="shipAddress">Địa chỉ</label>
+                    <textarea id="shipAddress" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="shipNote">Ghi chú (tuỳ chọn)</label>
+                    <input id="shipNote" type="text" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Ví dụ: Giao giờ hành chính" />
+                </div>
+            </div>
+
+            <div class="mt-5 flex gap-2">
+                <button type="button"
+                        class="flex-1 border border-gray-300 rounded px-4 py-2 hover:bg-gray-50 transition"
+                        onclick="closeShippingModal()">
+                    Hủy
+                </button>
+                <button type="button"
+                        id="shippingContinueBtn"
+                        class="flex-1 bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 transition"
+                        onclick="confirmShippingAndProceed()">
+                    Tiếp tục thanh toán
+                </button>
+            </div>
+        </div>
+    </div>
+
 
 <script>
     const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
     const IS_AUTH = <%= user ? 'true' : 'false' %>;
+    const USER_ID = <%= user ? Number(user.id) : 'null' %>;
     const PRODUCT_ID = <%= product.id %>;
     const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
     const BUY_NOW_PRICE = <%= Number(product.buy_now_price || (product.current_price * 1.5)) %>;
 
     let __pendingPaymentAction = null;
+    let __pendingShippingAddress = null;
+    let __pendingShippingAction = null;
 
+    const SHIPPING_STORAGE_KEY = `auction_default_shipping_v1:${USER_ID || 'guest'}`;
 
-    function openPaymentModal(event, action) {
-        if (event && event.preventDefault) event.preventDefault();
-
-        if (!IS_AUTH) {
-            window.location.href = '/login';
-            return false;
+    function getSavedShippingAddress() {
+        try {
+            const raw = window.localStorage ? localStorage.getItem(SHIPPING_STORAGE_KEY) : null;
+            if (!raw) return null;
+            const obj = JSON.parse(raw);
+            if (!obj || typeof obj !== 'object') return null;
+            return obj;
+        } catch (e) {
+            return null;
         }
-        if (!AUCTION_ID) {
-            alert('Không tìm thấy phiên đấu giá.');
-            return false;
+    }
+
+    function saveShippingAddress(addr) {
+        try {
+            if (window.localStorage) localStorage.setItem(SHIPPING_STORAGE_KEY, JSON.stringify(addr));
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function openShippingModal(action, prefill) {
+        __pendingShippingAction = action;
+        const modal = document.getElementById('shippingModal');
+        if (!modal) return;
+
+        const fullName = document.getElementById('shipFullName');
+        const phone = document.getElementById('shipPhone');
+        const address = document.getElementById('shipAddress');
+        const note = document.getElementById('shipNote');
+
+        const src = prefill || {};
+        if (fullName) fullName.value = src.fullName || '';
+        if (phone) phone.value = src.phone || '';
+        if (address) address.value = src.address || '';
+        if (note) note.value = src.note || '';
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeShippingModal() {
+        const modal = document.getElementById('shippingModal');
+        if (modal) modal.classList.add('hidden');
+        __pendingShippingAction = null;
+        // do not clear __pendingShippingAddress; user may already have one
+    }
+
+    function confirmShippingAndProceed() {
+        const action = __pendingShippingAction;
+        const fullName = (document.getElementById('shipFullName')?.value || '').trim();
+        const phone = (document.getElementById('shipPhone')?.value || '').trim();
+        const address = (document.getElementById('shipAddress')?.value || '').trim();
+        const note = (document.getElementById('shipNote')?.value || '').trim();
+
+        if (!fullName || !phone || !address) {
+            alert('Vui lòng nhập đầy đủ Họ tên, SĐT và Địa chỉ giao hàng.');
+            return;
         }
 
+        // Confirmation step (as requested)
+        const ok = window.confirm(
+            `Xác nhận địa chỉ giao hàng:\n\n` +
+            `Người nhận: ${fullName}\n` +
+            `SĐT: ${phone}\n` +
+            `Địa chỉ: ${address}` +
+            (note ? `\nGhi chú: ${note}` : '') +
+            `\n\nBạn chắc chắn muốn dùng địa chỉ này để tiếp tục thanh toán?`
+        );
+        if (!ok) return;
+
+        __pendingShippingAddress = { fullName, phone, address, note };
+        saveShippingAddress(__pendingShippingAddress);
+
+        closeShippingModal();
+        // proceed to payment modal for the previously requested action
+        showPaymentModal(action);
+    }
+
+    function showPaymentModal(action) {
         __pendingPaymentAction = action;
 
         const modal = document.getElementById('paymentModal');
@@ -520,6 +634,57 @@
         }
 
         modal.classList.remove('hidden');
+        return false;
+    }
+
+
+    function openPaymentModal(event, action) {
+        if (event && event.preventDefault) event.preventDefault();
+
+        if (!IS_AUTH) {
+            window.location.href = '/login';
+            return false;
+        }
+        if (!AUCTION_ID) {
+            alert('Không tìm thấy phiên đấu giá.');
+            return false;
+        }
+
+        // Step 1: collect/confirm shipping address before showing payment QR
+        const saved = getSavedShippingAddress();
+
+        if (action === 'autoBid') {
+            const max_amount = Number(document.getElementById('autoBidMax')?.value || 0);
+            if (!max_amount || max_amount <= 0) {
+                alert('Vui lòng nhập max hợp lệ.');
+                return false;
+            }
+
+            // If updating autobid, ask whether user wants to update address
+            if (HAD_AUTOBID && saved) {
+                const wantsUpdate = window.confirm('Bạn có muốn cập nhật địa chỉ giao hàng trước khi thanh toán Auto-bid không?');
+                if (wantsUpdate) {
+                    openShippingModal(action, saved);
+                } else {
+                    __pendingShippingAddress = saved;
+                    showPaymentModal(action);
+                }
+                return false;
+            }
+
+            // First-time autobid OR no saved address => require address
+            openShippingModal(action, saved || null);
+            return false;
+        }
+
+        // Buy-now always requires address confirmation (prefill if any)
+        if (action === 'buyNow') {
+            openShippingModal(action, saved || null);
+            return false;
+        }
+
+        // fallback
+        showPaymentModal(action);
         return false;
     }
 
@@ -578,8 +743,10 @@
     async function apiBuyNowAfterPayment() {
         const res = await fetch(`/auctions/${AUCTION_ID}/buy`, {
             method: 'POST',
-            headers: { 'Accept': 'application/json' },
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
             credentials: 'same-origin'
+            ,
+            body: JSON.stringify({ buyer_info: __pendingShippingAddress || null })
         });
 
         const data = await res.json().catch(() => ({}));
