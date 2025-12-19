@@ -8,7 +8,16 @@ router.get("/login", pageController.loginView);
 router.get("/register", pageController.registerView);
 router.get("/setting", pageController.profileView);
 router.get("/review", pageController.reviewView);
-router.get("/itemHistory", pageController.itemHistoryView);
+// NOTE: Tránh crash khi controller thiếu handler (đã từng gặp lỗi: Route.get() got undefined)
+// Ưu tiên itemHistoryView (timeline mới), fallback về profileProductView (legacy)
+router.get("/itemHistory", (req, res, next) => {
+  const fn =
+    (typeof pageController?.itemHistoryView === "function" && pageController.itemHistoryView) ||
+    (typeof pageController?.profileProductView === "function" && pageController.profileProductView);
+
+  if (!fn) return res.status(500).send("Missing itemHistory handler");
+  return fn(req, res, next);
+});
 router.get("/itemManager", pageController.profileAuctionView);
 router.get("/categories/:slug?", pageController.categoryView);
 router.get("/product/:id", pageController.productDetailView);

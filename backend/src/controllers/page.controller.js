@@ -186,226 +186,32 @@ const reviewView = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // Điểm hiện tại (đã được cập nhật ở các action đánh giá)
-    const [[scoreRow]] = await db.query(
-      `SELECT COALESCE(positive_count, 0) AS positive_count,
-              COALESCE(negative_count, 0) AS negative_count
-       FROM users
-       WHERE id = ?
-       LIMIT 1`,
+    const [totalPointResult] = await db.query(
+      `SELECT COALESCE(SUM(point), 0) AS total FROM reviews WHERE user_id = ?`,
       { replacements: [userId], raw: true }
     );
-    const positive = Number(scoreRow?.positive_count || 0);
-    const negative = Number(scoreRow?.negative_count || 0);
-    const total = positive + negative;
-    const percent = total > 0 ? Math.round((positive / total) * 100) : 0;
-    const net = positive - negative;
+    const totalPoint = totalPointResult?.[0]?.total ?? 0;
 
-    // Lịch sử đánh giá đã thực hiện (user -> người khác)
-    const [givenRatings] = await db.query(
-      `SELECT
-          r.id,
-          r.score,
-          r.comment,
-          r.created_at,
-          u.id AS target_id,
-          u.name AS target_name,
-          p.title AS product_title,
-          o.id AS order_id
-       FROM ratings r
-       JOIN users u ON u.id = r.target_user_id
-       LEFT JOIN orders o ON o.id = r.order_id
-       LEFT JOIN auctions a ON a.id = o.auction_id
-       LEFT JOIN products p ON p.id = a.product_id
-       WHERE r.rater_id = ?
-       ORDER BY r.created_at DESC`,
-      { replacements: [userId], raw: true }
-    );
-
-    // Lịch sử được đánh giá (người khác -> user)
-    const [receivedRatings] = await db.query(
-      `SELECT
-          r.id,
-          r.score,
-          r.comment,
-          r.created_at,
-          u.id AS rater_id,
-          u.name AS rater_name,
-          p.title AS product_title,
-          o.id AS order_id
-       FROM ratings r
-       JOIN users u ON u.id = r.rater_id
-       LEFT JOIN orders o ON o.id = r.order_id
-       LEFT JOIN auctions a ON a.id = o.auction_id
-       LEFT JOIN products p ON p.id = a.product_id
-       WHERE r.target_user_id = ?
-       ORDER BY r.created_at DESC`,
+    const [reviewList] = await db.query(
+      `SELECT reviewer, comment, point, avatar 
+       FROM reviews 
+       WHERE user_id = ?
+       ORDER BY id DESC`,
       { replacements: [userId], raw: true }
     );
 
     return res.render("profile/review", {
-      title: "Đánh giá",
-      score: { positive, negative, total, percent, net },
-      givenRatings: givenRatings || [],
-      receivedRatings: receivedRatings || [],
+      title: "My review",
+      totalPoint,
+      reviewList: reviewList || [],
       user: req.user || null,
     });
   } catch (err) {
     console.error("reviewView error:", err);
     return res.render("profile/review", {
-      title: "Đánh giá",
-      score: { positive: 0, negative: 0, total: 0, percent: 0, net: 0 },
-      givenRatings: [],
-      receivedRatings: [],
-      user: req.user || null,
-    });
-  }
-};
-
-// Lịch sử thao tác đấu giá (timeline: autobid / bid / mua ngay / thắng-thua khi kết thúc)
-const itemHistoryView = async (req, res) => {
-  if (!req.user) return res.redirect("/login");
-  const userId = req.user.id;
-
-  try {
-    // 1) Lấy các lượt bid của user (bao gồm auto-bid và mua ngay)
-    const [bidRows] = await db.query(
-      `SELECT
-          b.id AS bid_id,
-          b.auction_id,
-          b.amount,
-          b.is_auto,
-          b.created_at,
-          a.status AS auction_status,
-          a.end_time,
-          a.winner_bid_id,
-          a.current_price,
-          a.current_winner_id,
-          p.id AS product_id,
-          p.title
-       FROM bids b
-       JOIN auctions a ON a.id = b.auction_id
-       JOIN products p ON p.id = a.product_id
-       WHERE b.bidder_id = ?
-       ORDER BY b.created_at ASC
-       LIMIT 500`,
-      { replacements: [userId], raw: true }
-    );
-
-    const buyNowAuctionIds = new Set();
-    const autoBidCountByAuction = new Map();
-    const events = [];
-
-    for (const r of bidRows || []) {
-      const status = String(r.auction_status || "").toUpperCase();
-      const isBuyNow =
-        status === "ENDED" &&
-        Number(r.winner_bid_id) === Number(r.bid_id) &&
-        r.end_time &&
-        r.created_at &&
-        Math.abs(new Date(r.end_time).getTime() - new Date(r.created_at).getTime()) <= 5000;
-
-      if (isBuyNow) buyNowAuctionIds.add(Number(r.auction_id));
-
-      // Autobid events
-      if (Number(r.is_auto) === 1 || r.is_auto === true) {
-        const key = Number(r.auction_id);
-        const prev = autoBidCountByAuction.get(key) || 0;
-        autoBidCountByAuction.set(key, prev + 1);
-
-        events.push({
-          at: r.created_at,
-          kind: "AUTO_BID",
-          auction_id: r.auction_id,
-          product_id: r.product_id,
-          title: r.title,
-          amount: r.amount,
-          is_update: prev > 0,
-        });
-        continue;
-      }
-
-      // Buy now event
-      if (isBuyNow) {
-        events.push({
-          at: r.created_at,
-          kind: "BUY_NOW",
-          auction_id: r.auction_id,
-          product_id: r.product_id,
-          title: r.title,
-          amount: r.amount,
-        });
-        continue;
-      }
-
-      // Manual/normal bid event
-      events.push({
-        at: r.created_at,
-        kind: "BID",
-        auction_id: r.auction_id,
-        product_id: r.product_id,
-        title: r.title,
-        amount: r.amount,
-      });
-    }
-
-    // 2) Kết quả khi kết thúc phiên (chỉ thông báo khi end_time <= NOW())
-    const [endRows] = await db.query(
-      `SELECT DISTINCT
-          a.id AS auction_id,
-          a.end_time,
-          a.current_price,
-          a.current_winner_id,
-          a.status AS auction_status,
-          p.id AS product_id,
-          p.title
-       FROM auctions a
-       JOIN products p ON p.id = a.product_id
-       LEFT JOIN bids b ON b.auction_id = a.id AND b.bidder_id = ?
-       LEFT JOIN auto_bid_rules r ON r.auction_id = a.id AND r.bidder_id = ?
-       WHERE a.end_time <= NOW()
-         AND (b.id IS NOT NULL OR r.id IS NOT NULL)
-       ORDER BY a.end_time ASC
-       LIMIT 500`,
-      { replacements: [userId, userId], raw: true }
-    );
-
-    for (const a of endRows || []) {
-      const auctionId = Number(a.auction_id);
-      // Nếu user mua ngay thì không cần thêm thông báo thắng (vì đã thể hiện bằng event BUY_NOW)
-      if (buyNowAuctionIds.has(auctionId)) continue;
-
-      const win = Number(a.current_winner_id) === Number(userId);
-      events.push({
-        at: a.end_time,
-        kind: win ? "WIN" : "LOSE",
-        auction_id: a.auction_id,
-        product_id: a.product_id,
-        title: a.title,
-        amount: a.current_price,
-      });
-    }
-
-    // Sort theo thời gian tăng dần để tạo timeline (mới nhất ở dưới)
-    events.sort((x, y) => {
-      const tx = new Date(x.at).getTime();
-      const ty = new Date(y.at).getTime();
-      if (tx !== ty) return tx - ty;
-      // ưu tiên hiển thị action trước, kết quả sau nếu trùng thời gian
-      const prio = { BID: 1, AUTO_BID: 1, BUY_NOW: 2, WIN: 3, LOSE: 3 };
-      return (prio[x.kind] || 9) - (prio[y.kind] || 9);
-    });
-
-    return res.render("profile/itemHistory", {
-      title: "Lịch sử đấu giá",
-      events,
-      user: req.user || null,
-    });
-  } catch (err) {
-    console.error("itemHistoryView error:", err);
-    return res.render("profile/itemHistory", {
-      title: "Lịch sử đấu giá",
-      events: [],
+      title: "My review",
+      totalPoint: 0,
+      reviewList: [],
       user: req.user || null,
     });
   }
@@ -643,7 +449,7 @@ const productDetailView = async (req, res) => {
   try {
     const [prodRows] = await db.query(
       `SELECT 
-        p.id, p.title, p.short_description, p.full_description, p.thumbnail, p.status,
+        p.id, p.title, p.short_description, p.full_description, p.thumbnail, p.allow_negative_user, p.status,
         p.seller_id, p.category_id,
         c.name as category_name,
         u.name as seller_name,
@@ -820,6 +626,54 @@ const productDetailView = async (req, res) => {
       reviews = [];
     }
 
+
+
+    // ===== Permission for bidder interactions (auto-bid / buy-now) =====
+    let interaction = {
+      blocked: false,
+      reason: null,
+      type: null,
+      reputation: null,
+      allow_negative_user: Boolean(product.allow_negative_user),
+    };
+
+    if (user && auction.id) {
+      // Seller cannot bid on own product
+      if (Number(user.id) === Number(product.seller_id)) {
+        interaction.blocked = true;
+        interaction.type = 'SELLER';
+        interaction.reason = 'Bạn là người bán của sản phẩm này.';
+      } else {
+        // Seller-block list
+        const [[bb]] = await db.query(
+          `SELECT reason FROM blocked_bidders WHERE auction_id = ? AND bidder_id = ? LIMIT 1`,
+          { replacements: [auction.id, user.id], raw: true }
+        );
+        if (bb) {
+          interaction.blocked = true;
+          interaction.type = 'BLOCKED_BY_SELLER';
+          interaction.reason = bb.reason
+            ? `Bạn đã bị người bán chặn: ${bb.reason}`
+            : 'Bạn đã bị người bán chặn khỏi phiên đấu giá này.';
+        } else {
+          // Reputation threshold (<5) only applies when product does NOT allow negative users
+          const [[uRow]] = await db.query(
+            `SELECT positive_count, negative_count FROM users WHERE id = ? LIMIT 1`,
+            { replacements: [user.id], raw: true }
+          );
+          const pos = Number(uRow?.positive_count || 0);
+          const neg = Number(uRow?.negative_count || 0);
+          const rep = 10 + pos - neg;
+          interaction.reputation = rep;
+
+          if (!interaction.allow_negative_user && rep < 5) {
+            interaction.blocked = true;
+            interaction.type = 'NEGATIVE_USER';
+            interaction.reason = `Điểm uy tín của bạn (${rep}) < 5, nên không được phép bid / auto-bid / mua ngay ở sản phẩm này.`;
+          }
+        }
+      }
+    }
     return res.render("home/productDetail", {
       title: product.title,
       user: req.user || null,
@@ -857,6 +711,7 @@ const productDetailView = async (req, res) => {
         negative_count: 0,
         total_ratings: reviews.length,
       },
+      interaction,
       myAutoBid,
       bids: bids || [],
       reviews,
@@ -1120,7 +975,6 @@ export default {
   categoryView,
   profileView,
   reviewView,
-  itemHistoryView,
   profileProductView,
   profileAuctionView,
   productDetailView,

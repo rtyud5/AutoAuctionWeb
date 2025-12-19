@@ -9,6 +9,23 @@ await import("./models/index.js");
 
 const PORT = process.env.PORT || 4000;
 
+
+const ensureProductSchema = async () => {
+  // One-time schema guard for new columns (without requiring sequelize-cli migrations)
+  try {
+    const [cols] = await sequelize.query("SHOW COLUMNS FROM products LIKE 'allow_negative_user'");
+    if (!cols || cols.length === 0) {
+      await sequelize.query(
+        "ALTER TABLE products ADD COLUMN allow_negative_user TINYINT(1) NOT NULL DEFAULT 0"
+      );
+      console.log('✅ Migrated: products.allow_negative_user');
+    }
+  } catch (err) {
+    // Don't crash the app if DB user has no ALTER privilege; feature will fallback to default false
+    console.warn('⚠️ Skip schema migration allow_negative_user:', err.message);
+  }
+};
+
 const startServer = async () => {
   try {
     await testConnection();
@@ -16,6 +33,8 @@ const startServer = async () => {
     // sync models (adjust options as needed)
     await sequelize.sync({ alter: false });
     console.log("✅ Sequelize models synchronized with database");
+
+    await ensureProductSchema();
 
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -24,6 +24,29 @@ const calcBuyNowPrice = (auction) => {
   return Math.floor(base * 1.5);
 };
 
+const getUserReputation = async ({ userId, transaction }) => {
+  const [[u]] = await db.query(
+    'SELECT positive_count, negative_count FROM users WHERE id = ? LIMIT 1',
+    { replacements: [userId], raw: true, transaction }
+  );
+  const pos = Number(u?.positive_count || 0);
+  const neg = Number(u?.negative_count || 0);
+  return 10 + pos - neg;
+};
+
+const getAuctionAllowNegative = async ({ auctionId, transaction }) => {
+  const [[r]] = await db.query(
+    `SELECT p.allow_negative_user
+     FROM auctions a
+     JOIN products p ON p.id = a.product_id
+     WHERE a.id = ?
+     LIMIT 1`,
+    { replacements: [auctionId], raw: true, transaction }
+  );
+  return Boolean(r?.allow_negative_user);
+};
+
+
 const getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -126,6 +149,21 @@ const placeBid = async (req, res) => {
         throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
       }
 
+      
+
+      // Seller cannot bid/buy on own auction
+      if (Number(auction.seller_id) === Number(userId)) {
+        throw Object.assign(new Error('You cannot bid on your own product'), { statusCode: 403 });
+      }
+
+      // Negative-user policy (rating < 5) depends on product.allow_negative_user
+      // - If allow_negative_user = false (default), users with reputation < 5 are blocked.
+      // - If allow_negative_user = true, negative users are allowed.
+      const allowNegativeUser = await getAuctionAllowNegative({ auctionId, transaction: t });
+      const reputation = await getUserReputation({ userId, transaction: t });
+      if (!allowNegativeUser && reputation < 5) {
+        throw Object.assign(new Error(`Điểm uy tín của bạn (${reputation}) < 5 nên không được phép tham gia phiên này.`), { statusCode: 403 });
+      }
       const blocked = await BlockedBidder.findOne({
         where: { auction_id: auctionId, bidder_id: userId },
         transaction: t,
@@ -202,6 +240,21 @@ const setAutoBid = async (req, res) => {
         throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
       }
 
+      
+
+      // Seller cannot bid/buy on own auction
+      if (Number(auction.seller_id) === Number(userId)) {
+        throw Object.assign(new Error('You cannot bid on your own product'), { statusCode: 403 });
+      }
+
+      // Negative-user policy (rating < 5) depends on product.allow_negative_user
+      // - If allow_negative_user = false (default), users with reputation < 5 are blocked.
+      // - If allow_negative_user = true, negative users are allowed.
+      const allowNegativeUser = await getAuctionAllowNegative({ auctionId, transaction: t });
+      const reputation = await getUserReputation({ userId, transaction: t });
+      if (!allowNegativeUser && reputation < 5) {
+        throw Object.assign(new Error(`Điểm uy tín của bạn (${reputation}) < 5 nên không được phép tham gia phiên này.`), { statusCode: 403 });
+      }
       const blocked = await BlockedBidder.findOne({
         where: { auction_id: auctionId, bidder_id: userId },
         transaction: t,
@@ -281,6 +334,21 @@ const buyNow = async (req, res) => {
         throw Object.assign(new Error('Auction already ended'), { statusCode: 400 });
       }
 
+      
+
+      // Seller cannot bid/buy on own auction
+      if (Number(auction.seller_id) === Number(userId)) {
+        throw Object.assign(new Error('You cannot bid on your own product'), { statusCode: 403 });
+      }
+
+      // Negative-user policy (rating < 5) depends on product.allow_negative_user
+      // - If allow_negative_user = false (default), users with reputation < 5 are blocked.
+      // - If allow_negative_user = true, negative users are allowed.
+      const allowNegativeUser = await getAuctionAllowNegative({ auctionId, transaction: t });
+      const reputation = await getUserReputation({ userId, transaction: t });
+      if (!allowNegativeUser && reputation < 5) {
+        throw Object.assign(new Error(`Điểm uy tín của bạn (${reputation}) < 5 nên không được phép tham gia phiên này.`), { statusCode: 403 });
+      }
       const blocked = await BlockedBidder.findOne({
         where: { auction_id: auctionId, bidder_id: userId },
         transaction: t,

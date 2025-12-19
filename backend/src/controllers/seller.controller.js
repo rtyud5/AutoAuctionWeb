@@ -354,12 +354,14 @@ const createProduct = async (req, res) => {
       starting_price,
       end_time,
       step_price,   // optional
-      auto_extend   // optional
+      auto_extend,  // optional
+      allow_negative_user // optional
     } = req.body;
 
     const startPriceNum = Number(starting_price);
     const stepPriceNum = step_price ? Number(step_price) : 100000;
     const autoExtendVal = auto_extend === undefined ? true : Boolean(auto_extend);
+    const allowNegativeUserVal = String(allow_negative_user || "").toLowerCase() === "true" || allow_negative_user === "on" || allow_negative_user === "1";
     const endTimeVal = end_time ? new Date(end_time) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
 
     if (!title || !category_id || isNaN(startPriceNum) || startPriceNum <= 0 || isNaN(stepPriceNum) || stepPriceNum <= 0) {
@@ -390,6 +392,7 @@ const createProduct = async (req, res) => {
         short_description: short_description || null,
         full_description: full_description || null,
         thumbnail,
+        allow_negative_user: allowNegativeUserVal,
         status: 'APPROVED'
       },
       { transaction: t }

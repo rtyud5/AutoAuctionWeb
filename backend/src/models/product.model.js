@@ -61,11 +61,17 @@ const Product = sequelize.define(
       allowNull: true,
       comment: "Mô tả chi tiết sản phẩm",
     },
-
     thumbnail: {
       type: DataTypes.STRING(255),
       allowNull: true,
       comment: "URL ảnh đại diện (size lớn)",
+    },
+
+    allow_negative_user: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Cho phép user điểm uy tín thấp (<5) tham gia đấu giá cho sản phẩm này",
     },
 
     status: {

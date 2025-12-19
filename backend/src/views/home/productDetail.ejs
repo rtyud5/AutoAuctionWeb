@@ -114,6 +114,24 @@
                     <span>Yêu thích</span>
                 </button>
 
+                <% if (typeof interaction !== 'undefined' && interaction && interaction.blocked) { %>
+                  <div class="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+                    <div class="font-semibold mb-1">Bạn không thể thao tác với sản phẩm này</div>
+                    <div class="text-sm"><%= interaction.reason || 'Bạn đã bị chặn khỏi phiên đấu giá này.' %></div>
+                  </div>
+                <% } else if (typeof interaction !== 'undefined' && interaction && interaction.reputation !== null) { %>
+                  <div class="mb-6 p-3 bg-slate-50 border border-slate-200 text-slate-700 rounded">
+                    <div class="text-sm">
+                      Điểm uy tín hiện tại: <b><%= interaction.reputation %></b>.
+                      <% if (interaction.allow_negative_user) { %>
+                        Sản phẩm này <b>cho phép</b> user điểm uy tín thấp (&lt; 5) tham gia.
+                      <% } else { %>
+                        Sản phẩm này <b>không cho phép</b> user điểm uy tín thấp (&lt; 5) tham gia.
+                      <% } %>
+                    </div>
+                  </div>
+                <% } %>
+
                 <!-- Buy Now -->
                 <div class="mb-6">
                     <p class="font-semibold mb-3">Mua ngay</p>
@@ -124,6 +142,7 @@
                         <button 
                             type="submit" 
                             id="buyNowBtn"
+                            <%= (typeof interaction !== 'undefined' && interaction && interaction.blocked) ? 'disabled' : '' %>
                             class="w-full bg-red-600 text-white rounded px-4 py-2 hover:bg-red-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                             data-end-time="<%= product.end_time %>">
                             Mua ngay
@@ -143,6 +162,7 @@
                             <input 
                                 type="number" 
                                 id="autoBidMax"
+                                <%= (typeof interaction !== 'undefined' && interaction && interaction.blocked) ? 'disabled' : '' %>
                                 class="flex-1 border border-gray-300 rounded px-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 min="<%= Number(product.current_price) %>"
                                 max="<%= Math.max(0, Number(product.buy_now_price || (product.current_price * 1.5)) - 1) %>"
@@ -155,6 +175,7 @@
                             <button 
                                 type="submit" 
                                 id="autoBidBtn"
+                                <%= (typeof interaction !== 'undefined' && interaction && interaction.blocked) ? 'disabled' : '' %>
                                 class="flex-1 bg-gray-900 text-white rounded px-4 py-2 hover:bg-gray-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 data-end-time="<%= product.end_time %>">
                                 Lưu auto-bid
@@ -524,6 +545,9 @@
     const PRODUCT_ID = <%= product.id %>;
     const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
     const BUY_NOW_PRICE = <%= Number(product.buy_now_price || (product.current_price * 1.5)) %>;
+    const IS_INTERACTION_BLOCKED = <%= (typeof interaction !== 'undefined' && interaction && interaction.blocked) ? 'true' : 'false' %>;
+    const INTERACTION_BLOCK_REASON = <%- JSON.stringify((typeof interaction !== 'undefined' && interaction && interaction.reason) ? interaction.reason : '') %>;
+
 
     let __pendingPaymentAction = null;
     let __pendingShippingAddress = null;
@@ -647,6 +671,11 @@
         }
         if (!AUCTION_ID) {
             alert('Không tìm thấy phiên đấu giá.');
+            return false;
+        }
+
+        if (IS_INTERACTION_BLOCKED) {
+            alert(INTERACTION_BLOCK_REASON || 'Bạn không thể thao tác với sản phẩm này.');
             return false;
         }
 
