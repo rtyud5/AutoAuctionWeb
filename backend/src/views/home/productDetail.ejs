@@ -167,18 +167,21 @@
         <h2 class="text-2xl font-bold mb-6">Lịch sử đấu thầu</h2>
         
         <!-- Table Headers -->
-        <div class="grid grid-cols-4 gap-4 bg-gray-100 p-4 rounded-t-lg font-semibold text-gray-700">
+        <div class="grid grid-cols-4 <%= user && user.id === product.seller_id ? 'md:grid-cols-5' : '' %> gap-4 bg-gray-100 p-4 rounded-t-lg font-semibold text-gray-700">
             <div>Người thầu</div>
             <div>Giá cao nhất</div>
             <div>Thời gian đấu thầu</div>
             <div>Biểm danh giá</div>
+            <% if (user && user.id === product.seller_id) { %>
+                <div>Hành động</div>
+            <% } %>
         </div>
 
         <!-- Table Rows -->
         <div class="border border-t-0 rounded-b-lg">
             <% if (bids && bids.length > 0) { %>
                 <% bids.forEach((bid, index) => { %>
-                    <div class="grid grid-cols-4 gap-4 p-4 <%= index < bids.length - 1 ? 'border-b' : '' %> hover:bg-gray-50">
+                    <div class="grid grid-cols-4 <%= user && user.id === product.seller_id ? 'md:grid-cols-5' : '' %> gap-4 p-4 <%= index < bids.length - 1 ? 'border-b' : '' %> hover:bg-gray-50">
                         <div class="text-gray-600"><%= bid.bidder_masked %></div>
                         <div><%= Number(bid.amount).toLocaleString('vi-VN') %> VND</div>
                         <div class="text-sm text-gray-500"><%= new Date(bid.created_at).toLocaleString('vi-VN') %></div>
@@ -188,6 +191,14 @@
                                 <%= i < bidRating ? '★' : '☆' %>
                             <% } %>
                         </div>
+                        <% if (user && user.id === product.seller_id) { %>
+                            <div>
+                                <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                                    onclick="rejectBidder(<%= bid.bidder_id %>, <%= product.auction_id %>)">
+                                    Từ chối
+                                </button>
+                            </div>
+                        <% } %>
                     </div>
                 <% }) %>
             <% } else { %>
@@ -201,13 +212,14 @@
     <!-- Product Description Section -->
     <div class="px-8 pb-8">
         <h2 class="text-2xl font-bold mb-6 pb-2 border-b-2 border-gray-200">Mô tả sản phẩm</h2>
-        
         <div class="space-y-6">
-            <div>
-                <p class="text-gray-700 leading-relaxed whitespace-pre-line">
-                    <%= product.full_description || product.short_description || 'Chưa có mô tả chi tiết' %>
-                </p>
-            </div>
+            <% if (product.full_description) { %>
+                <div class="whitespace-pre-line">
+                    <%= product.full_description %>
+                </div>
+            <% } else { %>
+                <div class="text-gray-500">Chưa có mô tả</div>
+            <% } %>
         </div>
     </div>
 
@@ -436,11 +448,11 @@
 
 
 <script>
-    AUCTION_ID =  product.auction_id ? Number(product.auction_id) : 'null' ;
-    IS_AUTH =  user ? 'true' : 'false';
-    PRODUCT_ID = product.id;
-    HAD_AUTOBID = myAutoBid ? 'true' : 'false';
-    BUY_NOW_PRICE = Number(product.buy_now_price || (product.current_price * 1.5));
+    const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
+    const IS_AUTH = <%= user ? 'true' : 'false' %>;
+    const PRODUCT_ID = <%= product.id %>;
+    const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
+    const BUY_NOW_PRICE = <%= Number(product.buy_now_price || (product.current_price * 1.5)) %>;
 
     let __pendingPaymentAction = null;
 
@@ -712,5 +724,22 @@
             closeLoginModal();
         }
     });
+
+    function rejectBidder(bidderId, auctionId) {
+        if (!confirm('Bạn có chắc muốn từ chối người này không?')) return;
+        fetch(`/seller/auctions/${auctionId}/block-bidder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ bidderId: bidderId })
+        })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => {
+            if (!d.success) return alert(d.message || 'Từ chối thất bại');
+            alert('Đã từ chối thành công!');
+            window.location.reload();
+        })
+        .catch(() => alert('Từ chối thất bại'));
+    }
 </script>
 </body>

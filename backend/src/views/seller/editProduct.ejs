@@ -32,9 +32,11 @@
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Mô tả chi tiết</label>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Thêm mô tả cập nhật mới</label>
         <textarea name="full_description" rows="6"
-                  class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-400 focus:border-transparent"><%= product.full_description || '' %></textarea>
+          class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+          placeholder="Nhập mô tả cập nhật mới..."></textarea>
+        <p class="text-xs text-slate-500 mt-1">Mỗi lần lưu sẽ thêm vào lịch sử cập nhật, không thay thế mô tả ban đầu.</p>
       </div>
 
       <!-- Auction info -->

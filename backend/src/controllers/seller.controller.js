@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import Product from '../models/product.model.js';
 import Auction from '../models/auction.model.js';
+import BlockedBidder from '../models/blocked_bidder.js';
 
 /*
   Seller controller — 1:1 map to routes/seller.route.js
@@ -268,11 +269,40 @@ const blockBidder = async (req, res) => {
   try {
     const auctionId = req.params.id;
     const { bidderId, reason } = req.body;
-    await db.query('INSERT INTO blocked_bidders (auction_id, bidder_id, reason, created_at) VALUES (?, ?, ?, NOW())', [
-      auctionId,
-      bidderId,
-      reason || null
-    ]);
+
+    // 1. Chặn bidder
+    await BlockedBidder.create({
+      auction_id: auctionId,
+      bidder_id: bidderId,
+      reason: reason || null
+    });
+
+    // 2. Xóa tất cả các bid của bidder này trong phiên đấu giá
+    await db.query(
+      'DELETE FROM bids WHERE auction_id = ? AND bidder_id = ?',
+      { replacements: [auctionId, bidderId] }
+    );
+
+    // 3. Kiểm tra nếu bidder này đang giữ giá cao nhất
+    // Lấy bid cao nhất còn lại sau khi xóa
+    const [rows] = await db.query(
+      'SELECT bidder_id, amount FROM bids WHERE auction_id = ? ORDER BY amount DESC, created_at DESC LIMIT 1',
+      { replacements: [auctionId] }
+    );
+    if (rows && rows.length > 0) {
+      // Cập nhật current_price và current_winner_id cho auction
+      await db.query(
+        'UPDATE auctions SET current_price = ?, current_winner_id = ? WHERE id = ?',
+        { replacements: [rows[0].amount, rows[0].bidder_id, auctionId] }
+      );
+    } else {
+      // Nếu không còn ai đấu giá, reset auction
+      await db.query(
+        'UPDATE auctions SET current_price = start_price, current_winner_id = NULL WHERE id = ?',
+        { replacements: [auctionId] }
+      );
+    }
+
     return res.json({ success: true });
   } catch (err) {
     console.error('seller.blockBidder', err);
@@ -509,6 +539,14 @@ const updateProduct = async (req, res) => {
     const product = await Product.findOne({ where: { id: productId, seller_id: sellerId } });
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
+    // Lấy mô tả cũ
+    let newFullDescription = product.full_description || "";
+
+    // Nếu có mô tả mới, nối thêm vào dưới cùng kèm thời gian
+    if (full_description && full_description.trim()) {
+      newFullDescription += `\n\n[Cập nhật ${new Date().toLocaleString('vi-VN')}] ${full_description.trim()}`;
+    }
+
     // Xử lý ảnh mới
     let thumbnail = undefined;
     if (req.file) {
@@ -536,7 +574,7 @@ const updateProduct = async (req, res) => {
         title: title ?? product.title,
         category_id: category_id ?? product.category_id,
         short_description: short_description ?? product.short_description,
-        full_description: full_description ?? product.full_description,
+        full_description: newFullDescription,
         thumbnail: thumbnail ?? product.thumbnail,
       },
       { transaction: t }
