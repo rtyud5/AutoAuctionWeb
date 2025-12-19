@@ -1,101 +1,79 @@
-<div class="max-w-3xl mx-auto space-y-8">
+<%
+  const fmtMoney = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '-';
+    return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ';
+  };
+  const fmtTime = (v) => {
+    try { return new Date(v).toLocaleString('vi-VN'); } catch (e) { return ''; }
+  };
+  const renderText = (e) => {
+    const title = e?.title || 'Sản phẩm';
+    const amount = fmtMoney(e?.amount);
+    switch (e?.kind) {
+      case 'AUTO_BID':
+        return `Autobid ${title} giá ${amount}` + (e.is_update ? ' (cập nhật autobid)' : '');
+      case 'BUY_NOW':
+        return `Mua ngay ${title} giá ${amount}`;
+      case 'WIN':
+        return `Thắng bid ${title} giá ${amount}`;
+      case 'LOSE':
+        return `Thua bid ${title}` + (Number(e?.amount) ? ` (giá chốt ${amount})` : '');
+      case 'BID':
+      default:
+        return `Bid ${title} giá ${amount}`;
+    }
+  };
+%>
 
-    <!-- Sản phẩm yêu thích -->
-    <section class="bg-white rounded-2xl shadow-lg border border-blue-100 p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Sản phẩm yêu thích</h2>
+<div class="p-10 w-full font-inter">
+  <div class="border-2 border-[#BEEAFF] rounded-2xl p-6 bg-gradient-to-r from-[#ECF4FB] to-[#FFF8EB]">
+    <div class="flex items-center justify-between gap-3 mb-6">
+      <h2 class="text-xl font-semibold text-slate-900">Lịch sử đấu giá</h2>
+      <div class="text-xs text-slate-600">
+        Hiển thị theo timeline thời gian (mới nhất ở dưới)
+      </div>
+    </div>
 
-        <!-- Item -->
-        <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4 mb-4 shadow-sm">
-            <div class="flex items-center gap-4">
-                <img src="https://via.placeholder.com/60" class="w-16 h-16 rounded-lg shadow">
-                <span class="font-medium text-gray-700">eMosy tĩnh</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-900 font-semibold">3,000,000 VNĐ</span>
-                <button class="bg-red-500 hover:bg-red-600 transition text-white p-2 rounded-lg shadow">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Pagination -->
-        <div class="flex justify-center gap-2 mt-6">
-            <button class="page-active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">
-                <svg class="w-4 h-4" fill="currentColor">
-                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                </svg>
-            </button>
-        </div>
-    </section>
-
-    <!-- Sản phẩm đang đấu giá -->
-    <section class="bg-white rounded-2xl shadow-lg border border-purple-100 p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Sản phẩm đang đấu giá</h2>
-
-        <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4 mb-4 shadow-sm">
-            <div class="flex items-center gap-4">
-                <img src="https://via.placeholder.com/60" class="w-16 h-16 rounded-lg shadow">
-                <span class="font-medium text-gray-700">eMosy tĩnh</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-900 font-semibold">3,000,000 VNĐ</span>
-                <button class="bg-green-500 hover:bg-green-600 transition text-white px-4 py-1.5 rounded-lg shadow font-medium">
-                    Đang hoạt động
-                </button>
-            </div>
-        </div>
-
-        <div class="flex justify-center gap-2 mt-6">
-            <button class="page-active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">
-                <svg class="w-4 h-4" fill="currentColor">
-                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                </svg>
-            </button>
-        </div>
-    </section>
-
-    <!-- Sản phẩm đã thắng -->
-    <section class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Sản phẩm đã thắng</h2>
-
-        <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4 mb-4 shadow-sm">
-            <div class="flex items-center gap-4">
-                <img src="https://via.placeholder.com/60" class="w-16 h-16 rounded-lg shadow">
-                <span class="font-medium text-gray-700">eMosy tĩnh</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-900 font-semibold">3,000,000 VNĐ</span>
-                <span class="text-gray-500 text-sm">11/26/2025</span>
-            </div>
-        </div>
-
-        <div class="flex justify-center gap-2 mt-6">
-            <button class="page-active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">
-                <svg class="w-4 h-4" fill="currentColor">
-                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                </svg>
-            </button>
-        </div>
-    </section>
-
+    <div class="bg-white/70 border border-slate-200 rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-slate-600 bg-slate-50/70">
+            <tr class="border-b border-slate-200">
+              <th class="text-left font-medium py-3 px-4 whitespace-nowrap">Thời gian</th>
+              <th class="text-left font-medium py-3 px-4">Hoạt động</th>
+              <th class="text-center font-medium py-3 px-4 whitespace-nowrap">Loại</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!events || events.length === 0) { %>
+              <tr>
+                <td colspan="3" class="py-6 px-4 text-slate-500">Chưa có lịch sử bid / mua ngay / kết quả đấu giá.</td>
+              </tr>
+            <% } else { %>
+              <% events.forEach(function(e) { %>
+                <tr class="border-b border-slate-100">
+                  <td class="py-3 px-4 whitespace-nowrap text-slate-600"><%= fmtTime(e.at) %></td>
+                  <td class="py-3 px-4 text-slate-900"><%= renderText(e) %></td>
+                  <td class="py-3 px-4 text-center">
+                    <% if (e.kind === 'WIN') { %>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-600 text-white">Thắng</span>
+                    <% } else if (e.kind === 'LOSE') { %>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full bg-rose-600 text-white">Thua</span>
+                    <% } else if (e.kind === 'BUY_NOW') { %>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full bg-sky-600 text-white">Mua ngay</span>
+                    <% } else if (e.kind === 'AUTO_BID') { %>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-600 text-white">Autobid</span>
+                    <% } else { %>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full bg-slate-700 text-white">Bid</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
-
-<style>
-    .page-active {
-        @apply w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center font-semibold shadow;
-    }
-    .page-btn {
-        @apply w-9 h-9 rounded-full bg-white border border-gray-300 text-gray-700 flex items-center justify-center hover:bg-gray-100 transition;
-    }
-</style>

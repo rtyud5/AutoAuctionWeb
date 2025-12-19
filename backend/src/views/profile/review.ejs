@@ -1,82 +1,140 @@
-<div class="flex font-inter">
+<div class="p-10 w-full font-inter">
+  <div class="border-2 border-[#BEEAFF] rounded-2xl p-6 bg-[#E8F0FE]">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <h2 class="text-xl font-semibold">Đánh giá</h2>
 
-    <!-- Content -->
-    <div class="flex-1 p-10">
-
-        <div class="border-2 border-[#BEEAFF] rounded-2xl p-6 bg-[#E8F0FE]">
-
-            <h2 class="text-xl font-semibold mb-4">My review</h2>
-
-            <!-- Overall Rating -->
-            <div class="bg-[#D9DEE6] p-4 rounded-xl mb-6 flex items-center gap-3">
-                <span class="text-gray-700 font-medium">Overall rating:</span>
-                <span class="text-green-600 font-bold text-lg">+52</span>
-            </div>
-
-            <!-- Review Item -->
-            <div class="mb-6">
-                <div class="flex items-start justify-between">
-
-                    <!-- Avatar + Info -->
-                    <div class="flex items-center gap-3">
-                        <img src="https://i.ibb.co/2Pn7gG6/user.jpg"
-                             class="w-12 h-12 rounded-full object-cover border" />
-
-                        <div>
-                            <p class="font-semibold">Seller_Alex</p>
-                            <p class="text-gray-600 text-sm">“Good”</p>
-                        </div>
-                    </div>
-
-                    <!-- Rating -->
-                    <div class="flex items-center gap-2 bg-green-500 text-white px-3 py-1 rounded-full">
-                        <span class="text-xl">👍</span>
-                        <span>+1</span>
-                    </div>
-                </div>
-
-                <div class="border-b my-4"></div>
-            </div>
-
-            <!-- Review Item 2 -->
-            <div class="mb-6">
-                <div class="flex items-start justify-between">
-
-                    <div class="flex items-center gap-3">
-                        <img src="https://i.ibb.co/2Pn7gG6/user.jpg"
-                             class="w-12 h-12 rounded-full object-cover border" />
-
-                        <div>
-                            <p class="font-semibold">Seller_Alex</p>
-                            <p class="text-gray-600 text-sm">“Bad”</p>
-                        </div>
-                    </div>
-
-                    <!-- Negative -->
-                    <div class="flex items-center gap-2 bg-red-500 text-white px-3 py-1 rounded-full">
-                        <span class="text-xl">👎</span>
-                        <span>-1</span>
-                    </div>
-
-                </div>
-
-                <div class="border-b my-4"></div>
-            </div>
-
-            <!-- Pagination -->
-            <div class="flex justify-center mt-8 gap-4">
-
-                <button class="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center">
-                    1
-                </button>
-
-                <button class="text-gray-600 hover:text-black">2</button>
-                <button class="text-gray-600 hover:text-black">3</button>
-
-                <button class="text-gray-600 hover:text-black text-xl">→</button>
-            </div>
-
+      <!-- Current score -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="bg-white/70 border border-slate-200 rounded-xl px-4 py-2">
+          <div class="text-xs text-slate-600">Điểm hiện tại</div>
+          <div class="font-semibold text-slate-900">
+            <%= (score?.net ?? 0) >= 0 ? '+' : '' %><%= score?.net ?? 0 %>
+            <span class="text-xs text-slate-500 font-normal">( <%= score?.percent ?? 0 %>% tích cực )</span>
+          </div>
         </div>
+        <div class="bg-white/70 border border-slate-200 rounded-xl px-4 py-2">
+          <div class="text-xs text-slate-600">Tích cực</div>
+          <div class="font-semibold text-emerald-600">+<%= score?.positive ?? 0 %></div>
+        </div>
+        <div class="bg-white/70 border border-slate-200 rounded-xl px-4 py-2">
+          <div class="text-xs text-slate-600">Tiêu cực</div>
+          <div class="font-semibold text-rose-600">-<%= score?.negative ?? 0 %></div>
+        </div>
+      </div>
     </div>
 
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Given ratings -->
+      <section class="bg-white/70 border border-slate-200 rounded-2xl p-5 overflow-hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-slate-900">Đánh giá đã thực hiện</h3>
+          <span class="text-xs text-slate-500"><%= (givenRatings || []).length %> lượt</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-slate-600">
+              <tr class="border-b border-slate-200">
+                <th class="text-left font-medium py-2">Thời gian</th>
+                <th class="text-left font-medium py-2">Người được đánh giá</th>
+                <th class="text-left font-medium py-2">Sản phẩm</th>
+                <th class="text-center font-medium py-2">Điểm</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!givenRatings || givenRatings.length === 0) { %>
+                <tr>
+                  <td colspan="4" class="py-4 text-slate-500">Chưa có lịch sử đánh giá.</td>
+                </tr>
+              <% } else { %>
+                <% givenRatings.forEach(function(r) { %>
+                  <tr class="border-b border-slate-100">
+                    <td class="py-3 whitespace-nowrap text-slate-600">
+                      <%= new Date(r.created_at).toLocaleString('vi-VN') %>
+                    </td>
+                    <td class="py-3">
+                      <div class="font-medium text-slate-900"><%= r.target_name || 'N/A' %></div>
+                      <% if (r.comment) { %>
+                        <div class="text-xs text-slate-500 line-clamp-2">“<%= r.comment %>”</div>
+                      <% } %>
+                    </td>
+                    <td class="py-3 text-slate-700">
+                      <%= r.product_title ? r.product_title : (r.order_id ? ('Order #' + r.order_id) : '-') %>
+                    </td>
+                    <td class="py-3 text-center">
+                      <% if (Number(r.score) === 1) { %>
+                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-600 text-white">
+                          <span>👍</span><span>+1</span>
+                        </span>
+                      <% } else { %>
+                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-600 text-white">
+                          <span>👎</span><span>-1</span>
+                        </span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Received ratings -->
+      <section class="bg-white/70 border border-slate-200 rounded-2xl p-5 overflow-hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-slate-900">Được đánh giá</h3>
+          <span class="text-xs text-slate-500"><%= (receivedRatings || []).length %> lượt</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-slate-600">
+              <tr class="border-b border-slate-200">
+                <th class="text-left font-medium py-2">Thời gian</th>
+                <th class="text-left font-medium py-2">Người đánh giá</th>
+                <th class="text-left font-medium py-2">Sản phẩm</th>
+                <th class="text-center font-medium py-2">Điểm</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!receivedRatings || receivedRatings.length === 0) { %>
+                <tr>
+                  <td colspan="4" class="py-4 text-slate-500">Chưa có ai đánh giá bạn.</td>
+                </tr>
+              <% } else { %>
+                <% receivedRatings.forEach(function(r) { %>
+                  <tr class="border-b border-slate-100">
+                    <td class="py-3 whitespace-nowrap text-slate-600">
+                      <%= new Date(r.created_at).toLocaleString('vi-VN') %>
+                    </td>
+                    <td class="py-3">
+                      <div class="font-medium text-slate-900"><%= r.rater_name || 'N/A' %></div>
+                      <% if (r.comment) { %>
+                        <div class="text-xs text-slate-500 line-clamp-2">“<%= r.comment %>”</div>
+                      <% } %>
+                    </td>
+                    <td class="py-3 text-slate-700">
+                      <%= r.product_title ? r.product_title : (r.order_id ? ('Order #' + r.order_id) : '-') %>
+                    </td>
+                    <td class="py-3 text-center">
+                      <% if (Number(r.score) === 1) { %>
+                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-600 text-white">
+                          <span>👍</span><span>+1</span>
+                        </span>
+                      <% } else { %>
+                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-600 text-white">
+                          <span>👎</span><span>-1</span>
+                        </span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>

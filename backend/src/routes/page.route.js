@@ -8,7 +8,7 @@ router.get("/login", pageController.loginView);
 router.get("/register", pageController.registerView);
 router.get("/setting", pageController.profileView);
 router.get("/review", pageController.reviewView);
-router.get("/itemHistory", pageController.profileProductView);
+router.get("/itemHistory", pageController.itemHistoryView);
 router.get("/itemManager", pageController.profileAuctionView);
 router.get("/categories/:slug?", pageController.categoryView);
 router.get("/product/:id", pageController.productDetailView);
