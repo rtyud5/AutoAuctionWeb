@@ -13,6 +13,7 @@ import adminRoutes from "./routes/admin.route.js";
 import orderRoutes from "./routes/order.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { attachUser } from "./middlewares/auth.middleware.js";
+import reputationMiddleware from './middlewares/reputation.js';
 
 dotenv.config();
 
@@ -47,6 +48,8 @@ app.use(cookieParser());
 app.use(attachUser);
 
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
+app.use(reputationMiddleware);
 
 // Routes
 app.use("/", pageRoutes);

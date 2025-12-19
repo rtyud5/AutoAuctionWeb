@@ -49,8 +49,9 @@ const listMyOrders = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
+    // Lấy tất cả đơn hàng của user
     const [rows] = await db.query(
-      'SELECT id, status, total_amount, shipping_address, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC',
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC',
       [userId]
     );
     return res.json({ success: true, data: rows });
@@ -66,7 +67,10 @@ const getOrderById = async (req, res) => {
     const id = req.params.id;
     if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const [[order]] = await db.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [id]);
+    const [[order]] = await db.query(
+      'SELECT * FROM orders WHERE id = ? LIMIT 1',
+      { replacements: [id], raw: true }
+    );
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
     // allow owner or admin (assume admin middleware already enforces for admin endpoints)

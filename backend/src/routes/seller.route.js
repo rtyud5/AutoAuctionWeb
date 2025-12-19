@@ -140,6 +140,8 @@ router.get('/auctions', auth, isSeller, sellerController.listAuctions);
  */
 router.get('/auctions/new', auth, isSeller, sellerController.newAuctionForm);
 
+router.post('/products/:id/rate-winner', sellerController.rateWinner);
+
 /**
  * POST /seller/auctions
  * - chọn product / nhập thông tin

@@ -12,6 +12,7 @@ router.get("/itemHistory", pageController.profileProductView);
 router.get("/itemManager", pageController.profileAuctionView);
 router.get("/categories/:slug?", pageController.categoryView);
 router.get("/product/:id", pageController.productDetailView);
+router.post("/auctions/:id/rate-seller", pageController.rateSeller);
 router.get("/search", pageController.searchView);
 // Trang xác minh OTP – chỉ render giao diện
 router.get("/verify-otp", (req, res) => {

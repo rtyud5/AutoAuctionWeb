@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import Rating from '../models/rating.model.js';
 
 const index = async (req, res) => {
   let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
@@ -443,6 +444,7 @@ const profileAuctionView = async (req, res) => {
 
 const productDetailView = async (req, res) => {
   const { id } = req.params;
+  const user = req.user || null;
 
   try {
     const [prodRows] = await db.query(
@@ -470,13 +472,44 @@ const productDetailView = async (req, res) => {
 
     // Lấy auction info
     const [auctionRows] = await db.query(
-      `SELECT id, start_price, step_price, current_price, current_winner_id, end_time, status
-       FROM auctions
-       WHERE product_id = ?
-       LIMIT 1`,
+      `SELECT id, start_price, step_price, current_price, current_winner_id, end_time, status, winner_id
+      FROM auctions
+      WHERE product_id = ?
+      LIMIT 1`,
       { replacements: [id], raw: true }
     );
     const auction = auctionRows?.[0] || {};
+
+    // Lấy tên người thắng (nếu có)
+    let winner_name = null;
+    if (auction.winner_id) {
+      const [[winnerUser]] = await db.query(
+        `SELECT name FROM users WHERE id = ? LIMIT 1`,
+        { replacements: [auction.winner_id], raw: true }
+      );
+      winner_name = winnerUser?.name || "Ẩn danh";
+    }
+
+    // Lấy order liên quan đến auction này và user là người thắng
+    let hasRated = false;
+    if (
+      user &&
+      auction.status === 'ENDED' &&
+      auction.winner_id === user.id &&
+      auction.id
+    ) {
+      const [[order]] = await db.query(
+        `SELECT id FROM orders WHERE auction_id = ? AND buyer_id = ? LIMIT 1`,
+        { replacements: [auction.id, user.id], raw: true }
+      );
+      if (order) {
+        const [[rating]] = await db.query(
+          `SELECT id FROM ratings WHERE order_id = ? AND rater_id = ? LIMIT 1`,
+          { replacements: [order.id, user.id], raw: true }
+        );
+        hasRated = !!rating;
+      }
+    }
 
     // Lấy auto-bid rule của user hiện tại (nếu đã đăng nhập)
     let myAutoBid = null;
@@ -609,6 +642,7 @@ const productDetailView = async (req, res) => {
         seller_name: product.seller_name,
         seller_email: product.seller_email,
         seller_id: product.seller_id,
+        hasRated,
         // Auction data
         auction_id: auction.id || null,
         current_winner_id: auction.current_winner_id || null,
@@ -621,6 +655,9 @@ const productDetailView = async (req, res) => {
         end_time:
           auction.end_time || new Date(Date.now() + 86400000).toISOString(),
         auction_status: auction.status || "PENDING",
+        status: auction.status || "PENDING",    
+        winner_id: auction.winner_id || null,   
+        winner_name: winner_name || "Ẩn danh",                           
         seller_rating: 100,
         positive_count: 0,
         negative_count: 0,
@@ -823,6 +860,64 @@ const searchView = async (req, res) => {
   }
 };
 
+export const rateSeller = async (req, res) => {
+  try {
+    const auctionId = req.params.id;
+    const userId = req.user?.id;
+    const { comment, rating } = req.body;
+
+    // Lấy order liên quan đến auction này và user là người thắng
+    const [[order]] = await db.query(
+      `SELECT o.id, o.buyer_id, a.seller_id
+      FROM orders o
+      JOIN auctions a ON a.id = o.auction_id
+      WHERE o.auction_id = ? LIMIT 1`,
+      { replacements: [auctionId], raw: true }
+    );
+    if (!order || order.buyer_id !== userId) {
+      return res.status(403).send('Bạn không có quyền đánh giá');
+    }
+
+    // Kiểm tra đã đánh giá chưa
+    const exist = await Rating.findOne({
+      where: {
+        order_id: order.id,
+        rater_id: userId,
+        target_user_id: order.seller_id,
+      },
+    });
+    if (exist) {
+      return res.status(400).send('Bạn đã đánh giá rồi');
+    }
+
+    // Lưu vào bảng ratings
+    await Rating.create({
+      order_id: order.id,
+      rater_id: userId,
+      target_user_id: order.seller_id,
+      score: Number(rating),
+      comment,
+    });
+
+    if (Number(rating) === 1) {
+      await db.query(
+        `UPDATE users SET positive_count = positive_count + 1 WHERE id = ?`,
+        { replacements: [order.seller_id], raw: true }
+      );
+    } else if (Number(rating) === -1) {
+      await db.query(
+        `UPDATE users SET negative_count = negative_count + 1 WHERE id = ?`,
+        { replacements: [order.seller_id], raw: true }
+      );
+    }
+
+    return res.redirect(req.get('Referrer') || '/');
+  } catch (err) {
+    console.error('rateSeller error:', err);
+    return res.status(500).send('Lỗi hệ thống');
+  }
+};
+
 export default {
   index,
   loginView,
@@ -835,4 +930,5 @@ export default {
   profileAuctionView,
   productDetailView,
   searchView,
+  rateSeller,
 };

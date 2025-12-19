@@ -446,7 +446,53 @@ const listProducts = async (req, res) => {
       { replacements: [sellerId], raw: true }
     );
 
-    // Render đúng file: seller/products.ejs
+    // Lấy nhận xét của winner cho từng sản phẩm
+    for (const p of rows) {
+      // Lấy auction
+      const [[auction]] = await db.query(
+        `SELECT id, winner_id FROM auctions WHERE product_id = ? LIMIT 1`,
+        { replacements: [p.id], raw: true }
+      );
+      let order = null; // <-- Thêm dòng này
+
+      if (auction && auction.winner_id) {
+        // Lấy order
+        const [[orderRow]] = await db.query(
+          `SELECT id FROM orders WHERE auction_id = ? AND buyer_id = ? LIMIT 1`,
+          { replacements: [auction.id, auction.winner_id], raw: true }
+        );
+        if (orderRow) {
+          order = orderRow; // <-- Gán order
+          // Lấy nhận xét
+          const [[rating]] = await db.query(
+            `SELECT comment, score FROM ratings WHERE order_id = ? AND rater_id = ? LIMIT 1`,
+            { replacements: [order.id, auction.winner_id], raw: true }
+          );
+          if (rating) {
+            p.winner_comment = rating.comment;
+            p.winner_score = rating.score;
+          }
+        }
+      }
+
+      // Kiểm tra seller đã đánh giá winner chưa
+      if (auction && auction.winner_id && order) {
+        const [[sellerRating]] = await db.query(
+          `SELECT id, comment, score FROM ratings WHERE order_id = ? AND rater_id = ? AND target_user_id = ? LIMIT 1`,
+          { replacements: [order.id, sellerId, auction.winner_id], raw: true }
+        );
+        if (sellerRating) {
+          p.seller_to_winner_comment = sellerRating.comment;
+          p.seller_to_winner_score = sellerRating.score;
+          p.seller_has_rated_winner = true;
+        } else {
+          p.seller_has_rated_winner = false;
+        }
+        p.winner_id = auction.winner_id;
+        p.order_id = order.id;
+      }
+    }
+
     return res.render('seller/products', {
       title: 'Quản lý sản phẩm',
       products: rows || [],
@@ -621,13 +667,77 @@ const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Xóa auctions gắn với product
+    // 1. Xóa ratings liên quan đến các order của product
+    await db.query(
+      `DELETE r FROM ratings r
+      JOIN orders o ON r.order_id = o.id
+      JOIN auctions a ON o.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // 2. Xóa orders liên quan đến product
+    await db.query(
+      `DELETE o FROM orders o
+      JOIN auctions a ON o.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // 4. Xóa bids liên quan đến các auctions của product
+    await db.query(
+      `DELETE b FROM bids b
+      JOIN auctions a ON b.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // 5. Xóa questions/answers liên quan đến các auctions của product
+    await db.query(
+      `DELETE q FROM questions q
+      JOIN auctions a ON q.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+    await db.query(
+      `DELETE a FROM answers a
+      JOIN questions q ON a.question_id = q.id
+      JOIN auctions au ON q.auction_id = au.id
+      WHERE au.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // Xóa blocked_bidder liên quan đến các auctions của product
+    await db.query(
+      `DELETE bb FROM blocked_bidders bb
+      JOIN auctions a ON bb.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // Xóa auto_bid_rules liên quan đến các auctions của product
+    await db.query(
+      `DELETE abr FROM auto_bid_rules abr
+      JOIN auctions a ON abr.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // Xóa watch_list liên quan đến các auctions của product
+    await db.query(
+      `DELETE wl FROM watch_list wl
+      JOIN auctions a ON wl.auction_id = a.id
+      WHERE a.product_id = ?`,
+      { replacements: [productId], transaction: t }
+    );
+
+    // 6. Xóa auctions (đã có)
     await db.query(
       'DELETE FROM auctions WHERE product_id = ? AND seller_id = ?',
       { replacements: [productId, sellerId], transaction: t }
     );
 
-    // Xóa product
+    // 7. Xóa product (đã có)
     await db.query(
       'DELETE FROM products WHERE id = ? AND seller_id = ?',
       { replacements: [productId, sellerId], transaction: t }
@@ -694,6 +804,56 @@ const listQuestions = async (req, res) => {
   }
 };
 
+const rateWinner = async (req, res) => {
+  try {
+    const sellerId = req.user?.id;
+    const productId = req.params.id;
+    const { order_id, winner_id, score, comment } = req.body;
+
+    // Kiểm tra seller có quyền đánh giá không
+    const [[product]] = await db.query(
+      `SELECT seller_id FROM products WHERE id = ? LIMIT 1`,
+      { replacements: [productId], raw: true }
+    );
+    if (!product || product.seller_id !== sellerId) {
+      return res.status(403).send('Không có quyền đánh giá');
+    }
+
+    // Kiểm tra đã đánh giá chưa
+    const [[exist]] = await db.query(
+      `SELECT id FROM ratings WHERE order_id = ? AND rater_id = ? AND target_user_id = ? LIMIT 1`,
+      { replacements: [order_id, sellerId, winner_id], raw: true }
+    );
+    if (exist) {
+      return res.redirect('/seller/products');
+    }
+
+    // Lưu đánh giá
+    await db.query(
+      `INSERT INTO ratings (order_id, rater_id, target_user_id, score, comment, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+      { replacements: [order_id, sellerId, winner_id, score, comment], raw: true }
+    );
+
+    if (Number(score) === 1) {
+      await db.query(
+        'UPDATE users SET positive_count = positive_count + 1 WHERE id = ?',
+        { replacements: [winner_id], raw: true }
+      );
+    } else if (Number(score) === -1) {
+      await db.query(
+        'UPDATE users SET negative_count = negative_count + 1 WHERE id = ?',
+        { replacements: [winner_id], raw: true }
+      );
+    }
+
+    return res.redirect('/seller/products');
+  } catch (err) {
+    console.error('rateWinner error:', err);
+    return res.status(500).send('Lỗi hệ thống');
+  }
+};
+
 export default {
   register,
   login,
@@ -720,5 +880,6 @@ export default {
   editProductForm,
   updateProduct,
   deleteProduct,
-  listQuestions
+  listQuestions,
+  rateWinner
 };

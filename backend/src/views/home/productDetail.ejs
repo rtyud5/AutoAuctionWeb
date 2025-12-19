@@ -79,8 +79,34 @@
                             <div class="text-xs">Giây</div>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">Ngày kết thúc: <%= new Date(product.end_time).toLocaleString('vi-VN') %></p>
-                </div>
+                    <% if (product.status === 'ENDED' && product.winner_id) { %>
+                        <div class="bg-green-100 border border-green-400 text-green-800 rounded p-4 mb-4 mt-6">
+                            <b>Phiên đấu giá đã kết thúc.</b>
+                            <div class="mt-2">
+                                Người thắng: <%= product.winner_name || 'Ẩn danh' %>
+                            </div>
+                            <% if (user && user.id === product.winner_id) { %>
+                                <div class="mt-3">
+                                    <% if (product.hasRated) { %>
+                                        <div class="p-3 bg-blue-100 border border-blue-300 text-blue-800 rounded mb-2">
+                                            Bạn đã đánh giá người bán.
+                                        </div>
+                                    <% } else { %>
+                                        <form method="post" action="/auctions/<%= product.auction_id %>/rate-seller">
+                                            <label class="block mb-2 font-semibold">Nhận xét người bán:</label>
+                                            <textarea name="comment" class="w-full border rounded p-2 mb-2" rows="3" required></textarea>
+                                            <div class="flex gap-2 items-center mb-2">
+                                                <label><input type="radio" name="rating" value="1" required> 👍 Like</label>
+                                                <label><input type="radio" name="rating" value="-1" required> 👎 Dislike</label>
+                                            </div>
+                                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Gửi nhận xét</button>
+                                        </form>
+                                    <% } %>
+                                </div>
+                            <% } %>
+                            <p class="text-xs text-gray-500 mt-2">Ngày kết thúc: <%= new Date(product.end_time).toLocaleString('vi-VN') %></p>
+                        </div>
+                    <% } %>
 
                 <!-- Favorite Button -->
                 <button onclick="toggleWatchlist('<%= product.id %>')" class="flex items-center gap-2 mb-6 text-gray-700 hover:text-red-500 transition">
@@ -565,11 +591,8 @@
         closePaymentModal();
 
         alert('Đã mua sản phẩm thành công (demo).');
-        if (data.orderId) {
-            window.location.href = `/orders/${data.orderId}`;
-        } else {
-            window.location.reload();
-        }
+        // Sửa lại chỉ reload trang sản phẩm chi tiết
+        window.location.reload();
     }
 
 

@@ -11,13 +11,53 @@
   <% if (products && products.length > 0) { %>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <% products.forEach(p => { %>
-        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition flex flex-col h-full">
           <img src="<%= p.thumbnail || '/images/placeholder.jpg' %>" alt="<%= p.title %>" class="w-full h-48 object-cover">
-          <div class="p-4">
+          <div class="p-4 flex flex-col flex-1">
             <h3 class="font-semibold text-slate-800 line-clamp-2 mb-1"><%= p.title %></h3>
             <p class="text-sm text-slate-500 mb-2"><%= p.category_name %></p>
             <p class="text-sm text-slate-600 mb-3 line-clamp-2"><%= p.short_description || 'Không có mô tả' %></p>
-            <div class="flex gap-2 justify-between">
+
+            <% if (p.winner_comment) { %>
+              <div class="mt-2 mb-4 p-2 bg-green-50 border-l-4 border-green-400 rounded text-green-800 text-sm">
+                <b>Nhận xét của người thắng:</b> <%= p.winner_comment %>
+                <% if (typeof p.winner_score !== 'undefined') { %>
+                  <span class="ml-2">| Đánh giá: <%= p.winner_score == 1 ? '👍' : '👎' %></span>
+                <% } %>
+              </div>
+            <% } %>
+
+            <div class="flex-1"></div> <!-- Đẩy phần dưới cùng xuống đáy card -->
+
+            <!-- Đánh giá người thắng: Đặt ở dưới cùng, tách biệt -->
+            <% if (p.winner_id) { %>
+              <div class="mt-2 pt-2 border-t border-slate-100">
+                <% if (p.seller_has_rated_winner) { %>
+                  <div class="mb-2 p-2 bg-blue-50 border-l-4 border-blue-400 rounded text-blue-800 text-sm">
+                    <b>Bạn đã đánh giá người thắng:</b> <%= p.seller_to_winner_comment %>
+                    <% if (typeof p.seller_to_winner_score !== 'undefined') { %>
+                      <span class="ml-2">| Đánh giá: <%= p.seller_to_winner_score == 1 ? '👍' : '👎' %></span>
+                    <% } %>
+                  </div>
+                <% } else { %>
+                  <form method="post" action="/seller/products/<%= p.id %>/rate-winner" class="mb-2 flex flex-col gap-2">
+                    <input type="hidden" name="order_id" value="<%= p.order_id %>">
+                    <input type="hidden" name="winner_id" value="<%= p.winner_id %>">
+                    <label class="block font-medium text-sm">Đánh giá người thắng:</label>
+                    <div class="flex gap-2 items-center">
+                      <select name="score" class="border rounded px-2 py-1 text-sm">
+                        <option value="1">👍 Tốt</option>
+                        <option value="-1">👎 Không tốt</option>
+                      </select>
+                      <input type="text" name="comment" placeholder="Nhận xét..." class="border rounded px-2 py-1 text-sm flex-1">
+                    </div>
+                    <button type="submit" class="w-full px-3 py-1 bg-blue-600 text-white rounded text-sm">Gửi</button>
+                  </form>
+                <% } %>
+              </div>
+            <% } %>
+
+            <div class="flex gap-2 justify-between mt-4">
               <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
                 <%= p.status %>
               </span>
