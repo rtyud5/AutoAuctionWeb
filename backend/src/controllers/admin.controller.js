@@ -180,6 +180,28 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+const removeProductAdmin = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    // "Gỡ bỏ" theo nghĩa: ẩn khỏi sàn ngay lập tức
+    // 1) Đánh dấu sản phẩm BANNED (không còn xuất hiện ở các trang lọc APPROVED)
+    await db.query('UPDATE products SET status = ? WHERE id = ?', ['BANNED', id]);
+
+    // 2) Gỡ các phiên đấu giá liên quan (nếu có) để không còn hiển thị
+    await db.query('UPDATE auctions SET status = ? WHERE product_id = ?', ['removed', id]);
+
+    if (req.accepts('html')) return res.redirect('/admin/products-page?success=removed');
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('admin.removeProductAdmin', err);
+    if (req.accepts('html')) return res.redirect('/admin/products-page?error=remove_failed');
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
+
 const listAuctions = async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -242,14 +264,22 @@ const listCategories = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name, slug, parent_id } = req.body;
+
+    // slug có thể để trống; nếu để trống thì lưu NULL để các phần khác không bị lỗi
+    const safeSlug = (typeof slug === 'string' && slug.trim().length > 0) ? slug.trim() : null;
+
     await db.query('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', [
       name,
-      slug || null,
-      parent_id || null,
+      safeSlug,
+      parent_id ? Number(parent_id) : null,
     ]);
+
+    // Nếu request đến từ form HTML (Admin UI) thì redirect về trang quản lý
+    if (req.accepts('html')) return res.redirect('/admin/categories-page?success=created');
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.createCategory', err);
+    if (req.accepts('html')) return res.redirect('/admin/categories-page?error=create_failed');
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -271,11 +301,30 @@ const updateCategory = async (req, res) => {
 
 const deleteCategory = async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = Number(req.params.id);
+
+    // Không cho xoá danh mục đã có sản phẩm
+    const [[cntRow]] = await db.query(
+      'SELECT COUNT(*) AS cnt FROM products WHERE category_id = ?',
+      [id]
+    );
+
+    const cnt = Number(cntRow?.cnt || 0);
+    if (cnt > 0) {
+      if (req.accepts('html')) return res.redirect('/admin/categories-page?error=has_products');
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể xoá danh mục vì đã có sản phẩm.',
+      });
+    }
+
     await db.query('DELETE FROM categories WHERE id = ?', [id]);
+
+    if (req.accepts('html')) return res.redirect('/admin/categories-page?success=deleted');
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.deleteCategory', err);
+    if (req.accepts('html')) return res.redirect('/admin/categories-page?error=delete_failed');
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -447,6 +496,97 @@ const renderUsersPage = async (req, res) => {
   }
 };
 
+const renderProductsPage = async (req, res) => {
+  try {
+    const { success, error } = req.query;
+
+    const [rows] = await db.query(
+      `SELECT 
+        p.id,
+        p.title,
+        p.thumbnail,
+        p.status,
+        p.created_at,
+        u.name AS seller_name,
+        u.email AS seller_email,
+        c.name AS category_name
+      FROM products p
+      LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      ORDER BY p.id DESC
+      LIMIT 500`
+    );
+
+    const products = (rows || []).map((p) => ({
+      id: p.id,
+      title: p.title || `Product #${p.id}`,
+      thumbnail: p.thumbnail || null,
+      status: p.status || 'PENDING',
+      created_at: p.created_at || null,
+      seller_name: p.seller_name || '—',
+      seller_email: p.seller_email || '—',
+      category_name: p.category_name || '—',
+    }));
+
+    return res.render('admin/products', {
+      layout: 'layouts/admin',
+      title: 'Quản lý sản phẩm',
+      products,
+      success: success || null,
+      error: error || null,
+    });
+  } catch (err) {
+    console.error('admin.renderProductsPage', err);
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
+
+const renderCategoriesPage = async (req, res) => {
+  try {
+    const { success, error } = req.query;
+
+    const [rows] = await db.query(
+      `SELECT 
+        c.id,
+        c.name,
+        c.slug,
+        c.parent_id,
+        COUNT(p.id) AS product_count
+      FROM categories c
+      LEFT JOIN products p ON p.category_id = c.id
+      GROUP BY c.id
+      ORDER BY (c.parent_id IS NOT NULL), c.parent_id, c.id`
+    );
+
+    // danh sách parent cho dropdown
+    const [parents] = await db.query(
+      `SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY id`
+    );
+
+    const categories = (rows || []).map((c) => ({
+      id: c.id,
+      name: c.name || `Category #${c.id}`,
+      slug: c.slug || '',
+      parent_id: c.parent_id || null,
+      product_count: Number(c.product_count || 0),
+    }));
+
+    return res.render('admin/categories', {
+      layout: 'layouts/admin',
+      title: 'Quản lý danh mục',
+      categories,
+      parents: parents || [],
+      success: success || null,
+      error: error || null,
+    });
+  } catch (err) {
+    console.error('admin.renderCategoriesPage', err);
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
+
+
+
 export default {
   dashboard,
   listUsers,
@@ -461,6 +601,7 @@ export default {
   listProducts,
   getProductById,
   deleteProduct,
+  removeProductAdmin,
   listAuctions,
   getAuctionById,
   updateAuctionStatus,
@@ -477,4 +618,6 @@ export default {
   renderDashboard,
   renderUpgradeRequestsPage,
   renderUsersPage,
+  renderProductsPage,
+  renderCategoriesPage,
 };

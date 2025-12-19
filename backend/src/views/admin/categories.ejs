@@ -1,0 +1,146 @@
+<div class="space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-50">Quản lý danh mục</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Admin có thể thêm danh mục mới. Chỉ được xoá danh mục khi <span class="text-slate-200 font-medium">chưa có sản phẩm</span>.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="/admin/dashboard"
+        class="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
+        ← Dashboard
+      </a>
+    </div>
+  </div>
+
+  <% if (success) { %>
+    <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      Thao tác thành công.
+    </div>
+  <% } %>
+
+  <% if (error) { %>
+    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+      <% if (error === 'has_products') { %>
+        Không thể xoá danh mục vì danh mục này đã có sản phẩm.
+      <% } else { %>
+        Có lỗi xảy ra. Vui lòng thử lại.
+      <% } %>
+    </div>
+  <% } %>
+
+  <!-- Create category -->
+  <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+    <h2 class="text-base font-semibold text-slate-50">Thêm danh mục</h2>
+    <p class="mt-1 text-xs text-slate-500">Slug có thể để trống. Parent dùng để tạo danh mục con (2 cấp).</p>
+
+    <form method="POST" action="/admin/categories" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="md:col-span-1">
+        <label class="text-xs text-slate-400">Tên danh mục</label>
+        <input name="name" required
+          class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:border-teal-400"
+          placeholder="VD: Điện tử" />
+      </div>
+
+      <div class="md:col-span-1">
+        <label class="text-xs text-slate-400">Slug (tuỳ chọn)</label>
+        <input name="slug"
+          class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:border-teal-400"
+          placeholder="VD: dien-tu" />
+      </div>
+
+      <div class="md:col-span-1">
+        <label class="text-xs text-slate-400">Parent (tuỳ chọn)</label>
+        <select name="parent_id"
+          class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:border-teal-400">
+          <option value="">— Không có —</option>
+          <% (parents || []).forEach((p) => { %>
+            <option value="<%= p.id %>"><%= p.name %> (#<%= p.id %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="md:col-span-3 flex items-center justify-end gap-2">
+        <button type="submit"
+          class="rounded-xl bg-teal-500/20 border border-teal-400/30 px-4 py-2 text-sm text-teal-100 hover:bg-teal-500/25">
+          Thêm danh mục
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- List categories -->
+  <div class="bg-slate-950/60 border border-slate-800 rounded-2xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+      <p class="text-sm text-slate-300">Tổng: <span class="font-semibold text-slate-50"><%= categories?.length || 0 %></span> danh mục</p>
+      <p class="text-xs text-slate-500">Xoá chỉ khả dụng khi Product Count = 0</p>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-900/70 text-slate-300">
+          <tr>
+            <th class="px-4 py-3 text-left font-medium">ID</th>
+            <th class="px-4 py-3 text-left font-medium">Tên</th>
+            <th class="px-4 py-3 text-left font-medium">Slug</th>
+            <th class="px-4 py-3 text-left font-medium">Parent</th>
+            <th class="px-4 py-3 text-left font-medium">Product Count</th>
+            <th class="px-4 py-3 text-right font-medium">Thao tác</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-800">
+          <% if (!categories || categories.length === 0) { %>
+            <tr>
+              <td colspan="6" class="px-4 py-6 text-center text-slate-400">
+                Chưa có dữ liệu.
+              </td>
+            </tr>
+          <% } %>
+
+          <% (categories || []).forEach((c) => { %>
+            <tr class="hover:bg-slate-900/40">
+              <td class="px-4 py-3 text-slate-200">#<%= c.id %></td>
+              <td class="px-4 py-3 text-slate-50 font-medium"><%= c.name %></td>
+              <td class="px-4 py-3 text-slate-300"><%= c.slug || '—' %></td>
+              <td class="px-4 py-3 text-slate-300">
+                <%= c.parent_id ? ('#' + c.parent_id) : '—' %>
+              </td>
+              <td class="px-4 py-3">
+                <% if (c.product_count > 0) { %>
+                  <span class="inline-flex items-center rounded-full bg-amber-500/10 text-amber-200 border border-amber-400/30 px-3 py-1 text-xs font-medium">
+                    <%= c.product_count %>
+                  </span>
+                <% } else { %>
+                  <span class="inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-200 border border-emerald-400/30 px-3 py-1 text-xs font-medium">
+                    0
+                  </span>
+                <% } %>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end">
+                  <% if (c.product_count > 0) { %>
+                    <button type="button" disabled
+                      class="inline-flex items-center rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-500 cursor-not-allowed">
+                      Không thể xoá
+                    </button>
+                  <% } else { %>
+                    <form method="POST" action="/admin/categories/<%= c.id %>/delete" onsubmit="return confirm('Bạn chắc chắn muốn xoá danh mục này?');">
+                      <button
+                        type="submit"
+                        class="inline-flex items-center rounded-xl bg-rose-500/15 text-rose-200 border border-rose-500/30 px-3 py-2 text-xs hover:bg-rose-500/20">
+                        Xoá
+                      </button>
+                    </form>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

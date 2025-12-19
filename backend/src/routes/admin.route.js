@@ -63,6 +63,7 @@ router.delete('/sellers/:id', adminController.deleteSeller);
 router.get('/products', adminController.listProducts);
 router.get('/products/:id', adminController.getProductById);
 router.delete('/products/:id', adminController.deleteProduct);
+router.post('/products/:id/remove', adminController.removeProductAdmin);
 
 // Auctions (including optional moderation actions)
 router.get('/auctions', adminController.listAuctions);
@@ -129,6 +130,12 @@ router.get('/upgrade-requests-page', adminController.renderUpgradeRequestsPage);
 
 // Trang danh sách tài khoản (UI)
 router.get('/users-page', adminController.renderUsersPage);
+
+// Trang quản lý sản phẩm (UI)
+router.get('/products-page', adminController.renderProductsPage);
+
+// Trang quản lý danh mục (UI)
+router.get('/categories-page', adminController.renderCategoriesPage);
 
 
 export default router;

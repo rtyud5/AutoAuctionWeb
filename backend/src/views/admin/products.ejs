@@ -1,0 +1,244 @@
+<div class="space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-50">Quản lý sản phẩm</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Danh sách toàn bộ sản phẩm trong hệ thống. Admin có thể xem chi tiết (popup) và gỡ bỏ sản phẩm bất cứ lúc nào.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="/admin/dashboard"
+        class="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
+        ← Dashboard
+      </a>
+    </div>
+  </div>
+
+  <% if (success) { %>
+    <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      Thao tác thành công.
+    </div>
+  <% } %>
+
+  <% if (error) { %>
+    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+      Có lỗi xảy ra. Vui lòng thử lại.
+    </div>
+  <% } %>
+
+  <div class="bg-slate-950/60 border border-slate-800 rounded-2xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+      <p class="text-sm text-slate-300">Tổng: <span class="font-semibold text-slate-50"><%= products?.length || 0 %></span> sản phẩm</p>
+      <p class="text-xs text-slate-500">Hiển thị tối đa 500 bản ghi mới nhất</p>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-900/70 text-slate-300">
+          <tr>
+            <th class="px-4 py-3 text-left font-medium">ID</th>
+            <th class="px-4 py-3 text-left font-medium">Tiêu đề</th>
+            <th class="px-4 py-3 text-left font-medium">Seller</th>
+            <th class="px-4 py-3 text-left font-medium">Danh mục</th>
+            <th class="px-4 py-3 text-left font-medium">Trạng thái</th>
+            <th class="px-4 py-3 text-left font-medium">Ngày tạo</th>
+            <th class="px-4 py-3 text-right font-medium">Thao tác</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-800">
+          <% if (!products || products.length === 0) { %>
+            <tr>
+              <td colspan="7" class="px-4 py-6 text-center text-slate-400">
+                Chưa có dữ liệu.
+              </td>
+            </tr>
+          <% } %>
+
+          <% (products || []).forEach((p) => { %>
+            <tr class="hover:bg-slate-900/40">
+              <td class="px-4 py-3 text-slate-200">#<%= p.id %></td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <% if (p.thumbnail) { %>
+                    <img src="<%= p.thumbnail %>" alt="thumb" class="w-10 h-10 rounded-lg object-cover border border-slate-800" />
+                  <% } else { %>
+                    <div class="w-10 h-10 rounded-lg bg-slate-800/60 border border-slate-700 flex items-center justify-center text-xs text-slate-400">
+                      N/A
+                    </div>
+                  <% } %>
+                  <div class="max-w-[420px]">
+                    <p class="font-medium text-slate-50 line-clamp-2"><%= p.title %></p>
+                    <p class="text-xs text-slate-500">ID: <%= p.id %></p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <p class="text-slate-100"><%= p.seller_name %></p>
+                <p class="text-xs text-slate-500"><%= p.seller_email %></p>
+              </td>
+              <td class="px-4 py-3 text-slate-200"><%= p.category_name %></td>
+              <td class="px-4 py-3">
+                <% if (p.status === 'APPROVED') { %>
+                  <span class="inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-200 border border-emerald-400/30 px-3 py-1 text-xs font-medium">APPROVED</span>
+                <% } else if (p.status === 'PENDING') { %>
+                  <span class="inline-flex items-center rounded-full bg-amber-500/10 text-amber-200 border border-amber-400/30 px-3 py-1 text-xs font-medium">PENDING</span>
+                <% } else if (p.status === 'REJECTED') { %>
+                  <span class="inline-flex items-center rounded-full bg-rose-500/10 text-rose-200 border border-rose-400/30 px-3 py-1 text-xs font-medium">REJECTED</span>
+                <% } else if (p.status === 'BANNED') { %>
+                  <span class="inline-flex items-center rounded-full bg-slate-500/10 text-slate-200 border border-slate-400/30 px-3 py-1 text-xs font-medium">BANNED</span>
+                <% } else { %>
+                  <span class="inline-flex items-center rounded-full bg-slate-500/10 text-slate-200 border border-slate-400/30 px-3 py-1 text-xs font-medium"><%= p.status %></span>
+                <% } %>
+              </td>
+              <td class="px-4 py-3 text-slate-300">
+                <%= p.created_at ? new Date(p.created_at).toLocaleString('vi-VN') : '—' %>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    data-product-id="<%= p.id %>"
+                    class="btnView inline-flex items-center rounded-xl border border-slate-700 px-3 py-2 text-xs hover:bg-slate-800">
+                    Chi tiết
+                  </button>
+
+                  <% if (p.status === 'BANNED') { %>
+                    <button
+                      type="button"
+                      class="inline-flex items-center rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-500 cursor-not-allowed"
+                      disabled>
+                      Đã gỡ
+                    </button>
+                  <% } else { %>
+                    <form method="POST" action="/admin/products/<%= p.id %>/remove" onsubmit="return confirm('Bạn chắc chắn muốn gỡ bỏ sản phẩm này?');">
+                      <button
+                        type="submit"
+                        class="inline-flex items-center rounded-xl bg-rose-500/15 text-rose-200 border border-rose-500/30 px-3 py-2 text-xs hover:bg-rose-500/20">
+                        Gỡ bỏ
+                      </button>
+                    </form>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="productModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/60" id="modalOverlay"></div>
+
+  <div class="relative mx-auto mt-16 w-[92%] max-w-2xl">
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-400">Chi tiết sản phẩm</p>
+          <h2 class="text-lg font-semibold text-slate-50" id="modalTitle">—</h2>
+        </div>
+        <button id="modalClose" class="rounded-xl border border-slate-700 px-3 py-2 text-xs hover:bg-slate-800">Đóng</button>
+      </div>
+
+      <div class="p-4 space-y-4">
+        <div class="flex items-start gap-4">
+          <img id="modalThumb" src="" alt="thumb" class="w-24 h-24 rounded-xl object-cover border border-slate-800 hidden" />
+          <div class="flex-1 space-y-2">
+            <p class="text-xs text-slate-500">ID: <span class="text-slate-200" id="modalId">—</span></p>
+            <p class="text-xs text-slate-500">Trạng thái: <span class="text-slate-200" id="modalStatus">—</span></p>
+            <p class="text-xs text-slate-500">Seller ID: <span class="text-slate-200" id="modalSellerId">—</span></p>
+            <p class="text-xs text-slate-500">Category ID: <span class="text-slate-200" id="modalCategoryId">—</span></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4">
+          <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4">
+            <h3 class="text-sm font-semibold text-slate-50">Mô tả ngắn</h3>
+            <p class="mt-2 text-sm text-slate-300 whitespace-pre-line" id="modalShort">—</p>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4">
+            <h3 class="text-sm font-semibold text-slate-50">Mô tả đầy đủ</h3>
+            <p class="mt-2 text-sm text-slate-300 whitespace-pre-line" id="modalFull">—</p>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-500" id="modalTime">—</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('productModal');
+  const overlay = document.getElementById('modalOverlay');
+  const closeBtn = document.getElementById('modalClose');
+
+  function openModal() {
+    modal.classList.remove('hidden');
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  overlay.addEventListener('click', closeModal);
+  closeBtn.addEventListener('click', closeModal);
+
+  async function loadProductDetail(id) {
+    const res = await fetch(`/admin/products/${id}`, { headers: { 'Accept': 'application/json' }});
+    if (!res.ok) throw new Error('Fetch failed');
+    const data = await res.json();
+    if (!data?.success) throw new Error('Not success');
+    return data.data;
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    el.textContent = value ?? '—';
+  }
+
+  document.querySelectorAll('.btnView').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-product-id');
+      try {
+        setText('modalTitle', 'Đang tải...');
+        setText('modalId', id);
+        openModal();
+
+        const p = await loadProductDetail(id);
+
+        setText('modalTitle', p.title || `Product #${p.id}`);
+        setText('modalId', p.id);
+        setText('modalStatus', p.status || '—');
+        setText('modalSellerId', p.seller_id || '—');
+        setText('modalCategoryId', p.category_id || '—');
+        setText('modalShort', p.short_description || '—');
+        setText('modalFull', p.full_description || '—');
+
+        const timeText = [];
+        if (p.created_at) timeText.push(`Tạo: ${new Date(p.created_at).toLocaleString('vi-VN')}`);
+        if (p.updated_at) timeText.push(`Cập nhật: ${new Date(p.updated_at).toLocaleString('vi-VN')}`);
+        document.getElementById('modalTime').textContent = timeText.join(' | ') || '—';
+
+        const img = document.getElementById('modalThumb');
+        if (p.thumbnail) {
+          img.src = p.thumbnail;
+          img.classList.remove('hidden');
+        } else {
+          img.classList.add('hidden');
+          img.src = '';
+        }
+      } catch (e) {
+        setText('modalTitle', 'Không tải được chi tiết');
+      }
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+</script>
