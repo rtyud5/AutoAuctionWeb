@@ -13,6 +13,7 @@ import Order from "./order.model.js";
 import OrderMessage from "./order_message.js";
 import UpgradeRequest from "./upgradeRequest.model.js";
 import WatchList from "./watchList.model.js";
+import OtpToken from "./otpToken.model.js";
 
 // ============ KHAI BÁO QUAN HỆ GIỮA CÁC MODEL ============
 
@@ -144,4 +145,5 @@ export {
   OrderMessage,
   UpgradeRequest,
   WatchList,
+  OtpToken,
 };

@@ -9,7 +9,11 @@
       <header class="space-y-1">
         <h1 class="text-xl font-semibold text-slate-900">Xác minh OTP</h1>
         <p class="text-sm text-slate-500">
-          Nhập mã OTP gồm 4 số được gửi đến email của bạn để hoàn tất đăng ký.
+          <% if ((purpose || "register") === "reset_password") { %>
+            Nhập mã OTP gồm 4 số được gửi đến email của bạn để đặt lại mật khẩu.
+          <% } else { %>
+            Nhập mã OTP gồm 4 số được gửi đến email của bạn để hoàn tất đăng ký.
+          <% } %>
         </p>
       </header>
     </div>
@@ -23,6 +27,8 @@
     <form action="/auth/verify-otp" method="POST" id="otpForm" class="mt-6 space-y-5">
       <!-- input ẩn gửi full OTP -->
       <input type="hidden" name="otp" id="otpValue" />
+      <input type="hidden" name="email" value="<%= email || '' %>" />
+      <input type="hidden" name="purpose" value="<%= purpose || 'register' %>" />
 
       <div class="flex items-center justify-center gap-3">
         <% for (let i = 0; i < 4; i++) { %>

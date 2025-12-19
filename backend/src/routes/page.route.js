@@ -15,7 +15,14 @@ router.get("/product/:id", pageController.productDetailView);
 router.get("/search", pageController.searchView);
 // Trang xác minh OTP – chỉ render giao diện
 router.get("/verify-otp", (req, res) => {
-  res.render("auth/verify-otp");
+  const email = req.query.email || "";
+  const purpose = (req.query.purpose || "register").toString().toLowerCase();
+  res.render("auth/verify-otp", {
+    title: "Xác minh OTP",
+    email,
+    purpose,
+    error: null,
+  });
 });
 
 router.get("/auctions/:id", pageController.showAuction);

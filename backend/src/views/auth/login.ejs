@@ -55,7 +55,7 @@
           <input id="remember" type="checkbox" class="rounded border-slate-300 text-teal-500 focus:ring-teal-400" />
           <label for="remember">Ghi nhớ đăng nhập</label>
         </div>
-        <a href="#" class="hover:text-teal-600">Quên mật khẩu?</a>
+        <button type="button" id="forgot-trigger" class="hover:text-teal-600">Quên mật khẩu?</button>
       </div>
 
       <button
@@ -90,6 +90,91 @@
     </div>
   </div>
 </section>
+
+<!-- Forgot password modal -->
+<div
+  id="forgot-modal"
+  class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+>
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
+    <header class="space-y-1">
+      <h2 class="text-base font-semibold text-slate-900">Quên mật khẩu</h2>
+      <p class="text-xs text-slate-500">
+        Hệ thống sẽ gửi mã OTP về email. Nếu xác thực đúng, mật khẩu sẽ được reset thành <span class="font-semibold">123</span>.
+      </p>
+    </header>
+
+    <div id="forgot-alert" class="hidden text-xs px-3 py-2 rounded-lg border"></div>
+
+    <!-- Step 1: enter email -->
+    <form id="forgot-step1" class="space-y-3">
+      <div class="space-y-1.5">
+        <label for="forgotEmail" class="block text-xs font-medium text-slate-700">Email</label>
+        <input
+          id="forgotEmail"
+          type="email"
+          required
+          class="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 bg-white"
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button
+          type="button"
+          id="forgot-cancel-1"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100"
+        >
+          Hủy
+        </button>
+        <button
+          type="submit"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium bg-teal-500 text-white hover:bg-teal-600"
+        >
+          Gửi OTP
+        </button>
+      </div>
+    </form>
+
+    <!-- Step 2: enter OTP -->
+    <form id="forgot-step2" class="hidden space-y-4">
+      <p class="text-xs text-slate-500">
+        Vui lòng nhập mã OTP 4 số.
+      </p>
+
+      <input type="hidden" id="forgotEmailHidden" />
+      <input type="hidden" id="forgotOtpValue" />
+
+      <div class="flex items-center justify-center gap-3">
+        <% for (let i = 0; i < 4; i++) { %>
+          <input
+            type="text"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            class="forgot-otp-digit w-12 h-12 text-center text-xl font-semibold rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
+          />
+        <% } %>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button
+          type="button"
+          id="forgot-back"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100"
+        >
+          Quay lại
+        </button>
+        <button
+          type="submit"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium bg-teal-500 text-white hover:bg-teal-600"
+        >
+          Xác thực
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Admin login modal -->
 <div
@@ -167,6 +252,169 @@
     modal.addEventListener("click", (e) => {
       if (e.target === modal) {
         closeModal();
+      }
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    const trigger = document.getElementById("forgot-trigger");
+    const modal = document.getElementById("forgot-modal");
+    const step1 = document.getElementById("forgot-step1");
+    const step2 = document.getElementById("forgot-step2");
+    const cancel1 = document.getElementById("forgot-cancel-1");
+    const backBtn = document.getElementById("forgot-back");
+    const emailInput = document.getElementById("forgotEmail");
+    const emailHidden = document.getElementById("forgotEmailHidden");
+    const otpHidden = document.getElementById("forgotOtpValue");
+    const otpInputs = document.querySelectorAll(".forgot-otp-digit");
+    const alertBox = document.getElementById("forgot-alert");
+
+    if (!trigger || !modal || !step1 || !step2) return;
+
+    const showAlert = (type, text) => {
+      if (!alertBox) return;
+      alertBox.classList.remove("hidden");
+      alertBox.classList.remove("border-rose-200", "bg-rose-50", "text-rose-700");
+      alertBox.classList.remove("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+      if (type === "success") {
+        alertBox.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+      } else {
+        alertBox.classList.add("border-rose-200", "bg-rose-50", "text-rose-700");
+      }
+      alertBox.textContent = text;
+    };
+
+    const resetModalState = () => {
+      alertBox?.classList.add("hidden");
+      step1.classList.remove("hidden");
+      step2.classList.add("hidden");
+      emailInput.value = "";
+      emailHidden.value = "";
+      otpHidden.value = "";
+      otpInputs.forEach((i) => (i.value = ""));
+    };
+
+    const sendOtp = async (email) => {
+      const res = await fetch("/auth/forgot/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      return res.json();
+    };
+
+    const openModal = () => {
+      resetModalState();
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+
+      // If the user already typed email in the login form, auto-send OTP.
+      const loginEmail = document.getElementById("email")?.value;
+      if (loginEmail && String(loginEmail).includes("@")) {
+        emailInput.value = String(loginEmail).trim();
+        (async () => {
+          try {
+            const data = await sendOtp(emailInput.value);
+            if (!data?.success) {
+              showAlert("error", data?.message || "Không thể gửi OTP.");
+              emailInput?.focus();
+              return;
+            }
+            emailHidden.value = emailInput.value;
+            showAlert("success", data?.message || "Đã gửi OTP. Vui lòng kiểm tra email.");
+            step1.classList.add("hidden");
+            step2.classList.remove("hidden");
+            otpInputs[0]?.focus();
+          } catch (err) {
+            showAlert("error", "Có lỗi hệ thống. Vui lòng thử lại.");
+          }
+        })();
+        return;
+      }
+
+      emailInput?.focus();
+    };
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    trigger.addEventListener("click", openModal);
+    cancel1?.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeModal();
+    });
+    backBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      step2.classList.add("hidden");
+      step1.classList.remove("hidden");
+      alertBox?.classList.add("hidden");
+      emailInput?.focus();
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // OTP inputs UX
+    otpInputs.forEach((input, index) => {
+      input.addEventListener("input", () => {
+        if (input.value && index < otpInputs.length - 1) otpInputs[index + 1].focus();
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && index > 0) otpInputs[index - 1].focus();
+      });
+    });
+
+    step1.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = String(emailInput.value || "").trim();
+      if (!email) return;
+
+      try {
+        const data = await sendOtp(email);
+        if (!data?.success) {
+          showAlert("error", data?.message || "Không thể gửi OTP.");
+          return;
+        }
+
+        emailHidden.value = email;
+        showAlert("success", data?.message || "Đã gửi OTP. Vui lòng kiểm tra email.");
+        step1.classList.add("hidden");
+        step2.classList.remove("hidden");
+        otpInputs[0]?.focus();
+      } catch (err) {
+        showAlert("error", "Có lỗi hệ thống. Vui lòng thử lại.");
+      }
+    });
+
+    step2.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      let code = "";
+      otpInputs.forEach((i) => (code += i.value || ""));
+      if (code.length < otpInputs.length) return;
+      otpHidden.value = code;
+
+      try {
+        const res = await fetch("/auth/forgot/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailHidden.value, otp: code }),
+        });
+        const data = await res.json();
+
+        if (data?.success) {
+          showAlert("success", data?.message || "Mật khẩu đã được reset thành 123.");
+          // keep modal open for user to read; they can close manually
+          return;
+        }
+
+        // Requirement: nếu không đúng thì không reset; UI hiển thị lỗi để người dùng biết
+        showAlert("error", data?.message || "OTP không đúng hoặc đã hết hạn.");
+      } catch (err) {
+        showAlert("error", "Có lỗi hệ thống. Vui lòng thử lại.");
       }
     });
   })();
