@@ -71,24 +71,29 @@ const getProfile = async (req, res) => {
   }
 };
 
+// ✅ WATCHLIST (ĐÚNG schema: watch_list)
+
 const getWatchlist = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const [rows] = await db.query(
-      `SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
-       FROM watch_list w
-       JOIN auctions a ON a.id = w.auction_id
-       JOIN products p ON p.id = a.product_id
-       WHERE w.user_id = ?
-       ORDER BY w.created_at DESC`,
+      `
+      SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
+      FROM watch_list w
+      JOIN auctions a ON a.id = w.auction_id
+      JOIN products p ON p.id = a.product_id
+      WHERE w.user_id = ?
+      ORDER BY w.created_at DESC
+      `,
       { replacements: [userId], raw: true }
     );
+
     return res.json({ success: true, watchlist: rows || [] });
   } catch (err) {
-    console.error('bidder.getWatchlist', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("bidder.getWatchlist", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -96,17 +101,27 @@ const addToWatchlist = async (req, res) => {
   try {
     const userId = req.user?.id;
     const auctionId = Number(req.params.auctionId);
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: "Invalid auction id" });
+
+    // Không cần unique index vẫn chống trùng được
     await db.query(
-      'INSERT IGNORE INTO watch_list (user_id, auction_id, created_at) VALUES (?, ?, NOW())',
-      { replacements: [userId, auctionId], raw: true }
+      `
+      INSERT INTO watch_list (user_id, auction_id, created_at, updated_at)
+      SELECT ?, ?, NOW(), NOW()
+      FROM DUAL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM watch_list WHERE user_id = ? AND auction_id = ?
+      )
+      `,
+      { replacements: [userId, auctionId, userId, auctionId], raw: true }
     );
+
     return res.json({ success: true });
   } catch (err) {
-    console.error('bidder.addToWatchlist', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("bidder.addToWatchlist", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -114,19 +129,22 @@ const removeFromWatchlist = async (req, res) => {
   try {
     const userId = req.user?.id;
     const auctionId = Number(req.params.auctionId);
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
-    await db.query('DELETE FROM watch_list WHERE user_id = ? AND auction_id = ?', {
-      replacements: [userId, auctionId],
-      raw: true,
-    });
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: "Invalid auction id" });
+
+    await db.query(
+      `DELETE FROM watch_list WHERE user_id = ? AND auction_id = ?`,
+      { replacements: [userId, auctionId], raw: true }
+    );
+
     return res.json({ success: true });
   } catch (err) {
-    console.error('bidder.removeFromWatchlist', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("bidder.removeFromWatchlist", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 /**
  * Manual bid (API only).

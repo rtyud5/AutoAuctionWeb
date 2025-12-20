@@ -186,36 +186,180 @@ const reviewView = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const [totalPointResult] = await db.query(
-      `SELECT COALESCE(SUM(point), 0) AS total FROM reviews WHERE user_id = ?`,
+    // 1) Score tổng (dựa trên ratings)
+    const [scoreRows] = await db.query(
+      `
+      SELECT
+        COALESCE(SUM(CASE WHEN score = 1 THEN 1 ELSE 0 END), 0) AS positive,
+        COALESCE(SUM(CASE WHEN score = -1 THEN 1 ELSE 0 END), 0) AS negative
+      FROM ratings
+      WHERE target_user_id = ?
+      `,
       { replacements: [userId], raw: true }
     );
-    const totalPoint = totalPointResult?.[0]?.total ?? 0;
 
-    const [reviewList] = await db.query(
-      `SELECT reviewer, comment, point, avatar 
-       FROM reviews 
-       WHERE user_id = ?
-       ORDER BY id DESC`,
+    const positive = Number(scoreRows?.[0]?.positive ?? 0);
+    const negative = Number(scoreRows?.[0]?.negative ?? 0);
+    const net = positive - negative;
+    const total = positive + negative;
+    const percent = total > 0 ? Math.round((positive / total) * 100) : 0;
+
+    // 2) Lịch sử "đánh giá đã thực hiện"
+    const [givenRatings] = await db.query(
+      `
+      SELECT
+        r.id, r.order_id, r.score, r.comment, r.created_at,
+        u.name AS target_name,
+        p.title AS product_title
+      FROM ratings r
+      JOIN users u ON u.id = r.target_user_id
+      LEFT JOIN orders o ON o.id = r.order_id
+      LEFT JOIN auctions a ON a.id = o.auction_id
+      LEFT JOIN products p ON p.id = a.product_id
+      WHERE r.rater_id = ?
+      ORDER BY r.created_at DESC
+      LIMIT 200
+      `,
+      { replacements: [userId], raw: true }
+    );
+
+    // 3) Lịch sử "được đánh giá"
+    const [receivedRatings] = await db.query(
+      `
+      SELECT
+        r.id, r.order_id, r.score, r.comment, r.created_at,
+        u.name AS rater_name,
+        p.title AS product_title
+      FROM ratings r
+      JOIN users u ON u.id = r.rater_id
+      LEFT JOIN orders o ON o.id = r.order_id
+      LEFT JOIN auctions a ON a.id = o.auction_id
+      LEFT JOIN products p ON p.id = a.product_id
+      WHERE r.target_user_id = ?
+      ORDER BY r.created_at DESC
+      LIMIT 200
+      `,
       { replacements: [userId], raw: true }
     );
 
     return res.render("profile/review", {
-      title: "My review",
-      totalPoint,
-      reviewList: reviewList || [],
+      title: "Đánh giá",
       user: req.user || null,
+      score: { positive, negative, net, percent },
+      givenRatings: givenRatings || [],
+      receivedRatings: receivedRatings || [],
     });
   } catch (err) {
     console.error("reviewView error:", err);
     return res.render("profile/review", {
-      title: "My review",
-      totalPoint: 0,
-      reviewList: [],
+      title: "Đánh giá",
       user: req.user || null,
+      score: { positive: 0, negative: 0, net: 0, percent: 0 },
+      givenRatings: [],
+      receivedRatings: [],
     });
   }
 };
+
+const itemHistoryView = async (req, res) => {
+  if (!req.user) return res.redirect("/login");
+  const userId = req.user.id;
+
+  try {
+    // 1) BID events
+    const [bidRows] = await db.query(
+      `
+      SELECT
+        b.created_at AS at,
+        'BID' AS kind,
+        p.title,
+        b.amount
+      FROM bids b
+      JOIN auctions a ON a.id = b.auction_id
+      JOIN products p ON p.id = a.product_id
+      WHERE b.bidder_id = ?
+      ORDER BY b.created_at ASC
+      `,
+      { replacements: [userId], raw: true }
+    );
+
+    // 2) AUTO_BID create/update events
+    const [ruleRows] = await db.query(
+      `
+      SELECT
+        r.created_at,
+        r.updated_at,
+        r.max_amount AS amount,
+        p.title
+      FROM auto_bid_rules r
+      JOIN auctions a ON a.id = r.auction_id
+      JOIN products p ON p.id = a.product_id
+      WHERE r.bidder_id = ?
+      `,
+      { replacements: [userId], raw: true }
+    );
+
+    const autoEvents = [];
+    for (const r of ruleRows || []) {
+      autoEvents.push({
+        at: r.created_at,
+        kind: "AUTO_BID",
+        title: r.title,
+        amount: r.amount,
+        is_update: 0,
+      });
+      if (r.updated_at && String(r.updated_at) !== String(r.created_at)) {
+        autoEvents.push({
+          at: r.updated_at,
+          kind: "AUTO_BID",
+          title: r.title,
+          amount: r.amount,
+          is_update: 1,
+        });
+      }
+    }
+
+    // 3) WIN/LOSE only when auction ended/cancelled and user participated
+    const [resultRows] = await db.query(
+      `
+      SELECT DISTINCT
+        a.end_time AS at,
+        CASE WHEN a.winner_id = ? THEN 'WIN' ELSE 'LOSE' END AS kind,
+        p.title,
+        a.current_price AS amount
+      FROM auctions a
+      JOIN products p ON p.id = a.product_id
+      LEFT JOIN bids b ON b.auction_id = a.id AND b.bidder_id = ?
+      LEFT JOIN auto_bid_rules r ON r.auction_id = a.id AND r.bidder_id = ?
+      WHERE (b.id IS NOT NULL OR r.id IS NOT NULL)
+        AND a.end_time <= NOW()
+        AND a.status IN ('ENDED','CANCELLED')
+      ORDER BY a.end_time ASC
+      `,
+      { replacements: [userId, userId, userId], raw: true }
+    );
+
+    const events = []
+      .concat(bidRows || [])
+      .concat(autoEvents)
+      .concat(resultRows || [])
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+    return res.render("profile/itemHistory", {
+      title: "Lịch sử đấu giá",
+      user: req.user || null,
+      events,
+    });
+  } catch (err) {
+    console.error("itemHistoryView error:", err);
+    return res.render("profile/itemHistory", {
+      title: "Lịch sử đấu giá",
+      user: req.user || null,
+      events: [],
+    });
+  }
+};
+
 
 const profileProductView = async (req, res) => {
   try {
@@ -989,9 +1133,11 @@ export default {
   categoryView,
   profileView,
   reviewView,
+  itemHistoryView,
   profileProductView,
   profileAuctionView,
   productDetailView,
   searchView,
   rateSeller,
 };
+
