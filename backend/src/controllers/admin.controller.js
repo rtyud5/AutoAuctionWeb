@@ -50,10 +50,11 @@ const listUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const id = req.params.id;
-    const [[user]] = await db.query(
-      'SELECT id, username, email, role, is_blocked FROM users WHERE id = ? LIMIT 1',
-      [id]
+    const [rows] = await db.query(
+      'SELECT id, username, name, email, role, is_blocked, is_active FROM users WHERE id = ? LIMIT 1',
+      { replacements: [id], raw: true }
     );
+    const user = rows?.[0];
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     return res.json({ success: true, data: user });
   } catch (err) {
@@ -66,7 +67,10 @@ const updateUserRole = async (req, res) => {
   try {
     const id = req.params.id;
     const { role } = req.body;
-    await db.query('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+    await db.query('UPDATE users SET role = ? WHERE id = ?', {
+      replacements: [role, id],
+      raw: true,
+    });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.updateUserRole', err);
@@ -77,7 +81,7 @@ const updateUserRole = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query('DELETE FROM users WHERE id = ?', [id]);
+    await db.query('DELETE FROM users WHERE id = ?', { replacements: [id], raw: true });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.deleteUser', err);
@@ -88,7 +92,7 @@ const deleteUser = async (req, res) => {
 const lockUser = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query('UPDATE users SET is_blocked = 1 WHERE id = ?', [id]);
+    await db.query('UPDATE users SET is_blocked = 1 WHERE id = ?', { replacements: [id], raw: true });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.lockUser', err);
@@ -99,7 +103,7 @@ const lockUser = async (req, res) => {
 const unlockUser = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query('UPDATE users SET is_blocked = 0 WHERE id = ?', [id]);
+    await db.query('UPDATE users SET is_blocked = 0 WHERE id = ?', { replacements: [id], raw: true });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.unlockUser', err);
@@ -122,10 +126,11 @@ const listSellers = async (req, res) => {
 const getSellerById = async (req, res) => {
   try {
     const id = req.params.id;
-    const [[seller]] = await db.query(
-      "SELECT id, name, email, storeName FROM users WHERE id = ? AND role = 'seller' LIMIT 1",
-      [id]
+    const [rows] = await db.query(
+      "SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1",
+      { replacements: [id], raw: true }
     );
+    const seller = rows?.[0];
     if (!seller) return res.status(404).json({ success: false, message: 'Seller not found' });
     return res.json({ success: true, data: seller });
   } catch (err) {
@@ -137,7 +142,10 @@ const getSellerById = async (req, res) => {
 const deleteSeller = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query('DELETE FROM users WHERE id = ? AND role = ?', [id, 'seller']);
+    await db.query('DELETE FROM users WHERE id = ? AND role = ?', {
+      replacements: [id, 'seller'],
+      raw: true,
+    });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.deleteSeller', err);
@@ -160,7 +168,11 @@ const listProducts = async (req, res) => {
 const getProductById = async (req, res) => {
   try {
     const id = req.params.id;
-    const [[product]] = await db.query('SELECT * FROM products WHERE id = ? LIMIT 1', [id]);
+    const [rows] = await db.query('SELECT * FROM products WHERE id = ? LIMIT 1', {
+      replacements: [id],
+      raw: true,
+    });
+    const product = rows?.[0];
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
     return res.json({ success: true, data: product });
   } catch (err) {
@@ -172,7 +184,7 @@ const getProductById = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query('DELETE FROM products WHERE id = ?', [id]);
+    await db.query('DELETE FROM products WHERE id = ?', { replacements: [id], raw: true });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.deleteProduct', err);
@@ -186,10 +198,18 @@ const removeProductAdmin = async (req, res) => {
 
     // "Gỡ bỏ" theo nghĩa: ẩn khỏi sàn ngay lập tức
     // 1) Đánh dấu sản phẩm BANNED (không còn xuất hiện ở các trang lọc APPROVED)
-    await db.query('UPDATE products SET status = ? WHERE id = ?', ['BANNED', id]);
+    await db.query('UPDATE products SET status = ? WHERE id = ?', {
+      replacements: ['BANNED', id],
+      raw: true,
+    });
 
     // 2) Gỡ các phiên đấu giá liên quan (nếu có) để không còn hiển thị
-    await db.query('UPDATE auctions SET status = ? WHERE product_id = ?', ['removed', id]);
+    // NOTE: enum auctions.status chỉ cho PENDING/RUNNING/ENDED/CANCELLED
+    // => gỡ bỏ = CANCELLED và set end_time = NOW() để dừng đếm ngược ngay.
+    await db.query('UPDATE auctions SET status = ?, end_time = NOW() WHERE product_id = ?', {
+      replacements: ['CANCELLED', id],
+      raw: true,
+    });
 
     if (req.accepts('html')) return res.redirect('/admin/products-page?success=removed');
     return res.json({ success: true });
@@ -217,7 +237,11 @@ const listAuctions = async (req, res) => {
 const getAuctionById = async (req, res) => {
   try {
     const id = req.params.id;
-    const [[auction]] = await db.query('SELECT * FROM auctions WHERE id = ? LIMIT 1', [id]);
+    const [rows] = await db.query('SELECT * FROM auctions WHERE id = ? LIMIT 1', {
+      replacements: [id],
+      raw: true,
+    });
+    const auction = rows?.[0];
     if (!auction) return res.status(404).json({ success: false, message: 'Auction not found' });
     return res.json({ success: true, data: auction });
   } catch (err) {
@@ -230,7 +254,10 @@ const updateAuctionStatus = async (req, res) => {
   try {
     const id = req.params.id;
     const { status } = req.body;
-    await db.query('UPDATE auctions SET status = ? WHERE id = ?', [status, id]);
+    await db.query('UPDATE auctions SET status = ? WHERE id = ?', {
+      replacements: [status, id],
+      raw: true,
+    });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.updateAuctionStatus', err);
@@ -241,7 +268,10 @@ const updateAuctionStatus = async (req, res) => {
 const removeAuction = async (req, res) => {
   try {
     const id = req.params.id;
-    await db.query('UPDATE auctions SET status = ? WHERE id = ?', ['removed', id]);
+    await db.query('UPDATE auctions SET status = ?, end_time = NOW() WHERE id = ?', {
+      replacements: ['CANCELLED', id],
+      raw: true,
+    });
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.removeAuction', err);
@@ -268,11 +298,10 @@ const createCategory = async (req, res) => {
     // slug có thể để trống; nếu để trống thì lưu NULL để các phần khác không bị lỗi
     const safeSlug = (typeof slug === 'string' && slug.trim().length > 0) ? slug.trim() : null;
 
-    await db.query('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', [
-      name,
-      safeSlug,
-      parent_id ? Number(parent_id) : null,
-    ]);
+    await db.query('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', {
+      replacements: [name, safeSlug, parent_id ? Number(parent_id) : null],
+      raw: true,
+    });
 
     // Nếu request đến từ form HTML (Admin UI) thì redirect về trang quản lý
     if (req.accepts('html')) return res.redirect('/admin/categories-page?success=created');
@@ -290,7 +319,7 @@ const updateCategory = async (req, res) => {
     const { name, slug, parent_id } = req.body;
     await db.query(
       'UPDATE categories SET name = COALESCE(?, name), slug = COALESCE(?, slug), parent_id = COALESCE(?, parent_id) WHERE id = ?',
-      [name || null, slug || null, parent_id || null, id]
+      { replacements: [name || null, slug || null, parent_id || null, id], raw: true }
     );
     return res.json({ success: true });
   } catch (err) {
@@ -304,10 +333,11 @@ const deleteCategory = async (req, res) => {
     const id = Number(req.params.id);
 
     // Không cho xoá danh mục đã có sản phẩm
-    const [[cntRow]] = await db.query(
+    const [cntRows] = await db.query(
       'SELECT COUNT(*) AS cnt FROM products WHERE category_id = ?',
-      [id]
+      { replacements: [id], raw: true }
     );
+    const cntRow = cntRows?.[0];
 
     const cnt = Number(cntRow?.cnt || 0);
     if (cnt > 0) {
@@ -318,7 +348,7 @@ const deleteCategory = async (req, res) => {
       });
     }
 
-    await db.query('DELETE FROM categories WHERE id = ?', [id]);
+    await db.query('DELETE FROM categories WHERE id = ?', { replacements: [id], raw: true });
 
     if (req.accepts('html')) return res.redirect('/admin/categories-page?success=deleted');
     return res.json({ success: true });
