@@ -362,32 +362,7 @@ const createProduct = async (req, res) => {
     const stepPriceNum = step_price ? Number(step_price) : 100000;
     const autoExtendVal = auto_extend === undefined ? true : Boolean(auto_extend);
     const allowNegativeUserVal = String(allow_negative_user || "").toLowerCase() === "true" || allow_negative_user === "on" || allow_negative_user === "1";
-
-    // Parse <input type="datetime-local"> safely as *local time* (no timezone shift).
-    // This keeps behaviour consistent with the old countdown logic and MySQL NOW() comparisons.
-    const parseDatetimeLocal = (s) => {
-      if (!s || typeof s !== "string") return null;
-      if (!s.includes("T")) return null;
-      const [dPart, tPart] = s.split("T");
-      if (!dPart || !tPart) return null;
-      const [y, m, d] = dPart.split("-").map(Number);
-      const [hh, mm] = tPart.split(":").map(Number);
-      if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return null;
-      const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
-      return Number.isNaN(dt.getTime()) ? null : dt;
-    };
-
-    const endTimeVal = end_time
-      ? (parseDatetimeLocal(end_time) || new Date(end_time))
-      : new Date(Date.now() + 7 * 24 * 3600 * 1000);
-
-    if (end_time && (!endTimeVal || Number.isNaN(endTimeVal.getTime()))) {
-      return res.status(400).json({ success: false, message: "Thời gian kết thúc không hợp lệ." });
-    }
-
-    if (endTimeVal && endTimeVal.getTime() < Date.now() + 60 * 1000) {
-      return res.status(400).json({ success: false, message: "Thời gian kết thúc phải lớn hơn thời điểm hiện tại." });
-    }
+    const endTimeVal = end_time ? new Date(end_time) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
 
     if (!title || !category_id || isNaN(startPriceNum) || startPriceNum <= 0 || isNaN(stepPriceNum) || stepPriceNum <= 0) {
       return res.status(400).json({ success: false, message: 'Thiếu/không hợp lệ: title, category_id, starting_price, step_price' });

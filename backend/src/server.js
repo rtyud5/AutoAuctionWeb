@@ -7,9 +7,6 @@ const { default: app } = await import("./app.js");
 const { default: sequelize, testConnection } = await import("./config/db.js");
 await import("./models/index.js");
 
-// Auction settlement scheduler (end auctions on time)
-const { settleExpiredAuctions } = await import("./services/auctionSettlement.service.js");
-
 const PORT = process.env.PORT || 4000;
 
 
@@ -42,23 +39,6 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
-
-    // Background scheduler (runs in-process). Set RUN_SCHEDULERS=false to disable.
-    const runSchedulers = String(process.env.RUN_SCHEDULERS || "true").toLowerCase() === "true";
-    if (runSchedulers) {
-      const intervalMs = Number.parseInt(process.env.AUCTION_SETTLE_INTERVAL_MS || "60000", 10);
-      setInterval(async () => {
-        try {
-          const r = await settleExpiredAuctions();
-          if (r?.processed) {
-            console.log(`⏱️  Settled expired auctions: ${r.processed}`);
-          }
-        } catch (err) {
-          console.error("Auction settlement scheduler error:", err?.message || err);
-        }
-      }, Number.isFinite(intervalMs) ? intervalMs : 60000);
-      console.log(`⏱️  Auction settlement scheduler enabled (interval=${Number.isFinite(intervalMs) ? intervalMs : 60000}ms)`);
-    }
 
     const shutdown = async (signal) => {
       console.log(`\n🛑 Received ${signal}. Shutting down...`);

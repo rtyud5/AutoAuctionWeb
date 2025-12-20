@@ -72,7 +72,7 @@ const getWatchlist = async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
-       FROM watch_list w
+       FROM watchlists w
        JOIN auctions a ON a.id = w.auction_id
        JOIN products p ON p.id = a.product_id
        WHERE w.user_id = ?
@@ -93,15 +93,9 @@ const addToWatchlist = async (req, res) => {
     if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
     if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
-    // Không phụ thuộc UNIQUE index: insert nếu chưa tồn tại
     await db.query(
-      `INSERT INTO watch_list (user_id, auction_id, created_at, updated_at)
-       SELECT ?, ?, NOW(), NOW()
-       FROM DUAL
-       WHERE NOT EXISTS (
-         SELECT 1 FROM watch_list WHERE user_id = ? AND auction_id = ?
-       )`,
-      { replacements: [userId, auctionId, userId, auctionId], raw: true }
+      'INSERT IGNORE INTO watchlists (user_id, auction_id, created_at) VALUES (?, ?, NOW())',
+      { replacements: [userId, auctionId], raw: true }
     );
     return res.json({ success: true });
   } catch (err) {
@@ -117,7 +111,7 @@ const removeFromWatchlist = async (req, res) => {
     if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
     if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
-    await db.query('DELETE FROM watch_list WHERE user_id = ? AND auction_id = ?', {
+    await db.query('DELETE FROM watchlists WHERE user_id = ? AND auction_id = ?', {
       replacements: [userId, auctionId],
       raw: true,
     });

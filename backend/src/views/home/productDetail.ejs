@@ -109,7 +109,7 @@
                     <% } %>
 
                 <!-- Favorite Button -->
-                <button onclick="toggleWatchlist('<%= product.id %>')" class="flex items-center gap-2 mb-6 text-gray-700 hover:text-red-500 transition">
+                <button onclick="toggleWatchlist()" class="flex items-center gap-2 mb-6 text-gray-700 hover:text-red-500 transition">
                     <span class="text-xl" id="watchlist-icon">☆</span>
                     <span>Yêu thích</span>
                 </button>
@@ -541,6 +541,7 @@
 <script>
     const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
     const IS_AUTH = <%= user ? 'true' : 'false' %>;
+    const IS_WATCHLISTED = <%= (typeof isWatchlisted !== 'undefined' && isWatchlisted) ? 'true' : 'false' %>;
     const USER_ID = <%= user ? Number(user.id) : 'null' %>;
     const PRODUCT_ID = <%= product.id %>;
     const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
@@ -865,12 +866,46 @@
         document.getElementById('mainImage').src = src;
     }
 
-    // Toggle watchlist
-    function toggleWatchlist(productId) {
-        const icon = document.getElementById('watchlist-icon');
-        icon.textContent = icon.textContent === '☆' ? '★' : '☆';
-        // TODO: Implement AJAX call
+    
+// Toggle watchlist (persist to DB via /watchlist APIs)
+let __watchlisted = IS_WATCHLISTED === true;
+
+// Initialize icon
+(function initWatchlistIcon() {
+    const icon = document.getElementById('watchlist-icon');
+    if (!icon) return;
+    icon.textContent = __watchlisted ? '★' : '☆';
+})();
+
+async function toggleWatchlist() {
+    if (!IS_AUTH) return window.location.href = '/login';
+    if (!AUCTION_ID) return alert('Không tìm thấy phiên đấu giá.');
+
+    const icon = document.getElementById('watchlist-icon');
+    const before = __watchlisted;
+
+    try {
+        const url = before ? `/watchlist/${AUCTION_ID}/delete` : `/watchlist/${AUCTION_ID}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Thao tác yêu thích thất bại');
+        }
+
+        __watchlisted = !before;
+        if (icon) icon.textContent = __watchlisted ? '★' : '☆';
+    } catch (err) {
+        // revert UI if failed
+        __watchlisted = before;
+        if (icon) icon.textContent = __watchlisted ? '★' : '☆';
+        alert(err?.message || 'Thao tác yêu thích thất bại');
     }
+}
 
     function setAutoBid(event) {
         event.preventDefault();
