@@ -6,6 +6,9 @@ dotenv.config();
 const { default: app } = await import("./app.js");
 const { default: sequelize, testConnection } = await import("./config/db.js");
 await import("./models/index.js");
+const { settleExpiredAuctions } = await import("./services/auctionSettlement.service.js");
+const { default: mailTransporter } = await import("./config/mailer.js");
+
 
 const PORT = process.env.PORT || 4000;
 
@@ -39,6 +42,35 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
+
+    // ===== Scheduler: settle expired auctions + email notifications =====
+    const runSchedulers = String(process.env.RUN_SCHEDULERS || 'true').toLowerCase() !== 'false';
+    if (runSchedulers) {
+      const intervalMs = Number.parseInt(process.env.AUCTION_SETTLE_INTERVAL_MS || '30000', 10);
+      console.log(`⏱️ Auction settlement scheduler enabled (interval ${Math.round(intervalMs / 1000)}s)`);
+
+      // optional: verify mail transporter once at boot
+      try {
+        await mailTransporter.verify();
+        console.log('✅ Mail transporter verified');
+      } catch (err) {
+        console.warn('⚠️ Mail transporter verify failed:', err?.message || err);
+      }
+
+      const runOnce = async () => {
+        try {
+          const r = await settleExpiredAuctions();
+          if (r?.processed) console.log(`🧾 Settled expired auctions: ${r.processed}`);
+        } catch (err) {
+          console.error('settleExpiredAuctions failed:', err);
+        }
+      };
+
+      // run immediately and then periodically
+      runOnce();
+      setInterval(runOnce, intervalMs);
+    }
+
 
     const shutdown = async (signal) => {
       console.log(`\n🛑 Received ${signal}. Shutting down...`);

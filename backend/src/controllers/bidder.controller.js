@@ -9,6 +9,12 @@ import UpgradeRequest from '../models/upgradeRequest.model.js';
 
 import { runAutoBidEngine } from '../services/autoBid.service.js';
 
+import {
+  notifyBidSuccess,
+  notifyBidRejected,
+  notifyAuctionEndedWithWinner,
+} from '../services/notification.service.js';
+
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 
@@ -72,7 +78,7 @@ const getWatchlist = async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
-       FROM watchlists w
+       FROM watch_list w
        JOIN auctions a ON a.id = w.auction_id
        JOIN products p ON p.id = a.product_id
        WHERE w.user_id = ?
@@ -94,7 +100,7 @@ const addToWatchlist = async (req, res) => {
     if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
     await db.query(
-      'INSERT IGNORE INTO watchlists (user_id, auction_id, created_at) VALUES (?, ?, NOW())',
+      'INSERT IGNORE INTO watch_list (user_id, auction_id, created_at) VALUES (?, ?, NOW())',
       { replacements: [userId, auctionId], raw: true }
     );
     return res.json({ success: true });
@@ -111,7 +117,7 @@ const removeFromWatchlist = async (req, res) => {
     if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
     if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
-    await db.query('DELETE FROM watchlists WHERE user_id = ? AND auction_id = ?', {
+    await db.query('DELETE FROM watch_list WHERE user_id = ? AND auction_id = ?', {
       replacements: [userId, auctionId],
       raw: true,
     });
@@ -136,6 +142,8 @@ const placeBid = async (req, res) => {
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
 
   try {
+    const mailTasks = [];
+
     await db.transaction(async (t) => {
       const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!auction) throw Object.assign(new Error('Auction not found'), { statusCode: 404 });
@@ -188,6 +196,8 @@ const placeBid = async (req, res) => {
         );
       }
 
+      const previousWinnerId = auction.current_winner_id || null;
+
       const bid = await Bid.create(
         { auction_id: auctionId, bidder_id: userId, amount, is_auto: false },
         { transaction: t }
@@ -198,14 +208,48 @@ const placeBid = async (req, res) => {
         { transaction: t }
       );
 
+      // Notify: manual bid accepted (price updated)
+      mailTasks.push({
+        type: 'BID_SUCCESS',
+        auctionId,
+        bidderId: userId,
+        amount,
+        previousWinnerId,
+        isAuto: false,
+      });
+
       // Trigger auto-bid competition after manual bid
-      await runAutoBidEngine({ transaction: t, auctionId });
+      const engineRes = await runAutoBidEngine({ transaction: t, auctionId });
+      if (engineRes?.changed) {
+        mailTasks.push({
+          type: 'BID_SUCCESS',
+          auctionId,
+          bidderId: engineRes.finalWinnerId,
+          amount: engineRes.finalPrice,
+          previousWinnerId: engineRes.previousWinnerId || previousWinnerId,
+          isAuto: true,
+        });
+      }
     });
+
+    // Send emails after transaction commits
+    for (const task of mailTasks) {
+      await notifyBidSuccess({
+        auctionId: task.auctionId,
+        bidderId: task.bidderId,
+        amount: task.amount,
+        previousWinnerId: task.previousWinnerId,
+        isAuto: task.isAuto,
+      });
+    }
 
     return res.json({ success: true });
   } catch (err) {
     const code = err.statusCode || 500;
     console.error('bidder.placeBid', err);
+    if (code === 403) {
+      await notifyBidRejected({ auctionId, bidderId: userId, reason: err.message });
+    }
     return res.status(code).json({ success: false, message: err.message || 'Server error' });
   }
 };
@@ -226,6 +270,7 @@ const setAutoBid = async (req, res) => {
 
   try {
     let note = null;
+    const mailTasks = [];
 
     await db.transaction(async (t) => {
       const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
@@ -291,15 +336,36 @@ const setAutoBid = async (req, res) => {
       if (maxAmount < minAllowed) {
         note = `Đã lưu auto-bid, nhưng max hiện tại nhỏ hơn giá tối thiểu để outbid (${minAllowed.toLocaleString('vi-VN')} VND).`;
       }
-
       // Run engine to resolve competition immediately
-      await runAutoBidEngine({ transaction: t, auctionId });
+      const engineRes = await runAutoBidEngine({ transaction: t, auctionId });
+      if (engineRes?.changed) {
+        mailTasks.push({
+          auctionId,
+          bidderId: engineRes.finalWinnerId,
+          amount: engineRes.finalPrice,
+          previousWinnerId: engineRes.previousWinnerId || null,
+          isAuto: true,
+        });
+      }
     });
+
+    for (const task of mailTasks) {
+      await notifyBidSuccess({
+        auctionId: task.auctionId,
+        bidderId: task.bidderId,
+        amount: task.amount,
+        previousWinnerId: task.previousWinnerId,
+        isAuto: task.isAuto,
+      });
+    }
 
     return res.json({ success: true, note });
   } catch (err) {
     const code = err.statusCode || 500;
     console.error('bidder.setAutoBid', err);
+    if (code === 403) {
+      await notifyBidRejected({ auctionId, bidderId: userId, reason: err.message });
+    }
     return res.status(code).json({ success: false, message: err.message || 'Server error' });
   }
 };
@@ -413,6 +479,9 @@ const buyNow = async (req, res) => {
       return { orderId: order.id, buyNowPrice, productId: auction.product_id };
     });
 
+    // Notify auction ended (buy-now creates immediate winner)
+    await notifyAuctionEndedWithWinner({ auctionId, winnerId: userId, finalPrice: result.buyNowPrice });
+
     // If request comes from a normal HTML form, redirect.
     const acceptsHtml = String(req.headers.accept || '').includes('text/html');
     if (acceptsHtml && !req.xhr) {
@@ -422,6 +491,9 @@ const buyNow = async (req, res) => {
   } catch (err) {
     const code = err.statusCode || 500;
     console.error('bidder.buyNow', err);
+    if (code === 403) {
+      await notifyBidRejected({ auctionId, bidderId: userId, reason: err.message });
+    }
     if (String(req.headers.accept || '').includes('text/html') && !req.xhr) {
       return res.status(code).redirect(`/?error=${encodeURIComponent(err.message || 'Server error')}`);
     }
