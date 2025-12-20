@@ -656,7 +656,7 @@ const productDetailView = async (req, res) => {
             ? `Bạn đã bị người bán chặn: ${bb.reason}`
             : 'Bạn đã bị người bán chặn khỏi phiên đấu giá này.';
         } else {
-          // Reputation threshold (<5) only applies when product does NOT allow negative users
+          // Reputation threshold (<5) only applies when product does NOT allow negative user
           const [[uRow]] = await db.query(
             `SELECT positive_count, negative_count FROM users WHERE id = ? LIMIT 1`,
             { replacements: [user.id], raw: true }
