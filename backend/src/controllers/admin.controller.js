@@ -297,18 +297,48 @@ const createCategory = async (req, res) => {
 
     // slug có thể để trống; nếu để trống thì lưu NULL để các phần khác không bị lỗi
     const safeSlug = (typeof slug === 'string' && slug.trim().length > 0) ? slug.trim() : null;
+    const safeParentId = parent_id === "" ? null : Number(parent_id);
 
-    await db.query('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', {
-      replacements: [name, safeSlug, parent_id ? Number(parent_id) : null],
-      raw: true,
-    });
+    // Validate
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      // Lấy lại dữ liệu để render lại trang với thông báo lỗi
+      return await renderCategoriesPage({
+        ...req,
+        query: { error: "Tên danh mục không được để trống." }
+      }, res);
+    }
+    if (safeParentId !== null && !Number.isInteger(safeParentId)) {
+      return await renderCategoriesPage({
+        ...req,
+        query: { error: "Parent ID phải là số nguyên hoặc để trống." }
+      }, res);
+    }
 
-    // Nếu request đến từ form HTML (Admin UI) thì redirect về trang quản lý
-    if (req.accepts('html')) return res.redirect('/admin/categories-page?success=created');
+    await db.query(
+      'INSERT INTO categories (name, slug, parent_id, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+      {
+        replacements: [name, safeSlug, safeParentId],
+        raw: true,
+      }
+    );
+
+    // Nếu request đến từ form HTML (Admin UI) thì render lại trang với thông báo thành công
+    if (req.accepts('html')) {
+      return await renderCategoriesPage({
+        ...req,
+        query: { success: "created" }
+      }, res);
+    }
     return res.json({ success: true });
   } catch (err) {
     console.error('admin.createCategory', err);
-    if (req.accepts('html')) return res.redirect('/admin/categories-page?error=create_failed');
+    // Render lại trang với thông báo lỗi chi tiết
+    if (req.accepts('html')) {
+      return await renderCategoriesPage({
+        ...req,
+        query: { error: err.message || "Có lỗi xảy ra." }
+      }, res);
+    }
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };

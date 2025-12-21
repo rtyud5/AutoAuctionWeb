@@ -585,60 +585,66 @@ const updateProduct = async (req, res) => {
       starting_price,
       step_price,
       end_time,
-      auto_extend
+      auto_extend,
+      allow_negative_user
     } = req.body;
 
     const startPriceNum = starting_price !== undefined ? Number(starting_price) : null;
-    const stepPriceNum = step_price !== undefined ? Number(step_price) : null;
+    const stepPriceNum = step_price !== undefined ? Number(step_price) : 100000;
+    const autoExtendVal = auto_extend === undefined ? true : Boolean(auto_extend);
+    const allowNegativeUserVal = String(allow_negative_user || "").toLowerCase() === "true" || allow_negative_user === "on" || allow_negative_user === "1";
 
-    if (startPriceNum !== null && (isNaN(startPriceNum) || startPriceNum <= 0)) {
-      return res.status(400).json({ success: false, message: 'starting_price không hợp lệ' });
-    }
-    if (stepPriceNum !== null && (isNaN(stepPriceNum) || stepPriceNum <= 0)) {
-      return res.status(400).json({ success: false, message: 'step_price không hợp lệ' });
+    // Validate
+    if (!title || !category_id || isNaN(startPriceNum) || startPriceNum <= 0 || isNaN(stepPriceNum) || stepPriceNum <= 0) {
+      return res.status(400).json({ success: false, message: 'Thiếu/không hợp lệ: title, category_id, starting_price, step_price' });
     }
 
     // 1) Update product
     const product = await Product.findOne({ where: { id: productId, seller_id: sellerId } });
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
-    // Lấy mô tả cũ
-    let newFullDescription = product.full_description || "";
-
-    // Nếu có mô tả mới, nối thêm vào dưới cùng kèm thời gian
-    if (full_description && full_description.trim()) {
-      newFullDescription += `\n\n[Cập nhật ${new Date().toLocaleString('vi-VN')}] ${full_description.trim()}`;
-    }
-
-    // Xử lý ảnh mới
-    let thumbnail = undefined;
-    if (req.file) {
+    // Xử lý ảnh mới (nếu có upload 4 ảnh mới)
+    let thumbnail = product.thumbnail;
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (files.length > 0) {
+      if (files.length !== 4) {
+        // Clean up any temp uploaded files
+        for (const f of files) {
+          try { fs.unlinkSync(f.path); } catch (_) {}
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Vui lòng tải lên đúng 4 ảnh sản phẩm (bắt buộc 4 ảnh).',
+        });
+      }
       const productDir = path.join(process.cwd(), 'public', 'uploads', 'products', String(productId));
-      
       if (!fs.existsSync(productDir)) {
         fs.mkdirSync(productDir, { recursive: true });
       }
-
-      const newFilePath = path.join(productDir, '0.jpg');
-      
-      // Xóa ảnh cũ nếu tồn tại
-      if (fs.existsSync(newFilePath)) {
-        fs.unlinkSync(newFilePath);
+      // Ghi đè 4 ảnh mới
+      for (let i = 0; i < 4; i++) {
+        const f = files[i];
+        const newFilePath = path.join(productDir, `${i}.jpg`);
+        try {
+          fs.copyFileSync(f.path, newFilePath);
+        } finally {
+          try { fs.unlinkSync(f.path); } catch (_) {}
+        }
       }
-      
-      fs.copyFileSync(req.file.path, newFilePath);
-      fs.unlinkSync(req.file.path);
-      
       thumbnail = `/uploads/products/${productId}/0.jpg`;
     }
 
+    // Cập nhật mô tả đầy đủ (cho phép sửa trực tiếp)
+    let newFullDescription = full_description ?? product.full_description;
+
     await product.update(
       {
-        title: title ?? product.title,
-        category_id: category_id ?? product.category_id,
+        title,
+        category_id,
         short_description: short_description ?? product.short_description,
         full_description: newFullDescription,
-        thumbnail: thumbnail ?? product.thumbnail,
+        thumbnail,
+        allow_negative_user: allowNegativeUserVal,
       },
       { transaction: t }
     );
@@ -648,11 +654,11 @@ const updateProduct = async (req, res) => {
     if (auction) {
       await auction.update(
         {
-          start_price: startPriceNum ?? auction.start_price,
-          step_price: stepPriceNum ?? auction.step_price,
-          current_price: startPriceNum ?? auction.current_price, // nếu chỉnh giá khởi điểm, cập nhật current_price theo
+          start_price: startPriceNum,
+          step_price: stepPriceNum,
+          current_price: startPriceNum, // nếu chỉnh giá khởi điểm, cập nhật luôn current_price
           end_time: end_time ? new Date(end_time) : auction.end_time,
-          auto_extend: auto_extend === undefined ? auction.auto_extend : Boolean(auto_extend),
+          auto_extend: autoExtendVal,
         },
         { transaction: t }
       );

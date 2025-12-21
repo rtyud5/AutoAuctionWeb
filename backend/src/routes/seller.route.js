@@ -72,7 +72,7 @@ router.put(
   '/products/:id',
   auth,
   isSeller,
-  upload.single('thumbnail'),
+  uploadProductImages, // dùng middleware đã có ở trên
   sellerController.updateProduct
 );
 

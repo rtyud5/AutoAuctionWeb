@@ -1,5 +1,5 @@
 import express from 'express';
-import { check, validationResult } from 'express-validator';
+import { check, body, validationResult } from 'express-validator';
 
 const router = express.Router();
 
@@ -89,9 +89,14 @@ router.get('/categories', adminController.listCategories);
 router.post(
   '/categories',
   [
-    check('name').notEmpty().withMessage('Category name is required'),
-    check('slug').optional().isString(),
-    check('parent_id').optional().isInt().withMessage('parent_id must be integer'),
+    body('name').notEmpty().withMessage('Tên danh mục không được để trống.'),
+    body('parent_id')
+      .custom((value) => {
+        // Cho phép chuỗi rỗng hoặc số nguyên
+        if (value === "" || value === null || typeof value === 'undefined') return true;
+        if (!Number.isInteger(Number(value))) throw new Error('parent_id must be integer');
+        return true;
+      }),
   ],
   validate,
   adminController.createCategory
