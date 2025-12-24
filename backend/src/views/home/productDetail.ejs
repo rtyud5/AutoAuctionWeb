@@ -108,9 +108,9 @@
                         </div>
                     <% } %>
 
-                <!-- Favorite Button -->
-                <button onclick="toggleWatchlist('<%= product.id %>')" class="flex items-center gap-2 mb-6 text-gray-700 hover:text-red-500 transition">
-                    <span class="text-xl" id="watchlist-icon">☆</span>
+                <!-- Favorite Button (Watchlist) -->
+                <button onclick="toggleWatchlist()" class="flex items-center gap-2 mb-6 text-gray-700 hover:text-red-500 transition">
+                    <span class="text-xl" id="watchlist-icon"><%= product.isWatchlisted ? '★' : '☆' %></span>
                     <span>Yêu thích</span>
                 </button>
 
@@ -396,10 +396,8 @@
             <!-- Logo & Info -->
             <div>
                 <div class="flex items-center gap-4 mb-4">
-                    <div class="w-20 h-20 bg-gray-900 flex items-center justify-center">
-                        <svg viewBox="0 0 100 100" class="w-16 h-16 fill-white">
-                            <text x="50" y="60" font-size="50" font-weight="bold" text-anchor="middle" font-family="Arial">UAE</text>
-                        </svg>
+                    <div class="w-20 h-20 bg-white flex items-center justify-center border border-gray-200">
+                        <img src="/images/logo.png" alt="Logo" class="w-16 h-16 object-contain" />
                     </div>
                 </div>
                 <div class="space-y-2 text-sm text-gray-600">
@@ -866,10 +864,35 @@
     }
 
     // Toggle watchlist
-    function toggleWatchlist(productId) {
+    async function toggleWatchlist() {
+        if (!IS_AUTH) return window.location.href = '/login';
+        if (!AUCTION_ID) return alert('Không tìm thấy phiên đấu giá.');
+
         const icon = document.getElementById('watchlist-icon');
-        icon.textContent = icon.textContent === '☆' ? '★' : '☆';
-        // TODO: Implement AJAX call
+        const current = (icon?.textContent || '').trim();
+        const isWatchlisted = current === '★';
+
+        const url = isWatchlisted
+          ? `/watchlist/${AUCTION_ID}/delete`
+          : `/watchlist/${AUCTION_ID}`;
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok || data?.success === false) {
+                throw new Error(data?.message || 'Server error');
+            }
+
+            icon.textContent = isWatchlisted ? '☆' : '★';
+        } catch (e) {
+            console.error(e);
+            alert(e.message || 'Server error');
+        }
     }
 
     function setAutoBid(event) {

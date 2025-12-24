@@ -9,6 +9,12 @@ import UpgradeRequest from '../models/upgradeRequest.model.js';
 
 import { runAutoBidEngine } from '../services/autoBid.service.js';
 
+import {
+  notifyBidSuccess,
+  notifyBidRejected,
+  notifyAuctionEndedWithWinner,
+} from '../services/notification.service.js';
+
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 
@@ -65,24 +71,29 @@ const getProfile = async (req, res) => {
   }
 };
 
+// ✅ WATCHLIST (ĐÚNG schema: watch_list)
+
 const getWatchlist = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const [rows] = await db.query(
-      `SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
-       FROM watch_list w
-       JOIN auctions a ON a.id = w.auction_id
-       JOIN products p ON p.id = a.product_id
-       WHERE w.user_id = ?
-       ORDER BY w.created_at DESC`,
+      `
+      SELECT w.auction_id, a.current_price, a.end_time, p.title, p.thumbnail
+      FROM watch_list w
+      JOIN auctions a ON a.id = w.auction_id
+      JOIN products p ON p.id = a.product_id
+      WHERE w.user_id = ?
+      ORDER BY w.created_at DESC
+      `,
       { replacements: [userId], raw: true }
     );
+
     return res.json({ success: true, watchlist: rows || [] });
   } catch (err) {
-    console.error('bidder.getWatchlist', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("bidder.getWatchlist", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -90,23 +101,27 @@ const addToWatchlist = async (req, res) => {
   try {
     const userId = req.user?.id;
     const auctionId = Number(req.params.auctionId);
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
-    // Không phụ thuộc UNIQUE index: insert nếu chưa tồn tại
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: "Invalid auction id" });
+
+    // Không cần unique index vẫn chống trùng được
     await db.query(
-      `INSERT INTO watch_list (user_id, auction_id, created_at, updated_at)
-       SELECT ?, ?, NOW(), NOW()
-       FROM DUAL
-       WHERE NOT EXISTS (
-         SELECT 1 FROM watch_list WHERE user_id = ? AND auction_id = ?
-       )`,
+      `
+      INSERT INTO watch_list (user_id, auction_id, created_at, updated_at)
+      SELECT ?, ?, NOW(), NOW()
+      FROM DUAL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM watch_list WHERE user_id = ? AND auction_id = ?
+      )
+      `,
       { replacements: [userId, auctionId, userId, auctionId], raw: true }
     );
+
     return res.json({ success: true });
   } catch (err) {
-    console.error('bidder.addToWatchlist', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("bidder.addToWatchlist", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -114,19 +129,22 @@ const removeFromWatchlist = async (req, res) => {
   try {
     const userId = req.user?.id;
     const auctionId = Number(req.params.auctionId);
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: 'Invalid auction id' });
 
-    await db.query('DELETE FROM watch_list WHERE user_id = ? AND auction_id = ?', {
-      replacements: [userId, auctionId],
-      raw: true,
-    });
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!Number.isFinite(auctionId)) return res.status(400).json({ success: false, message: "Invalid auction id" });
+
+    await db.query(
+      `DELETE FROM watch_list WHERE user_id = ? AND auction_id = ?`,
+      { replacements: [userId, auctionId], raw: true }
+    );
+
     return res.json({ success: true });
   } catch (err) {
-    console.error('bidder.removeFromWatchlist', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("bidder.removeFromWatchlist", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 /**
  * Manual bid (API only).
@@ -142,6 +160,8 @@ const placeBid = async (req, res) => {
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
 
   try {
+    const mailTasks = [];
+
     await db.transaction(async (t) => {
       const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!auction) throw Object.assign(new Error('Auction not found'), { statusCode: 404 });
@@ -194,6 +214,8 @@ const placeBid = async (req, res) => {
         );
       }
 
+      const previousWinnerId = auction.current_winner_id || null;
+
       const bid = await Bid.create(
         { auction_id: auctionId, bidder_id: userId, amount, is_auto: false },
         { transaction: t }
@@ -204,14 +226,48 @@ const placeBid = async (req, res) => {
         { transaction: t }
       );
 
+      // Notify: manual bid accepted (price updated)
+      mailTasks.push({
+        type: 'BID_SUCCESS',
+        auctionId,
+        bidderId: userId,
+        amount,
+        previousWinnerId,
+        isAuto: false,
+      });
+
       // Trigger auto-bid competition after manual bid
-      await runAutoBidEngine({ transaction: t, auctionId });
+      const engineRes = await runAutoBidEngine({ transaction: t, auctionId });
+      if (engineRes?.changed) {
+        mailTasks.push({
+          type: 'BID_SUCCESS',
+          auctionId,
+          bidderId: engineRes.finalWinnerId,
+          amount: engineRes.finalPrice,
+          previousWinnerId: engineRes.previousWinnerId || previousWinnerId,
+          isAuto: true,
+        });
+      }
     });
+
+    // Send emails after transaction commits
+    for (const task of mailTasks) {
+      await notifyBidSuccess({
+        auctionId: task.auctionId,
+        bidderId: task.bidderId,
+        amount: task.amount,
+        previousWinnerId: task.previousWinnerId,
+        isAuto: task.isAuto,
+      });
+    }
 
     return res.json({ success: true });
   } catch (err) {
     const code = err.statusCode || 500;
     console.error('bidder.placeBid', err);
+    if (code === 403) {
+      await notifyBidRejected({ auctionId, bidderId: userId, reason: err.message });
+    }
     return res.status(code).json({ success: false, message: err.message || 'Server error' });
   }
 };
@@ -232,6 +288,7 @@ const setAutoBid = async (req, res) => {
 
   try {
     let note = null;
+    const mailTasks = [];
 
     await db.transaction(async (t) => {
       const auction = await Auction.findByPk(auctionId, { transaction: t, lock: t.LOCK.UPDATE });
@@ -297,15 +354,36 @@ const setAutoBid = async (req, res) => {
       if (maxAmount < minAllowed) {
         note = `Đã lưu auto-bid, nhưng max hiện tại nhỏ hơn giá tối thiểu để outbid (${minAllowed.toLocaleString('vi-VN')} VND).`;
       }
-
       // Run engine to resolve competition immediately
-      await runAutoBidEngine({ transaction: t, auctionId });
+      const engineRes = await runAutoBidEngine({ transaction: t, auctionId });
+      if (engineRes?.changed) {
+        mailTasks.push({
+          auctionId,
+          bidderId: engineRes.finalWinnerId,
+          amount: engineRes.finalPrice,
+          previousWinnerId: engineRes.previousWinnerId || null,
+          isAuto: true,
+        });
+      }
     });
+
+    for (const task of mailTasks) {
+      await notifyBidSuccess({
+        auctionId: task.auctionId,
+        bidderId: task.bidderId,
+        amount: task.amount,
+        previousWinnerId: task.previousWinnerId,
+        isAuto: task.isAuto,
+      });
+    }
 
     return res.json({ success: true, note });
   } catch (err) {
     const code = err.statusCode || 500;
     console.error('bidder.setAutoBid', err);
+    if (code === 403) {
+      await notifyBidRejected({ auctionId, bidderId: userId, reason: err.message });
+    }
     return res.status(code).json({ success: false, message: err.message || 'Server error' });
   }
 };
@@ -419,6 +497,9 @@ const buyNow = async (req, res) => {
       return { orderId: order.id, buyNowPrice, productId: auction.product_id };
     });
 
+    // Notify auction ended (buy-now creates immediate winner)
+    await notifyAuctionEndedWithWinner({ auctionId, winnerId: userId, finalPrice: result.buyNowPrice });
+
     // If request comes from a normal HTML form, redirect.
     const acceptsHtml = String(req.headers.accept || '').includes('text/html');
     if (acceptsHtml && !req.xhr) {
@@ -428,6 +509,9 @@ const buyNow = async (req, res) => {
   } catch (err) {
     const code = err.statusCode || 500;
     console.error('bidder.buyNow', err);
+    if (code === 403) {
+      await notifyBidRejected({ auctionId, bidderId: userId, reason: err.message });
+    }
     if (String(req.headers.accept || '').includes('text/html') && !req.xhr) {
       return res.status(code).redirect(`/?error=${encodeURIComponent(err.message || 'Server error')}`);
     }

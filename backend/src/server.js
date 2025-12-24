@@ -6,9 +6,9 @@ dotenv.config();
 const { default: app } = await import("./app.js");
 const { default: sequelize, testConnection } = await import("./config/db.js");
 await import("./models/index.js");
-
-// Auction settlement scheduler (end auctions on time)
 const { settleExpiredAuctions } = await import("./services/auctionSettlement.service.js");
+const { default: mailTransporter } = await import("./config/mailer.js");
+
 
 const PORT = process.env.PORT || 4000;
 
@@ -43,22 +43,34 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
 
-    // Background scheduler (runs in-process). Set RUN_SCHEDULERS=false to disable.
-    const runSchedulers = String(process.env.RUN_SCHEDULERS || "true").toLowerCase() === "true";
+    // ===== Scheduler: settle expired auctions + email notifications =====
+    const runSchedulers = String(process.env.RUN_SCHEDULERS || 'true').toLowerCase() !== 'false';
     if (runSchedulers) {
-      const intervalMs = Number.parseInt(process.env.AUCTION_SETTLE_INTERVAL_MS || "60000", 10);
-      setInterval(async () => {
+      const intervalMs = Number.parseInt(process.env.AUCTION_SETTLE_INTERVAL_MS || '30000', 10);
+      console.log(`⏱️ Auction settlement scheduler enabled (interval ${Math.round(intervalMs / 1000)}s)`);
+
+      // optional: verify mail transporter once at boot
+      try {
+        await mailTransporter.verify();
+        console.log('✅ Mail transporter verified');
+      } catch (err) {
+        console.warn('⚠️ Mail transporter verify failed:', err?.message || err);
+      }
+
+      const runOnce = async () => {
         try {
           const r = await settleExpiredAuctions();
-          if (r?.processed) {
-            console.log(`⏱️  Settled expired auctions: ${r.processed}`);
-          }
+          if (r?.processed) console.log(`🧾 Settled expired auctions: ${r.processed}`);
         } catch (err) {
-          console.error("Auction settlement scheduler error:", err?.message || err);
+          console.error('settleExpiredAuctions failed:', err);
         }
-      }, Number.isFinite(intervalMs) ? intervalMs : 60000);
-      console.log(`⏱️  Auction settlement scheduler enabled (interval=${Number.isFinite(intervalMs) ? intervalMs : 60000}ms)`);
+      };
+
+      // run immediately and then periodically
+      runOnce();
+      setInterval(runOnce, intervalMs);
     }
+
 
     const shutdown = async (signal) => {
       console.log(`\n🛑 Received ${signal}. Shutting down...`);
