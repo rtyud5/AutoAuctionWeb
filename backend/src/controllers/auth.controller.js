@@ -1,8 +1,13 @@
 // backend/src/controllers/auth.controller.js
 import bcrypt from "bcrypt";
+import { Op } from "sequelize";
 import User from "../models/user.model.js";
 import { signToken } from "../utils/token.util.js";
-import { createOtpToken, sendOtpEmail, verifyOtpToken } from "../services/otp.service.js";
+import {
+  createOtpToken,
+  sendOtpEmail,
+  verifyOtpToken,
+} from "../services/otp.service.js";
 
 const COOKIE_NAME = "token";
 
@@ -12,9 +17,15 @@ const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";
  * Tạo JWT và set cookie đăng nhập
  */
 const issueToken = (res, user) => {
+  // Nếu email có dạng @admin.local thì extract username
+  const emailOrUsername =
+    user.email && user.email.endsWith("@admin.local")
+      ? user.email.replace("@admin.local", "")
+      : user.email;
+
   const payload = {
     id: user.id,
-    email: user.email,
+    email: emailOrUsername,
     name: user.name,
     role: (user.role || "bidder").toLowerCase(),
   };
@@ -71,7 +82,9 @@ const register = async (req, res) => {
     await sendOtpEmail({ email, otp, purpose: "REGISTER" });
 
     // Redirect to OTP verify page (UI is rendered via page.route.js)
-    return res.redirect(`/verify-otp?purpose=register&email=${encodeURIComponent(email)}`);
+    return res.redirect(
+      `/verify-otp?purpose=register&email=${encodeURIComponent(email)}`
+    );
   } catch (err) {
     console.error("auth.register error:", err);
     const code = String(err?.code || "").toUpperCase();
@@ -95,7 +108,10 @@ const register = async (req, res) => {
 const verifyOtp = async (req, res) => {
   try {
     const { otp, email, purpose } = req.body || {};
-    const p = String(purpose || "register").toLowerCase() === "reset_password" ? "RESET_PASSWORD" : "REGISTER";
+    const p =
+      String(purpose || "register").toLowerCase() === "reset_password"
+        ? "RESET_PASSWORD"
+        : "REGISTER";
 
     const result = await verifyOtpToken({ email, purpose: p, otp });
     if (!result.ok) {
@@ -103,8 +119,8 @@ const verifyOtp = async (req, res) => {
         result.reason === "NOT_FOUND_OR_EXPIRED"
           ? "OTP không tồn tại hoặc đã hết hạn"
           : result.reason === "TOO_MANY_ATTEMPTS"
-            ? "Bạn đã nhập sai quá nhiều lần. Vui lòng yêu cầu OTP mới."
-            : "Mã OTP không đúng";
+          ? "Bạn đã nhập sai quá nhiều lần. Vui lòng yêu cầu OTP mới."
+          : "Mã OTP không đúng";
 
       return res.status(400).render("auth/verify-otp", {
         title: "Xác minh OTP",
@@ -121,7 +137,9 @@ const verifyOtp = async (req, res) => {
     const payload = result.token.payload || {};
 
     // re-check email uniqueness (race condition)
-    const existing = await User.findOne({ where: { email: payload.email || email } });
+    const existing = await User.findOne({
+      where: { email: payload.email || email },
+    });
     if (existing) {
       return res.status(409).render("auth/register", {
         error: "Email đã tồn tại, vui lòng dùng email khác",
@@ -152,19 +170,29 @@ const forgotSendOtp = async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) {
-      return res.status(400).json({ success: false, message: "Email là bắt buộc" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email là bắt buộc" });
     }
 
     const user = await User.findOne({ where: { email } });
     if (user) {
-      const { otp } = await createOtpToken({ email, purpose: "RESET_PASSWORD" });
+      const { otp } = await createOtpToken({
+        email,
+        purpose: "RESET_PASSWORD",
+      });
       await sendOtpEmail({ email, otp, purpose: "RESET_PASSWORD" });
     }
 
-    return res.json({ success: true, message: "Nếu email tồn tại, hệ thống đã gửi OTP." });
+    return res.json({
+      success: true,
+      message: "Nếu email tồn tại, hệ thống đã gửi OTP.",
+    });
   } catch (err) {
     console.error("auth.forgotSendOtp error:", err);
-    return res.status(500).json({ success: false, message: "Có lỗi hệ thống. Vui lòng thử lại." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Có lỗi hệ thống. Vui lòng thử lại." });
   }
 };
 
@@ -173,19 +201,31 @@ const forgotVerifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body || {};
     if (!email || !otp) {
-      return res.status(400).json({ success: false, message: "Thiếu email hoặc OTP" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu email hoặc OTP" });
     }
 
-    const result = await verifyOtpToken({ email, purpose: "RESET_PASSWORD", otp });
+    const result = await verifyOtpToken({
+      email,
+      purpose: "RESET_PASSWORD",
+      otp,
+    });
     if (!result.ok) {
       // Requirement: nếu không xác thực đúng thì không làm gì cả
-      return res.json({ success: false, message: "OTP không đúng hoặc đã hết hạn" });
+      return res.json({
+        success: false,
+        message: "OTP không đúng hoặc đã hết hạn",
+      });
     }
 
     const user = await User.findOne({ where: { email } });
     if (!user) {
       // Do nothing (avoid leaking)
-      return res.json({ success: false, message: "OTP không đúng hoặc đã hết hạn" });
+      return res.json({
+        success: false,
+        message: "OTP không đúng hoặc đã hết hạn",
+      });
     }
 
     const newHash = await bcrypt.hash("123", 10);
@@ -193,11 +233,14 @@ const forgotVerifyOtp = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Mật khẩu đã được reset thành 123. Vui lòng đăng nhập và đổi mật khẩu ngay.",
+      message:
+        "Mật khẩu đã được reset thành 123. Vui lòng đăng nhập và đổi mật khẩu ngay.",
     });
   } catch (err) {
     console.error("auth.forgotVerifyOtp error:", err);
-    return res.status(500).json({ success: false, message: "Có lỗi hệ thống. Vui lòng thử lại." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Có lỗi hệ thống. Vui lòng thử lại." });
   }
 };
 
@@ -258,38 +301,47 @@ const logout = async (req, res) => {
   }
 };
 
-
-
 /**
- * ĐĂNG NHẬP ADMIN BẰNG ADMIN KEY
+ * ĐĂNG NHẬP ADMIN BẰNG USERNAME VÀ PASSWORD
  *  - Dùng popup riêng trên trang login.
- *  - Nếu adminKey đúng thì tìm (hoặc tạo) user role 'ADMIN' và cấp token.
+ *  - Kiểm tra username và password của admin.
  */
 const loginAsAdmin = async (req, res) => {
   try {
-    const { adminKey } = req.body || {};
+    const { username, password } = req.body || {};
 
-    if (!adminKey) {
-      const msg = encodeURIComponent("Vui lòng nhập Admin key");
+    const invalidMsg = encodeURIComponent(
+      "Tài khoản hoặc mật khẩu Admin không đúng"
+    );
+
+    if (!username || !password) {
+      const msg = encodeURIComponent(
+        "Vui lòng nhập đầy đủ tài khoản và mật khẩu"
+      );
       return res.redirect(`/login?adminError=${msg}`);
     }
 
-    if (adminKey !== ADMIN_KEY) {
-      const msg = encodeURIComponent("Admin key không đúng");
-      return res.redirect(`/login?adminError=${msg}`);
-    }
-
-    // Tìm user admin, nếu chưa có thì tạo mặc định
-    let adminUser = await User.findOne({ where: { role: "ADMIN" } });
+    // Tìm user admin theo username (lưu trong trường email với format @admin.local)
+    const adminUser = await User.findOne({
+      where: {
+        role: "ADMIN",
+        [Op.or]: [
+          { email: username },
+          { email: `${username}@admin.local` },
+          { name: username },
+        ],
+      },
+    });
 
     if (!adminUser) {
-      const password_hash = await bcrypt.hash(ADMIN_KEY, 10);
-      adminUser = await User.create({
-        name: "System Admin",
-        email: "admin@example.com",
-        password_hash,
-        role: "ADMIN",
-      });
+      return res.redirect(`/login?adminError=${invalidMsg}`);
+    }
+
+    // Kiểm tra password
+    const ok = await bcrypt.compare(password, adminUser.password_hash || "");
+
+    if (!ok) {
+      return res.redirect(`/login?adminError=${invalidMsg}`);
     }
 
     issueToken(res, adminUser);
@@ -297,7 +349,9 @@ const loginAsAdmin = async (req, res) => {
     return res.redirect("/admin/dashboard");
   } catch (err) {
     console.error("auth.loginAsAdmin error:", err);
-    const msg = encodeURIComponent("Có lỗi hệ thống xảy ra khi đăng nhập Admin");
+    const msg = encodeURIComponent(
+      "Có lỗi hệ thống xảy ra khi đăng nhập Admin"
+    );
     return res.redirect(`/login?adminError=${msg}`);
   }
 };

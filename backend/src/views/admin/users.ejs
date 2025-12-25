@@ -1,4 +1,31 @@
 <div class="space-y-6">
+  <!-- Thông báo success/error -->
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 px-4 py-3 rounded-lg">
+      <% if (success === 'deleted') { %>
+        ✓ Đã xóa tài khoản thành công!
+      <% } else if (success === 'locked') { %>
+        ✓ Đã khóa tài khoản thành công!
+      <% } else if (success === 'unlocked') { %>
+        ✓ Đã mở khóa tài khoản thành công!
+      <% } %>
+    </div>
+  <% } %>
+  
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="bg-rose-500/10 border border-rose-500/40 text-rose-300 px-4 py-3 rounded-lg">
+      <% if (error === 'delete_failed') { %>
+        ✗ Xóa tài khoản thất bại. Vui lòng thử lại.
+      <% } else if (error === 'lock_failed') { %>
+        ✗ Khóa tài khoản thất bại. Vui lòng thử lại.
+      <% } else if (error === 'unlock_failed') { %>
+        ✗ Mở khóa tài khoản thất bại. Vui lòng thử lại.
+      <% } else { %>
+        ✗ <%= error %>
+      <% } %>
+    </div>
+  <% } %>
+
   <!-- Tiêu đề + nút quay về -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div>
@@ -28,6 +55,63 @@
     </div>
   </div>
 
+  <!-- Form tìm kiếm & lọc -->
+  <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-md shadow-slate-950/40 p-4">
+    <form method="GET" action="/admin/users-page" class="flex flex-col md:flex-row gap-3">
+      <!-- Tìm kiếm theo tên/email -->
+      <div class="flex-1">
+        <input
+          type="text"
+          name="search"
+          placeholder="Tìm theo tên hoặc email..."
+          value="<%= (typeof filters !== 'undefined' && filters.search) ? filters.search : '' %>"
+          class="w-full px-4 py-2 bg-slate-950/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
+        />
+      </div>
+
+      <!-- Lọc theo role -->
+      <div>
+        <select
+          name="role"
+          class="w-full px-4 py-2 bg-slate-950/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
+        >
+          <option value="" <%= (typeof filters === 'undefined' || !filters.role) ? 'selected' : '' %>>Tất cả role</option>
+          <option value="ADMIN" <%= (typeof filters !== 'undefined' && filters.role === 'ADMIN') ? 'selected' : '' %>>Admin</option>
+          <option value="SELLER" <%= (typeof filters !== 'undefined' && filters.role === 'SELLER') ? 'selected' : '' %>>Seller</option>
+          <option value="BIDDER" <%= (typeof filters !== 'undefined' && filters.role === 'BIDDER') ? 'selected' : '' %>>Bidder</option>
+        </select>
+      </div>
+
+      <!-- Lọc theo trạng thái -->
+      <div>
+        <select
+          name="status"
+          class="w-full px-4 py-2 bg-slate-950/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
+        >
+          <option value="" <%= (typeof filters === 'undefined' || !filters.status) ? 'selected' : '' %>>Tất cả trạng thái</option>
+          <option value="active" <%= (typeof filters !== 'undefined' && filters.status === 'active') ? 'selected' : '' %>>Đang hoạt động</option>
+          <option value="locked" <%= (typeof filters !== 'undefined' && filters.status === 'locked') ? 'selected' : '' %>>Đã khóa</option>
+        </select>
+      </div>
+
+      <!-- Nút tìm kiếm -->
+      <div class="flex gap-2">
+        <button
+          type="submit"
+          class="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors"
+        >
+          Tìm kiếm
+        </button>
+        <a
+          href="/admin/users-page"
+          class="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+        >
+          Reset
+        </a>
+      </div>
+    </form>
+  </div>
+
   <!-- Bảng users -->
   <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-md shadow-slate-950/40 overflow-hidden">
     <% if (!users || !users.length) { %>
@@ -45,6 +129,7 @@
               <th class="px-4 py-3 font-medium text-slate-400">Role</th>
               <th class="px-4 py-3 font-medium text-slate-400">Trạng thái</th>
               <th class="px-4 py-3 font-medium text-slate-400">Ngày tạo</th>
+              <th class="px-4 py-3 font-medium text-slate-400 text-center">Thao tác</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800/80">
@@ -107,6 +192,48 @@
                   <% } else { %>
                     —
                   <% } %>
+                </td>
+
+                <!-- Thao tác -->
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-center gap-2">
+                    <!-- Nút Khóa/Mở khóa -->
+                    <% if (user.is_active) { %>
+                      <form method="POST" action="/admin/users/<%= user.id %>/lock" class="inline">
+                        <button
+                          type="submit"
+                          onclick="return confirm('Bạn có chắc muốn khóa tài khoản này?')"
+                          class="px-3 py-1.5 text-xs font-medium text-orange-300 bg-orange-500/10 border border-orange-500/40 rounded-lg hover:bg-orange-500/20 transition-colors"
+                          title="Khóa tài khoản"
+                        >
+                          🔒 Khóa
+                        </button>
+                      </form>
+                    <% } else { %>
+                      <form method="POST" action="/admin/users/<%= user.id %>/unlock" class="inline">
+                        <button
+                          type="submit"
+                          onclick="return confirm('Bạn có chắc muốn mở khóa tài khoản này?')"
+                          class="px-3 py-1.5 text-xs font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/40 rounded-lg hover:bg-emerald-500/20 transition-colors"
+                          title="Mở khóa tài khoản"
+                        >
+                          🔓 Mở khóa
+                        </button>
+                      </form>
+                    <% } %>
+
+                    <!-- Nút Xóa -->
+                    <form method="POST" action="/admin/users/<%= user.id %>/delete" class="inline">
+                      <button
+                        type="submit"
+                        onclick="return confirm('⚠️ CẢNH BÁO: Xóa tài khoản sẽ xóa vĩnh viễn tất cả dữ liệu liên quan (bids, đơn hàng, sản phẩm...). Bạn có chắc chắn muốn xóa?')"
+                        class="px-3 py-1.5 text-xs font-medium text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded-lg hover:bg-rose-500/20 transition-colors"
+                        title="Xóa tài khoản vĩnh viễn"
+                      >
+                        🗑️ Xóa
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             <% }); %>

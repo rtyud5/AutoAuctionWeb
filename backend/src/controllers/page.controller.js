@@ -1,41 +1,55 @@
 import db from "../config/db.js";
-import Rating from '../models/rating.model.js';
+import Rating from "../models/rating.model.js";
 
 const index = async (req, res) => {
   let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
   try {
+    // 1. Sản phẩm mới nhất (theo created_at của product)
     const [endingSoon] = await db.query(
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
-              c.name as category_name, u.name as seller_name
+              c.name as category_name, u.name as seller_name,
+              a.start_price, a.current_price, a.end_time,
+              (SELECT COUNT(*) FROM bids WHERE bids.auction_id = a.id) as bid_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
+       LEFT JOIN auctions a ON a.product_id = p.id AND a.status = 'RUNNING'
        WHERE p.status = 'APPROVED'
        ORDER BY p.created_at DESC 
        LIMIT 5`,
       { raw: true }
     );
 
+    // 2. Sản phẩm nổi bật (theo giá hiện tại cao nhất)
     const [highestPrice] = await db.query(
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
-              c.name as category_name, u.name as seller_name
+              c.name as category_name, u.name as seller_name,
+              a.start_price, a.current_price, a.end_time,
+              (SELECT COUNT(*) FROM bids WHERE bids.auction_id = a.id) as bid_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
+       INNER JOIN auctions a ON a.product_id = p.id AND a.status = 'RUNNING'
        WHERE p.status = 'APPROVED'
-       ORDER BY p.id DESC 
+       ORDER BY a.current_price DESC 
        LIMIT 5`,
       { raw: true }
     );
 
+    // 3. Sản phẩm đề xuất (theo số lượt đấu giá nhiều nhất)
     const [mostBids] = await db.query(
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
-              c.name as category_name, u.name as seller_name
+              c.name as category_name, u.name as seller_name,
+              a.start_price, a.current_price, a.end_time,
+              (SELECT COUNT(*) FROM bids WHERE bids.auction_id = a.id) as bid_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
+       INNER JOIN auctions a ON a.product_id = p.id AND a.status = 'RUNNING'
        WHERE p.status = 'APPROVED'
-       ORDER BY RAND()
+       GROUP BY p.id, p.title, p.thumbnail, p.short_description, c.name, u.name,
+                a.start_price, a.current_price, a.end_time, a.id
+       ORDER BY bid_count DESC
        LIMIT 5`,
       { raw: true }
     );
@@ -360,7 +374,6 @@ const itemHistoryView = async (req, res) => {
   }
 };
 
-
 const profileProductView = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -638,7 +651,7 @@ const productDetailView = async (req, res) => {
     let hasRated = false;
     if (
       user &&
-      auction.status === 'ENDED' &&
+      auction.status === "ENDED" &&
       auction.winner_id === user.id &&
       auction.id
     ) {
@@ -783,8 +796,6 @@ const productDetailView = async (req, res) => {
       reviews = [];
     }
 
-
-
     // ===== Permission for bidder interactions (auto-bid / buy-now) =====
     let interaction = {
       blocked: false,
@@ -798,8 +809,8 @@ const productDetailView = async (req, res) => {
       // Seller cannot bid on own product
       if (Number(user.id) === Number(product.seller_id)) {
         interaction.blocked = true;
-        interaction.type = 'SELLER';
-        interaction.reason = 'Bạn là người bán của sản phẩm này.';
+        interaction.type = "SELLER";
+        interaction.reason = "Bạn là người bán của sản phẩm này.";
       } else {
         // Seller-block list
         const [[bb]] = await db.query(
@@ -808,10 +819,10 @@ const productDetailView = async (req, res) => {
         );
         if (bb) {
           interaction.blocked = true;
-          interaction.type = 'BLOCKED_BY_SELLER';
+          interaction.type = "BLOCKED_BY_SELLER";
           interaction.reason = bb.reason
             ? `Bạn đã bị người bán chặn: ${bb.reason}`
-            : 'Bạn đã bị người bán chặn khỏi phiên đấu giá này.';
+            : "Bạn đã bị người bán chặn khỏi phiên đấu giá này.";
         } else {
           // Reputation threshold (<5) only applies when product does NOT allow negative user
           const [[uRow]] = await db.query(
@@ -825,7 +836,7 @@ const productDetailView = async (req, res) => {
 
           if (!interaction.allow_negative_user && rep < 5) {
             interaction.blocked = true;
-            interaction.type = 'NEGATIVE_USER';
+            interaction.type = "NEGATIVE_USER";
             interaction.reason = `Điểm uy tín của bạn (${rep}) < 5, nên không được phép bid / auto-bid / mua ngay ở sản phẩm này.`;
           }
         }
@@ -858,12 +869,16 @@ const productDetailView = async (req, res) => {
         buy_now_price: Math.floor(
           Number(auction.current_price || auction.start_price || 0) * 1.5
         ),
-        end_time: auction.end_time ? new Date(auction.end_time).toISOString() : new Date(Date.now() + 86400000).toISOString(),
-        end_time_ms: auction.end_time ? new Date(auction.end_time).getTime() : (Date.now() + 86400000),
+        end_time: auction.end_time
+          ? new Date(auction.end_time).toISOString()
+          : new Date(Date.now() + 86400000).toISOString(),
+        end_time_ms: auction.end_time
+          ? new Date(auction.end_time).getTime()
+          : Date.now() + 86400000,
         auction_status: auction.status || "PENDING",
-        status: auction.status || "PENDING",    
-        winner_id: auction.winner_id || null,   
-        winner_name: winner_name || "Ẩn danh",                           
+        status: auction.status || "PENDING",
+        winner_id: auction.winner_id || null,
+        winner_name: winner_name || "Ẩn danh",
         seller_rating: 100,
         positive_count: 0,
         negative_count: 0,
@@ -1082,7 +1097,7 @@ export const rateSeller = async (req, res) => {
       { replacements: [auctionId], raw: true }
     );
     if (!order || order.buyer_id !== userId) {
-      return res.status(403).send('Bạn không có quyền đánh giá');
+      return res.status(403).send("Bạn không có quyền đánh giá");
     }
 
     // Kiểm tra đã đánh giá chưa
@@ -1094,7 +1109,7 @@ export const rateSeller = async (req, res) => {
       },
     });
     if (exist) {
-      return res.status(400).send('Bạn đã đánh giá rồi');
+      return res.status(400).send("Bạn đã đánh giá rồi");
     }
 
     // Lưu vào bảng ratings
@@ -1118,10 +1133,10 @@ export const rateSeller = async (req, res) => {
       );
     }
 
-    return res.redirect(req.get('Referrer') || '/');
+    return res.redirect(req.get("Referrer") || "/");
   } catch (err) {
-    console.error('rateSeller error:', err);
-    return res.status(500).send('Lỗi hệ thống');
+    console.error("rateSeller error:", err);
+    return res.status(500).send("Lỗi hệ thống");
   }
 };
 
@@ -1140,4 +1155,3 @@ export default {
   searchView,
   rateSeller,
 };
-

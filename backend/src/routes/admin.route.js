@@ -1,19 +1,20 @@
-import express from 'express';
-import { check, body, validationResult } from 'express-validator';
+import express from "express";
+import { check, body, validationResult } from "express-validator";
 
 const router = express.Router();
 
 // Controllers
-import adminController from '../controllers/admin.controller.js';
+import adminController from "../controllers/admin.controller.js";
 
 // Middlewares
-import auth from '../middlewares/auth.middleware.js';
-import isAdmin from '../middlewares/admin.middleware.js';
+import auth from "../middlewares/auth.middleware.js";
+import isAdmin from "../middlewares/admin.middleware.js";
 
 // Validation result handler
 const validate = (req, res, next) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  if (!errors.isEmpty())
+    return res.status(400).json({ errors: errors.array() });
   next();
 };
 
@@ -31,116 +32,131 @@ const validate = (req, res, next) => {
 router.use(auth, isAdmin);
 
 // Admin dashboard
-router.get('/', adminController.dashboard);
+router.get("/", adminController.dashboard);
 
 // Users
-router.get('/users', adminController.listUsers);
-router.get('/users/:id', adminController.getUserById);
+router.get("/users", adminController.listUsers);
+router.get("/users/:id", adminController.getUserById);
 router.put(
-  '/users/:id/role',
+  "/users/:id/role",
   [
-    check('role')
+    check("role")
       .notEmpty()
-      .withMessage('Role is required')
-      .isIn(['user', 'seller', 'admin'])
-      .withMessage('Role must be user, seller or admin'),
+      .withMessage("Role is required")
+      .isIn(["user", "seller", "admin"])
+      .withMessage("Role must be user, seller or admin"),
   ],
   validate,
   adminController.updateUserRole
 );
-router.delete('/users/:id', adminController.deleteUser);
+router.delete("/users/:id", adminController.deleteUser);
+router.post("/users/:id/delete", adminController.deleteUser); // Cho phép POST từ form HTML
 
 // Lock / Unlock user
-router.post('/users/:id/lock', adminController.lockUser);
-router.post('/users/:id/unlock', adminController.unlockUser);
+router.post("/users/:id/lock", adminController.lockUser);
+router.post("/users/:id/unlock", adminController.unlockUser);
 
 // Sellers
-router.get('/sellers', adminController.listSellers);
-router.get('/sellers/:id', adminController.getSellerById);
-router.delete('/sellers/:id', adminController.deleteSeller);
+router.get("/sellers", adminController.listSellers);
+router.get("/sellers/:id", adminController.getSellerById);
+router.delete("/sellers/:id", adminController.deleteSeller);
 
 // Products
-router.get('/products', adminController.listProducts);
-router.get('/products/:id', adminController.getProductById);
-router.delete('/products/:id', adminController.deleteProduct);
-router.post('/products/:id/remove', adminController.removeProductAdmin);
+router.get("/products", adminController.listProducts);
+router.get("/products/:id", adminController.getProductById);
+router.delete("/products/:id", adminController.deleteProduct);
+router.post("/products/:id/remove", adminController.removeProductAdmin);
 
 // Auctions (including optional moderation actions)
-router.get('/auctions', adminController.listAuctions);
-router.get('/auctions/:id', adminController.getAuctionById);
+router.get("/auctions", adminController.listAuctions);
+router.get("/auctions/:id", adminController.getAuctionById);
 router.patch(
-  '/auctions/:id/status',
+  "/auctions/:id/status",
   [
-    check('status')
+    check("status")
       .notEmpty()
-      .withMessage('Status is required')
-      .isIn(['scheduled', 'active', 'closed', 'cancelled'])
-      .withMessage('Invalid auction status'),
+      .withMessage("Status is required")
+      .isIn(["scheduled", "active", "closed", "cancelled"])
+      .withMessage("Invalid auction status"),
   ],
   validate,
   adminController.updateAuctionStatus
 );
 // Optional: remove/disable offending auction
-router.post('/auctions/:id/remove', adminController.removeAuction);
+router.post("/auctions/:id/remove", adminController.removeAuction);
 
 // Categories management
-router.get('/categories', adminController.listCategories);
+router.get("/categories", adminController.listCategories);
 
 router.post(
-  '/categories',
+  "/categories",
   [
-    body('name').notEmpty().withMessage('Tên danh mục không được để trống.'),
-    body('parent_id')
-      .custom((value) => {
-        // Cho phép chuỗi rỗng hoặc số nguyên
-        if (value === "" || value === null || typeof value === 'undefined') return true;
-        if (!Number.isInteger(Number(value))) throw new Error('parent_id must be integer');
+    body("name").notEmpty().withMessage("Tên danh mục không được để trống."),
+    body("parent_id").custom((value) => {
+      // Cho phép chuỗi rỗng hoặc số nguyên
+      if (value === "" || value === null || typeof value === "undefined")
         return true;
-      }),
+      if (!Number.isInteger(Number(value)))
+        throw new Error("parent_id must be integer");
+      return true;
+    }),
   ],
   validate,
   adminController.createCategory
 );
 
 router.post(
-  '/categories/:id/update',
+  "/categories/:id/update",
   [
-    check('name').optional().notEmpty().withMessage('Category name cannot be empty'),
-    check('slug').optional().isString(),
-    check('parent_id').optional().isInt().withMessage('parent_id must be integer'),
+    check("name")
+      .optional()
+      .notEmpty()
+      .withMessage("Category name cannot be empty"),
+    check("slug").optional().isString(),
+    check("parent_id")
+      .optional()
+      .isInt()
+      .withMessage("parent_id must be integer"),
   ],
   validate,
   adminController.updateCategory
 );
 
-router.post('/categories/:id/delete', adminController.deleteCategory);
+router.post("/categories/:id/delete", adminController.deleteCategory);
 
 // Upgrade requests
-router.get('/upgrade-requests', adminController.listUpgradeRequests);
+router.get("/upgrade-requests", adminController.listUpgradeRequests);
 
-router.post('/upgrade-requests/:id/approve', adminController.approveUpgradeRequest);
-router.post('/upgrade-requests/:id/reject', adminController.rejectUpgradeRequest);
-router.post('/upgrade-requests/:id/delete', adminController.deleteUpgradeRequest);
+router.post(
+  "/upgrade-requests/:id/approve",
+  adminController.approveUpgradeRequest
+);
+router.post(
+  "/upgrade-requests/:id/reject",
+  adminController.rejectUpgradeRequest
+);
+router.post(
+  "/upgrade-requests/:id/delete",
+  adminController.deleteUpgradeRequest
+);
 
 // Stats / dashboard
-router.get('/stats', adminController.getStats);
-
+router.get("/stats", adminController.getStats);
 
 // ===== Admin EJS UI routes (require admin role) =====
 // Dashboard giao diện admin
-router.get('/dashboard', adminController.renderDashboard);
+router.get("/dashboard", adminController.renderDashboard);
 
 // Trang danh sách yêu cầu nâng cấp Seller (UI)
-router.get('/upgrade-requests-page', adminController.renderUpgradeRequestsPage);
+router.get("/upgrade-requests-page", adminController.renderUpgradeRequestsPage);
 
 // Trang danh sách tài khoản (UI)
-router.get('/users-page', adminController.renderUsersPage);
+router.get("/users-page", adminController.renderUsersPage);
 
 // Trang quản lý sản phẩm (UI)
-router.get('/products-page', adminController.renderProductsPage);
+router.get("/products-page", adminController.renderProductsPage);
 
 // Trang quản lý danh mục (UI)
-router.get('/categories-page', adminController.renderCategoriesPage);
-
+router.get("/categories-page", adminController.renderCategoriesPage);
 
 export default router;

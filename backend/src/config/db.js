@@ -6,14 +6,23 @@ dotenv.config();
 
 // Tạo instance Sequelize kết nối tới Railway
 const sequelize = new Sequelize(
-  process.env.DB_NAME,   // railway
-  process.env.DB_USER,   // root
-  process.env.DB_PASS,   // password trong .env
+  process.env.DB_NAME, // railway
+  process.env.DB_USER, // root
+  process.env.DB_PASS, // password trong .env
   {
-    host: process.env.DB_HOST,  // shinkansen.proxy.rlwy.net
+    host: process.env.DB_HOST, // shinkansen.proxy.rlwy.net
     port: process.env.DB_PORT || 3306,
     dialect: "mysql",
     logging: false, // đổi thành true nếu muốn xem câu SQL log ra console
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+    dialectOptions: {
+      connectTimeout: 60000,
+    },
   }
 );
 

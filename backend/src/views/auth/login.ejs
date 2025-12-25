@@ -1,7 +1,9 @@
 <% layout("layouts/main") %>
 
 <section class="min-h-[70vh] flex items-center justify-center py-10">
-  <div class="max-w-md w-full bg-white/90 shadow-xl shadow-slate-200/60 rounded-2xl border border-slate-100 p-6 space-y-4">
+  <div
+    class="max-w-md w-full bg-white/90 shadow-xl shadow-slate-200/60 rounded-2xl border border-slate-100 p-6 space-y-4"
+  >
     <header class="space-y-1">
       <h1 class="text-xl font-semibold text-slate-900">Đăng nhập tài khoản</h1>
       <p class="text-sm text-slate-500">
@@ -10,15 +12,17 @@
     </header>
 
     <% if (error) { %>
-      <div class="text-sm px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700">
-        <%= error %>
-      </div>
-    <% } %>
-
-    <% if (typeof adminError !== "undefined" && adminError) { %>
-      <div class="text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700">
-        <%= adminError %>
-      </div>
+    <div
+      class="text-sm px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700"
+    >
+      <%= error %>
+    </div>
+    <% } %> <% if (typeof adminError !== "undefined" && adminError) { %>
+    <div
+      class="text-sm px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700"
+    >
+      <%= adminError %>
+    </div>
     <% } %>
 
     <form action="/auth/login" method="POST" class="space-y-4">
@@ -52,10 +56,16 @@
 
       <div class="flex items-center justify-between text-xs text-slate-500">
         <div class="flex items-center gap-2">
-          <input id="remember" type="checkbox" class="rounded border-slate-300 text-teal-500 focus:ring-teal-400" />
+          <input
+            id="remember"
+            type="checkbox"
+            class="rounded border-slate-300 text-teal-500 focus:ring-teal-400"
+          />
           <label for="remember">Ghi nhớ đăng nhập</label>
         </div>
-        <button type="button" id="forgot-trigger" class="hover:text-teal-600">Quên mật khẩu?</button>
+        <button type="button" id="forgot-trigger" class="hover:text-teal-600">
+          Quên mật khẩu?
+        </button>
       </div>
 
       <button
@@ -69,10 +79,14 @@
     <div class="pt-2 border-t border-dashed border-slate-200 space-y-2">
       <p class="text-xs text-slate-500 text-center">
         Chưa có tài khoản?
-        <a href="/register" class="text-teal-600 font-medium hover:underline">Đăng ký ngay</a>
+        <a href="/register" class="text-teal-600 font-medium hover:underline"
+          >Đăng ký ngay</a
+        >
       </p>
 
-      <div class="flex items-center gap-2 text-[11px] text-slate-500 justify-center">
+      <div
+        class="flex items-center gap-2 text-[11px] text-slate-500 justify-center"
+      >
         <span class="h-px w-10 bg-slate-200"></span>
         <span>Hoặc</span>
         <span class="h-px w-10 bg-slate-200"></span>
@@ -96,20 +110,30 @@
   id="forgot-modal"
   class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm"
 >
-  <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
+  <div
+    class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4"
+  >
     <header class="space-y-1">
       <h2 class="text-base font-semibold text-slate-900">Quên mật khẩu</h2>
       <p class="text-xs text-slate-500">
-        Hệ thống sẽ gửi mã OTP về email. Nếu xác thực đúng, mật khẩu sẽ được reset thành <span class="font-semibold">123</span>.
+        Hệ thống sẽ gửi mã OTP về email. Nếu xác thực đúng, mật khẩu sẽ được
+        reset thành <span class="font-semibold">123</span>.
       </p>
     </header>
 
-    <div id="forgot-alert" class="hidden text-xs px-3 py-2 rounded-lg border"></div>
+    <div
+      id="forgot-alert"
+      class="hidden text-xs px-3 py-2 rounded-lg border"
+    ></div>
 
     <!-- Step 1: enter email -->
     <form id="forgot-step1" class="space-y-3">
       <div class="space-y-1.5">
-        <label for="forgotEmail" class="block text-xs font-medium text-slate-700">Email</label>
+        <label
+          for="forgotEmail"
+          class="block text-xs font-medium text-slate-700"
+          >Email</label
+        >
         <input
           id="forgotEmail"
           type="email"
@@ -138,22 +162,20 @@
 
     <!-- Step 2: enter OTP -->
     <form id="forgot-step2" class="hidden space-y-4">
-      <p class="text-xs text-slate-500">
-        Vui lòng nhập mã OTP 4 số.
-      </p>
+      <p class="text-xs text-slate-500">Vui lòng nhập mã OTP 4 số.</p>
 
       <input type="hidden" id="forgotEmailHidden" />
       <input type="hidden" id="forgotOtpValue" />
 
       <div class="flex items-center justify-center gap-3">
         <% for (let i = 0; i < 4; i++) { %>
-          <input
-            type="text"
-            maxlength="1"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            class="forgot-otp-digit w-12 h-12 text-center text-xl font-semibold rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
-          />
+        <input
+          type="text"
+          maxlength="1"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          class="forgot-otp-digit w-12 h-12 text-center text-xl font-semibold rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
+        />
         <% } %>
       </div>
 
@@ -181,26 +203,53 @@
   id="admin-login-modal"
   class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm"
 >
-  <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
+  <div
+    class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4"
+  >
     <header class="space-y-1">
       <h2 class="text-base font-semibold text-slate-900">Đăng nhập Admin</h2>
       <p class="text-xs text-slate-500">
-        Nhập Admin key để truy cập khu vực quản trị. Luồng này độc lập với tài khoản người dùng.
+        Nhập tài khoản và mật khẩu Admin để truy cập khu vực quản trị.
       </p>
     </header>
 
-    <form id="admin-login-form" method="POST" action="/auth/admin-login" class="space-y-4">
+    <form
+      id="admin-login-form"
+      method="POST"
+      action="/auth/admin-login"
+      class="space-y-4"
+    >
       <div class="space-y-1.5">
-        <label for="adminKey" class="block text-xs font-medium text-slate-700">
-          Admin key
+        <label
+          for="adminUsername"
+          class="block text-xs font-medium text-slate-700"
+        >
+          Tài khoản Admin
         </label>
         <input
-          id="adminKey"
-          type="password"
-          name="adminKey"
+          id="adminUsername"
+          type="text"
+          name="username"
           required
           class="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 bg-white"
-          placeholder="Nhập admin key (mặc định: admin123)"
+          placeholder="Nhập tài khoản admin"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label
+          for="adminPassword"
+          class="block text-xs font-medium text-slate-700"
+        >
+          Mật khẩu
+        </label>
+        <input
+          id="adminPassword"
+          type="password"
+          name="password"
+          required
+          class="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 bg-white"
+          placeholder="Nhập mật khẩu"
         />
       </div>
 
@@ -234,7 +283,7 @@
     const openModal = () => {
       modal.classList.remove("hidden");
       modal.classList.add("flex");
-      const input = document.getElementById("adminKey");
+      const input = document.getElementById("adminUsername");
       if (input) input.focus();
     };
 
@@ -276,12 +325,28 @@
     const showAlert = (type, text) => {
       if (!alertBox) return;
       alertBox.classList.remove("hidden");
-      alertBox.classList.remove("border-rose-200", "bg-rose-50", "text-rose-700");
-      alertBox.classList.remove("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+      alertBox.classList.remove(
+        "border-rose-200",
+        "bg-rose-50",
+        "text-rose-700"
+      );
+      alertBox.classList.remove(
+        "border-emerald-200",
+        "bg-emerald-50",
+        "text-emerald-700"
+      );
       if (type === "success") {
-        alertBox.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+        alertBox.classList.add(
+          "border-emerald-200",
+          "bg-emerald-50",
+          "text-emerald-700"
+        );
       } else {
-        alertBox.classList.add("border-rose-200", "bg-rose-50", "text-rose-700");
+        alertBox.classList.add(
+          "border-rose-200",
+          "bg-rose-50",
+          "text-rose-700"
+        );
       }
       alertBox.textContent = text;
     };
@@ -323,7 +388,10 @@
               return;
             }
             emailHidden.value = emailInput.value;
-            showAlert("success", data?.message || "Đã gửi OTP. Vui lòng kiểm tra email.");
+            showAlert(
+              "success",
+              data?.message || "Đã gửi OTP. Vui lòng kiểm tra email."
+            );
             step1.classList.add("hidden");
             step2.classList.remove("hidden");
             otpInputs[0]?.focus();
@@ -361,10 +429,12 @@
     // OTP inputs UX
     otpInputs.forEach((input, index) => {
       input.addEventListener("input", () => {
-        if (input.value && index < otpInputs.length - 1) otpInputs[index + 1].focus();
+        if (input.value && index < otpInputs.length - 1)
+          otpInputs[index + 1].focus();
       });
       input.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" && !input.value && index > 0) otpInputs[index - 1].focus();
+        if (e.key === "Backspace" && !input.value && index > 0)
+          otpInputs[index - 1].focus();
       });
     });
 
@@ -381,7 +451,10 @@
         }
 
         emailHidden.value = email;
-        showAlert("success", data?.message || "Đã gửi OTP. Vui lòng kiểm tra email.");
+        showAlert(
+          "success",
+          data?.message || "Đã gửi OTP. Vui lòng kiểm tra email."
+        );
         step1.classList.add("hidden");
         step2.classList.remove("hidden");
         otpInputs[0]?.focus();
@@ -406,7 +479,10 @@
         const data = await res.json();
 
         if (data?.success) {
-          showAlert("success", data?.message || "Mật khẩu đã được reset thành 123.");
+          showAlert(
+            "success",
+            data?.message || "Mật khẩu đã được reset thành 123."
+          );
           // keep modal open for user to read; they can close manually
           return;
         }
