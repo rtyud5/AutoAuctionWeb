@@ -606,7 +606,7 @@ const productDetailView = async (req, res) => {
   try {
     const [prodRows] = await db.query(
       `SELECT 
-        p.id, p.title, p.short_description, p.full_description, p.thumbnail, p.allow_negative_user, p.status,
+        p.id, p.title, p.short_description, p.full_description, p.thumbnail, p.images, p.allow_negative_user, p.status,
         p.seller_id, p.category_id,
         c.name as category_name,
         u.name as seller_name,
@@ -760,13 +760,26 @@ const productDetailView = async (req, res) => {
     );
     const qnas = qaRows || [];
 
-    const imgBase = `/uploads/products/${product.id}`;
-    const images = [
-      `${imgBase}/0.jpg`,
-      `${imgBase}/1.jpg`,
-      `${imgBase}/2.jpg`,
-      `${imgBase}/3.jpg`,
-    ].filter(Boolean);
+    // Parse images from database (Cloudinary URLs) or fallback to local paths for old data
+    let images = [];
+    if (product.images) {
+      try {
+        images = JSON.parse(product.images);
+      } catch (e) {
+        console.error("Failed to parse product images:", e);
+      }
+    }
+
+    // Fallback to old local paths if no images in database
+    if (!images || images.length === 0) {
+      const imgBase = `/uploads/products/${product.id}`;
+      images = [
+        `${imgBase}/0.jpg`,
+        `${imgBase}/1.jpg`,
+        `${imgBase}/2.jpg`,
+        `${imgBase}/3.jpg`,
+      ];
+    }
 
     let reviews = [];
     try {

@@ -67,11 +67,18 @@ const Product = sequelize.define(
       comment: "URL ảnh đại diện (size lớn)",
     },
 
+    images: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "JSON array of image URLs from Cloudinary",
+    },
+
     allow_negative_user: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: "Cho phép user điểm uy tín thấp (<5) tham gia đấu giá cho sản phẩm này",
+      comment:
+        "Cho phép user điểm uy tín thấp (<5) tham gia đấu giá cho sản phẩm này",
     },
 
     status: {
@@ -84,8 +91,8 @@ const Product = sequelize.define(
   },
   {
     tableName: "products",
-    timestamps: true,   // createdAt, updatedAt
-    underscored: true,  // created_at, updated_at
+    timestamps: true, // createdAt, updatedAt
+    underscored: true, // created_at, updated_at
   }
 );
 

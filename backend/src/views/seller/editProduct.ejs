@@ -131,8 +131,21 @@
             Hình ảnh sản phẩm (bắt buộc 4 ảnh)
           </label>
           <div class="flex gap-2 mb-2">
-            <% for(let i=0; i<4; i++) { %>
-              <img src="/uploads/products/<%= product.id %>/<%= i %>.jpg"
+            <% 
+              let productImages = [];
+              try {
+                productImages = product.images ? JSON.parse(product.images) : [];
+              } catch(e) {
+                // Fallback to old local paths
+                for(let i=0; i<4; i++) {
+                  productImages.push(`/uploads/products/${product.id}/${i}.jpg`);
+                }
+              }
+              
+              for(let i=0; i<4; i++) { 
+                const imgSrc = productImages[i] || '/images/placeholder.jpg';
+            %>
+              <img src="<%= imgSrc %>"
                    class="w-24 h-24 object-cover rounded border border-slate-200 shadow-sm"
                    onerror="this.src='/images/placeholder.jpg'">
             <% } %>
