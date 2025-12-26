@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { Op } from "sequelize";
 import OtpToken from "../models/otpToken.model.js";
 import { transporter } from "../config/mailer.js";
+import { makeMailOptions } from "../utils/email.util.js";
 
 const OTP_LENGTH = Number.parseInt(process.env.OTP_LENGTH || "4", 10);
 const OTP_TTL_MINUTES = Number.parseInt(process.env.OTP_TTL_MINUTES || "10", 10);
@@ -18,14 +19,12 @@ export const generateOtp = () => {
 };
 
 export const sendOtpEmail = async ({ email, otp, purpose }) => {
-  const from = process.env.MAIL_FROM || process.env.MAIL_USER;
   const subject =
     purpose === "REGISTER"
       ? "[PTUDW Auction] Mã OTP xác thực đăng ký"
       : "[PTUDW Auction] Mã OTP đặt lại mật khẩu";
 
-  const title =
-    purpose === "REGISTER" ? "Xác thực đăng ký" : "Đặt lại mật khẩu";
+  const title = purpose === "REGISTER" ? "Xác thực đăng ký" : "Đặt lại mật khẩu";
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
@@ -34,16 +33,21 @@ export const sendOtpEmail = async ({ email, otp, purpose }) => {
       <div style="font-size: 28px; letter-spacing: 6px; font-weight: 700; padding: 10px 14px; background:#f1f5f9; display:inline-block; border-radius: 10px;">
         ${otp}
       </div>
-      <p style="margin:12px 0 0; font-size: 13px; color:#6b7280;">Mã có hiệu lực trong ${OTP_TTL_MINUTES} phút. Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.</p>
+      <p style="margin:12px 0 0; font-size: 13px; color:#6b7280;">
+        Mã sẽ hết hạn sau ${OTP_TTL_MINUTES} phút. Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.
+      </p>
     </div>
   `;
 
-  if (!from) {
-    throw new Error("MAIL_FROM/MAIL_USER is not configured");
-  }
+  const text = `${title}
+
+Ma OTP cua ban la: ${otp}
+
+Ma se het han sau ${OTP_TTL_MINUTES} phut. Neu ban khong thuc hien yeu cau nay, vui long bo qua email.`;
 
   try {
-    await transporter.sendMail({ from, to: email, subject, html });
+    const mail = makeMailOptions({ to: email, subject, html, text });
+    await transporter.sendMail(mail);
   } catch (err) {
     // Helpful dev fallback: allow proceeding by printing OTP to console
     // when mail is not configured correctly.
