@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { transporter } from "../config/mailer.js";
+import { makeMailOptions } from "../utils/email.util.js";
 
 import Auction from "../models/auction.model.js";
 import Product from "../models/product.model.js";
@@ -25,23 +26,24 @@ const getAppUrl = () => {
   return `http://localhost:${port}`;
 };
 
-const safeSendMail = async ({ to, subject, html }) => {
-  const from = process.env.MAIL_FROM || process.env.MAIL_USER;
-  if (!from) {
-    console.warn("[MAIL] MAIL_FROM/MAIL_USER is not configured. Skip sending.");
-    return;
-  }
+const safeSendMail = async ({ to, subject, html, text }) => {
   if (!to) return;
 
   try {
-    await transporter.sendMail({ from, to, subject, html });
+    const mail = makeMailOptions({ to, subject, html, text });
+    await transporter.sendMail(mail);
   } catch (err) {
     console.error("[MAIL] sendMail failed:", err?.message || err);
     // In dev, allow continuing without crashing user flows.
     const debug = String(process.env.MAIL_DEBUG_CONSOLE || "").toLowerCase() === "true";
     const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
     if (debug && !isProd) {
-      console.log(`\n[MAIL_DEBUG] To: ${to}\nSubject: ${subject}\n${html}\n`);
+      console.log(`
+[MAIL_DEBUG] To: ${to}
+Subject: ${subject}
+${text || ""}
+${html || ""}
+`);
       return;
     }
     // Do not throw to avoid breaking core transaction flows.
