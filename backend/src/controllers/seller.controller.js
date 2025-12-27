@@ -1,9 +1,12 @@
 import db from "../config/db.js";
 import bcrypt from "bcrypt";
+import { QueryTypes } from "sequelize";
 import Product from "../models/product.model.js";
 import Auction from "../models/auction.model.js";
 import BlockedBidder from "../models/blocked_bidder.js";
 import { cloudinary } from "../config/cloudinary.js";
+import fs from "fs";
+import path from "path";
 
 /*
   Seller controller — 1:1 map to routes/seller.route.js
@@ -95,7 +98,7 @@ const getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const [rows] = await db.query(
@@ -108,12 +111,10 @@ const getProfile = async (req, res) => {
 
     return res.json({ success: true, user: rows?.[0] || null });
   } catch (err) {
-    console.error('getProfile error', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error("getProfile error", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-
 
 const updateProfile = async (req, res) => {
   try {
@@ -360,25 +361,35 @@ const blockBidder = async (req, res) => {
     // 2. Xóa tất cả các bid của bidder này trong phiên đấu giá
     await db.query("DELETE FROM bids WHERE auction_id = ? AND bidder_id = ?", {
       replacements: [auctionId, bidderId],
+      type: QueryTypes.DELETE,
     });
 
     // 3. Kiểm tra nếu bidder này đang giữ giá cao nhất
     // Lấy bid cao nhất còn lại sau khi xóa
-    const [rows] = await db.query(
+    const rows = await db.query(
       "SELECT bidder_id, amount FROM bids WHERE auction_id = ? ORDER BY amount DESC, created_at DESC LIMIT 1",
-      { replacements: [auctionId] }
+      {
+        replacements: [auctionId],
+        type: QueryTypes.SELECT,
+      }
     );
     if (rows && rows.length > 0) {
       // Cập nhật current_price và current_winner_id cho auction
       await db.query(
         "UPDATE auctions SET current_price = ?, current_winner_id = ? WHERE id = ?",
-        { replacements: [rows[0].amount, rows[0].bidder_id, auctionId] }
+        {
+          replacements: [rows[0].amount, rows[0].bidder_id, auctionId],
+          type: QueryTypes.UPDATE,
+        }
       );
     } else {
       // Nếu không còn ai đấu giá, reset auction
       await db.query(
         "UPDATE auctions SET current_price = start_price, current_winner_id = NULL WHERE id = ?",
-        { replacements: [auctionId] }
+        {
+          replacements: [auctionId],
+          type: QueryTypes.UPDATE,
+        }
       );
     }
 
@@ -537,7 +548,9 @@ const createProduct = async (req, res) => {
       auctionId: auction.id,
     });
   } catch (err) {
-    await t.rollback();
+    if (t && !t.finished) {
+      await t.rollback();
+    }
     console.error("seller.createProduct error:", err);
     return res
       .status(500)
@@ -797,7 +810,9 @@ const updateProduct = async (req, res) => {
     await t.commit();
     return res.json({ success: true, message: "Updated successfully" });
   } catch (err) {
-    await t.rollback();
+    if (t && !t.finished) {
+      await t.rollback();
+    }
     console.error("seller.updateProduct error:", err);
     return res
       .status(500)
@@ -814,9 +829,13 @@ const deleteProduct = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
 
     // Lấy product + thumbnail để kiểm tra quyền sở hữu
-    const [rows] = await db.query(
+    const rows = await db.query(
       "SELECT id, thumbnail FROM products WHERE id = ? AND seller_id = ? LIMIT 1",
-      { replacements: [productId, sellerId], transaction: t }
+      {
+        replacements: [productId, sellerId],
+        type: QueryTypes.SELECT,
+        transaction: t,
+      }
     );
     if (!rows || rows.length === 0) {
       await t.rollback();
@@ -831,7 +850,11 @@ const deleteProduct = async (req, res) => {
       JOIN orders o ON r.order_id = o.id
       JOIN auctions a ON o.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
     // 2. Xóa orders liên quan đến product
@@ -839,7 +862,11 @@ const deleteProduct = async (req, res) => {
       `DELETE o FROM orders o
       JOIN auctions a ON o.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
     // 4. Xóa bids liên quan đến các auctions của product
@@ -847,7 +874,11 @@ const deleteProduct = async (req, res) => {
       `DELETE b FROM bids b
       JOIN auctions a ON b.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
     // 5. Xóa questions/answers liên quan đến các auctions của product
@@ -855,14 +886,22 @@ const deleteProduct = async (req, res) => {
       `DELETE q FROM questions q
       JOIN auctions a ON q.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
     await db.query(
       `DELETE a FROM answers a
       JOIN questions q ON a.question_id = q.id
       JOIN auctions au ON q.auction_id = au.id
       WHERE au.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
     // Xóa blocked_bidder liên quan đến các auctions của product
@@ -870,7 +909,11 @@ const deleteProduct = async (req, res) => {
       `DELETE bb FROM blocked_bidders bb
       JOIN auctions a ON bb.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
     // Xóa auto_bid_rules liên quan đến các auctions của product
@@ -878,7 +921,11 @@ const deleteProduct = async (req, res) => {
       `DELETE abr FROM auto_bid_rules abr
       JOIN auctions a ON abr.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
     // Xóa watch_list liên quan đến các auctions của product
@@ -886,33 +933,46 @@ const deleteProduct = async (req, res) => {
       `DELETE wl FROM watch_list wl
       JOIN auctions a ON wl.auction_id = a.id
       WHERE a.product_id = ?`,
-      { replacements: [productId], transaction: t }
+      {
+        replacements: [productId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
-    // 6. Xóa auctions (đã có)
+    // 6. Xóa auctions
     await db.query(
       "DELETE FROM auctions WHERE product_id = ? AND seller_id = ?",
-      { replacements: [productId, sellerId], transaction: t }
+      {
+        replacements: [productId, sellerId],
+        type: QueryTypes.DELETE,
+        transaction: t,
+      }
     );
 
-    // 7. Xóa product (đã có)
+    // 7. Xóa product
     await db.query("DELETE FROM products WHERE id = ? AND seller_id = ?", {
       replacements: [productId, sellerId],
+      type: QueryTypes.DELETE,
       transaction: t,
     });
 
     await t.commit();
 
-    // Xóa folder ảnh
-    const productDir = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "products",
-      String(productId)
-    );
-    if (fs.existsSync(productDir)) {
-      fs.rmSync(productDir, { recursive: true, force: true });
+    // Xóa folder ảnh (after commit, so errors here won't affect DB)
+    try {
+      const productDir = path.join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "products",
+        String(productId)
+      );
+      if (fs.existsSync(productDir)) {
+        fs.rmSync(productDir, { recursive: true, force: true });
+      }
+    } catch (fileErr) {
+      console.warn("Failed to delete product directory:", fileErr.message);
     }
 
     return res.json({
@@ -920,7 +980,9 @@ const deleteProduct = async (req, res) => {
       message: "Product & auctions deleted successfully",
     });
   } catch (err) {
-    await t.rollback();
+    if (t && !t.finished) {
+      await t.rollback();
+    }
     console.error("seller.deleteProduct error:", err);
     return res
       .status(500)

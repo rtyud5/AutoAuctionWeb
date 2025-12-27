@@ -6,26 +6,28 @@ dotenv.config();
 const { default: app } = await import("./app.js");
 const { default: sequelize, testConnection } = await import("./config/db.js");
 await import("./models/index.js");
-const { settleExpiredAuctions } = await import("./services/auctionSettlement.service.js");
+const { settleExpiredAuctions } = await import(
+  "./services/auctionSettlement.service.js"
+);
 const { default: mailTransporter } = await import("./config/mailer.js");
 
-
 const PORT = process.env.PORT || 4000;
-
 
 const ensureProductSchema = async () => {
   // One-time schema guard for new columns (without requiring sequelize-cli migrations)
   try {
-    const [cols] = await sequelize.query("SHOW COLUMNS FROM products LIKE 'allow_negative_user'");
+    const [cols] = await sequelize.query(
+      "SHOW COLUMNS FROM products LIKE 'allow_negative_user'"
+    );
     if (!cols || cols.length === 0) {
       await sequelize.query(
         "ALTER TABLE products ADD COLUMN allow_negative_user TINYINT(1) NOT NULL DEFAULT 0"
       );
-      console.log('✅ Migrated: products.allow_negative_user');
+      console.log("✅ Migrated: products.allow_negative_user");
     }
   } catch (err) {
     // Don't crash the app if DB user has no ALTER privilege; feature will fallback to default false
-    console.warn('⚠️ Skip schema migration allow_negative_user:', err.message);
+    console.warn("⚠️ Skip schema migration allow_negative_user:", err.message);
   }
 };
 
@@ -34,7 +36,8 @@ const startServer = async () => {
     await testConnection();
 
     // sync models (adjust options as needed)
-    await sequelize.sync({ alter: false });
+    // For production/remote DB, use { alter: false } or skip sync entirely
+    await sequelize.sync({ alter: false, force: false });
     console.log("✅ Sequelize models synchronized with database");
 
     await ensureProductSchema();
@@ -44,25 +47,34 @@ const startServer = async () => {
     });
 
     // ===== Scheduler: settle expired auctions + email notifications =====
-    const runSchedulers = String(process.env.RUN_SCHEDULERS || 'true').toLowerCase() !== 'false';
+    const runSchedulers =
+      String(process.env.RUN_SCHEDULERS || "true").toLowerCase() !== "false";
     if (runSchedulers) {
-      const intervalMs = Number.parseInt(process.env.AUCTION_SETTLE_INTERVAL_MS || '30000', 10);
-      console.log(`⏱️ Auction settlement scheduler enabled (interval ${Math.round(intervalMs / 1000)}s)`);
+      const intervalMs = Number.parseInt(
+        process.env.AUCTION_SETTLE_INTERVAL_MS || "30000",
+        10
+      );
+      console.log(
+        `⏱️ Auction settlement scheduler enabled (interval ${Math.round(
+          intervalMs / 1000
+        )}s)`
+      );
 
       // optional: verify mail transporter once at boot
       try {
         await mailTransporter.verify();
-        console.log('✅ Mail transporter verified');
+        console.log("✅ Mail transporter verified");
       } catch (err) {
-        console.warn('⚠️ Mail transporter verify failed:', err?.message || err);
+        console.warn("⚠️ Mail transporter verify failed:", err?.message || err);
       }
 
       const runOnce = async () => {
         try {
           const r = await settleExpiredAuctions();
-          if (r?.processed) console.log(`🧾 Settled expired auctions: ${r.processed}`);
+          if (r?.processed)
+            console.log(`🧾 Settled expired auctions: ${r.processed}`);
         } catch (err) {
-          console.error('settleExpiredAuctions failed:', err);
+          console.error("settleExpiredAuctions failed:", err);
         }
       };
 
@@ -70,7 +82,6 @@ const startServer = async () => {
       runOnce();
       setInterval(runOnce, intervalMs);
     }
-
 
     const shutdown = async (signal) => {
       console.log(`\n🛑 Received ${signal}. Shutting down...`);

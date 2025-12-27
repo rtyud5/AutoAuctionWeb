@@ -1,7 +1,10 @@
 import db from "../config/db.js";
 import Category from "../models/category.model.js";
 import { QueryTypes } from "sequelize";
-import { notifyQuestionAsked, notifyQuestionAnswered } from "../services/notification.service.js";
+import {
+  notifyQuestionAsked,
+  notifyQuestionAnswered,
+} from "../services/notification.service.js";
 
 const listAuctions = async (req, res) => {
   try {
@@ -62,18 +65,43 @@ const listAuctions = async (req, res) => {
     const total = countRows?.[0]?.cnt || 0;
 
     const rows = await db.query(
-      `SELECT a.id, a.title, a.current_price, a.start_price, a.end_time, COALESCE(b.cnt, 0) AS bids_count
+      `SELECT a.id, a.product_id, a.title, a.current_price, a.start_price, a.end_time, 
+              COALESCE(b.cnt, 0) AS bids_count,
+              p.thumbnail, p.images
        FROM auctions a
        LEFT JOIN (SELECT auction_id, COUNT(*) AS cnt FROM bids GROUP BY auction_id) b ON b.auction_id = a.id
+       LEFT JOIN products p ON p.id = a.product_id
        ${whereSQL}
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       { replacements: [...params, limit, offset], type: QueryTypes.SELECT }
     );
 
+    // Parse images từ JSON string thành array
+    const data = rows.map((r) => {
+      let imageArray = [];
+      try {
+        if (r.images) {
+          imageArray = JSON.parse(r.images);
+        }
+      } catch (e) {
+        console.error("Failed to parse images JSON:", e);
+      }
+
+      // Nếu có thumbnail, thêm vào đầu mảng images
+      if (r.thumbnail && !imageArray.includes(r.thumbnail)) {
+        imageArray = [r.thumbnail, ...imageArray];
+      }
+
+      return {
+        ...r,
+        images: imageArray,
+      };
+    });
+
     return res.json({
       success: true,
-      data: rows,
+      data,
       pagination: { page, limit, total },
     });
   } catch (e) {
@@ -228,6 +256,8 @@ const listAuctionsByCategory = async (req, res) => {
           a.id,
           p.id AS product_id,
           p.title,
+          p.thumbnail,
+          p.images,
           a.current_price,
           a.start_price,
           a.end_time,
@@ -241,11 +271,27 @@ const listAuctionsByCategory = async (req, res) => {
       { replacements: [...catIds, limit, offset], type: QueryTypes.SELECT }
     );
 
-    // Gán images array rỗng, view sẽ fallback về /uploads/products/{product_id}/0.jpg
-    const data = rows.map((r) => ({
-      ...r,
-      images: [], // Để view fallback tự động
-    }));
+    // Parse images từ JSON string thành array
+    const data = rows.map((r) => {
+      let imageArray = [];
+      try {
+        if (r.images) {
+          imageArray = JSON.parse(r.images);
+        }
+      } catch (e) {
+        console.error("Failed to parse images JSON:", e);
+      }
+
+      // Nếu có thumbnail, thêm vào đầu mảng images
+      if (r.thumbnail && !imageArray.includes(r.thumbnail)) {
+        imageArray = [r.thumbnail, ...imageArray];
+      }
+
+      return {
+        ...r,
+        images: imageArray,
+      };
+    });
 
     return res.json({
       success: true,
