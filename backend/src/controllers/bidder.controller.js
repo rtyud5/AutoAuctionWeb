@@ -56,20 +56,42 @@ const getAuctionAllowNegative = async ({ auctionId, transaction }) => {
 const getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!userId)
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
 
+    // Lấy thông tin user (KHÔNG dùng is_blocked nữa)
     const [rows] = await db.query(
-      'SELECT id, name, email, role, is_blocked FROM users WHERE id = ? LIMIT 1',
+      'SELECT id, name, email, role, seller_expires_at FROM users WHERE id = ? LIMIT 1',
       { replacements: [userId], raw: true }
     );
-    const user = rows?.[0];
 
-    return res.json({ success: true, user: user || null });
+    let user = rows?.[0] || null;
+    if (!user) {
+      return res.json({ success: true, user: null });
+    }
+
+    // 👉 AUTO DOWNGRADE: seller hết hạn thì về bidder
+    if (
+      user.role === 'seller' &&
+      user.seller_expires_at &&
+      new Date(user.seller_expires_at) <= new Date()
+    ) {
+      await db.query(
+        'UPDATE users SET role = ?, seller_expires_at = NULL WHERE id = ?',
+        { replacements: ['bidder', userId], raw: true }
+      );
+
+      user.role = 'bidder';
+      user.seller_expires_at = null;
+    }
+
+    return res.json({ success: true, user });
   } catch (err) {
     console.error('bidder.getProfile', err);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
 
 // ✅ WATCHLIST (ĐÚNG schema: watch_list)
 

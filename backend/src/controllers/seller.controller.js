@@ -66,14 +66,26 @@ const logout = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    const [[user]] = await db.query('SELECT id, name, email, storeName, created_at FROM users WHERE id = ? LIMIT 1', [userId]);
-    return res.json({ success: true, data: user || null });
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const [rows] = await db.query(
+      `SELECT id, name, email, role, seller_expires_at
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+      { replacements: [userId], raw: true }
+    );
+
+    return res.json({ success: true, user: rows?.[0] || null });
   } catch (err) {
-    console.error('seller.getProfile', err);
+    console.error('getProfile error', err);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+
 
 const updateProfile = async (req, res) => {
   try {

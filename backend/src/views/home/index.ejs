@@ -4,6 +4,19 @@
     class="flex flex-col md:flex-row items-center justify-between bg-gradient-to-r from-blue-500 to-blue-700 text-white px-8 py-16 rounded-2xl shadow-lg mb-12">
     <div class="banner-left max-w-lg">
         <h1 class="text-4xl font-bold mb-4">ĐẤU GIÁ TRỰC TUYẾN</h1>
+        <!-- SELLER EXPIRE COUNTDOWN -->
+<div id="seller-badge" class="hidden mb-6">
+  <div class="bg-yellow-100 border border-yellow-300 text-yellow-800 px-5 py-4 rounded-xl shadow flex items-center gap-3">
+    ⏳
+    <div>
+      <p class="font-semibold">
+        Thời gian Seller còn lại
+      </p>
+      <p id="seller-countdown" class="text-red-600 font-bold text-lg"></p>
+    </div>
+  </div>
+</div>
+
         <p class="text-lg opacity-90 mb-2">Mô tả ngắn về hệ thống đấu giá trực tuyến...</p>
         <p class="opacity-90">📞 1234567894</p>
         <p class="opacity-90">🌐 https://daugia.asian/dau-gia</p>
@@ -163,121 +176,145 @@ const sections = [
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.auction-section').forEach(section => {
-            const viewport = section.querySelector('.carousel-viewport');
-            const track = section.querySelector('.carousel-track');
-            const cards = Array.from(section.querySelectorAll('.auction-card'));
-            const prevBtn = section.querySelector('.carousel-prev');
-            const nextBtn = section.querySelector('.carousel-next');
-            const dotsWrap = section.querySelector('.carousel-dots');
-            if (!viewport || !track || cards.length === 0) return;
+document.addEventListener('DOMContentLoaded', () => {
 
-            // decide perPage by breakpoint
-            const getPerPage = () => {
-                const w = window.innerWidth;
-                if (w >= 1024) return 3;   // desktop
-                if (w >= 640) return 2;    // tablet
-                return 1;                  // mobile
-            };
+  /* ================= SELLER COUNTDOWN (DASHBOARD) ================= */
+  (async function initSellerCountdown() {
+    try {
+      const resp = await fetch('/me', { credentials: 'same-origin' });
+      if (!resp.ok) {
+        console.warn('GET /me failed', resp.status);
+        return;
+      }
 
-            const setCardWidths = (perPage) => {
-                const style = getComputedStyle(track);
-                const gap = parseFloat(style.gap) || 24;
-                const avail = Math.max(0, viewport.clientWidth - gap * (perPage - 1));
-                const cw = Math.floor(avail / perPage);
-                cards.forEach(card => {
-                    card.style.width = cw + 'px';
-                });
-            };
+      const data = await resp.json().catch(() => ({}));
+      console.log('ME API:', data);
 
-            let perPage = getPerPage();
-            setCardWidths(perPage);
+      const user = data?.user;
+      if (!user) return;
 
-            let pages = Math.max(1, Math.ceil(cards.length / perPage));
-            let currentPage = 0;
+      const role = (user.role || '').toLowerCase();
+      if (role !== 'seller') return;
 
-            const buildDots = () => {
-                dotsWrap.innerHTML = '';
-                for (let i = 0; i < pages; i++) {
-                    const d = document.createElement('button');
-                    d.className = 'w-3 h-3 rounded-full bg-gray-300';
-                    d.setAttribute('aria-label', 'Go to page ' + (i + 1));
-                    d.addEventListener('click', () => goToPage(i));
-                    dotsWrap.appendChild(d);
-                }
-                updateDots();
-            };
+      const exp = user.seller_expires_at;
+      if (!exp) {
+        console.warn('Seller has no seller_expires_at');
+        return;
+      }
 
-            const updateDots = () => {
-                Array.from(dotsWrap.children).forEach((dot, idx) => {
-                    dot.classList.toggle('bg-teal-500', idx === currentPage);
-                    dot.classList.toggle('bg-gray-300', idx !== currentPage);
-                });
-            };
+      const expiresAt = new Date(exp);
+      if (isNaN(expiresAt.getTime())) {
+        console.error('Invalid expires date:', exp);
+        return;
+      }
 
-            const toggleArrows = () => {
-                if (!prevBtn || !nextBtn) return;
-                if (pages > 1) {
-                    prevBtn.classList.remove('hidden');
-                    nextBtn.classList.remove('hidden');
-                } else {
-                    prevBtn.classList.add('hidden');
-                    nextBtn.classList.add('hidden');
-                }
-            };
+      const badge = document.getElementById('seller-badge');
+      const countdownEl = document.getElementById('seller-countdown');
 
-            const goToPage = (page) => {
-                perPage = getPerPage();
-                pages = Math.max(1, Math.ceil(cards.length / perPage));
-                currentPage = Math.max(0, Math.min(page, pages - 1));
-                const targetIndex = currentPage * perPage;
-                const targetCard = cards[targetIndex];
-                if (targetCard) {
-                    viewport.scrollTo({ left: targetCard.offsetLeft - track.offsetLeft, behavior: 'smooth' });
-                } else {
-                    viewport.scrollTo({ left: currentPage * viewport.clientWidth, behavior: 'smooth' });
-                }
-                updateDots();
-                toggleArrows();
-            };
+      if (!badge || !countdownEl) {
+        console.error('Missing #seller-badge or #seller-countdown in HTML');
+        return;
+      }
 
-            if (prevBtn) prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
-            if (nextBtn) nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+      badge.classList.remove('hidden');
 
-            let scrollTimeout;
-            viewport.addEventListener('scroll', () => {
-                window.clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    const left = viewport.scrollLeft + 1;
-                    let idx = 0;
-                    for (let i = 0; i < cards.length; i++) {
-                        if (cards[i].offsetLeft - track.offsetLeft <= left) idx = i;
-                        else break;
-                    }
-                    currentPage = Math.floor(idx / perPage);
-                    updateDots();
-                    toggleArrows();
-                }, 100);
-            });
+      const update = () => {
+        const diff = expiresAt - new Date();
 
-            let resizeTimeout;
-            window.addEventListener('resize', () => {
-                window.clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    const oldPer = perPage;
-                    perPage = getPerPage();
-                    setCardWidths(perPage);
-                    pages = Math.max(1, Math.ceil(cards.length / perPage));
-                    if (pages !== dotsWrap.children.length) buildDots();
-                    if (currentPage > pages - 1) currentPage = pages - 1;
-                    goToPage(currentPage);
-                }, 120);
-            });
+        if (diff <= 0) {
+          countdownEl.textContent = 'Hết hạn Seller';
+          clearInterval(timer);
+          // Có thể reload để backend cập nhật role
+          // location.reload();
+          return;
+        }
 
-            buildDots();
-            toggleArrows();
-            goToPage(0);
-        });
-    });
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        countdownEl.textContent =
+          `${days} ngày ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+      };
+
+      update();
+      const timer = setInterval(update, 1000);
+
+    } catch (e) {
+      console.error('seller countdown init failed', e);
+    }
+  })();
+
+
+  /* ================= EXISTING CAROUSEL CODE (GIỮ NGUYÊN) ================= */
+  document.querySelectorAll('.auction-section').forEach(section => {
+    const viewport = section.querySelector('.carousel-viewport');
+    const track = section.querySelector('.carousel-track');
+    const cards = Array.from(section.querySelectorAll('.auction-card'));
+    const prevBtn = section.querySelector('.carousel-prev');
+    const nextBtn = section.querySelector('.carousel-next');
+    const dotsWrap = section.querySelector('.carousel-dots');
+    if (!viewport || !track || cards.length === 0) return;
+
+    const getPerPage = () => {
+      const w = window.innerWidth;
+      if (w >= 1024) return 3;
+      if (w >= 640) return 2;
+      return 1;
+    };
+
+    const setCardWidths = (perPage) => {
+      const style = getComputedStyle(track);
+      const gap = parseFloat(style.gap) || 24;
+      const avail = Math.max(0, viewport.clientWidth - gap * (perPage - 1));
+      const cw = Math.floor(avail / perPage);
+      cards.forEach(card => card.style.width = cw + 'px');
+    };
+
+    let perPage = getPerPage();
+    setCardWidths(perPage);
+
+    let pages = Math.max(1, Math.ceil(cards.length / perPage));
+    let currentPage = 0;
+
+    const buildDots = () => {
+      dotsWrap.innerHTML = '';
+      for (let i = 0; i < pages; i++) {
+        const d = document.createElement('button');
+        d.className = 'w-3 h-3 rounded-full bg-gray-300';
+        d.addEventListener('click', () => goToPage(i));
+        dotsWrap.appendChild(d);
+      }
+      updateDots();
+    };
+
+    const updateDots = () => {
+      Array.from(dotsWrap.children).forEach((dot, idx) => {
+        dot.classList.toggle('bg-teal-500', idx === currentPage);
+        dot.classList.toggle('bg-gray-300', idx !== currentPage);
+      });
+    };
+
+    const goToPage = (page) => {
+      perPage = getPerPage();
+      pages = Math.max(1, Math.ceil(cards.length / perPage));
+      currentPage = Math.max(0, Math.min(page, pages - 1));
+      const targetIndex = currentPage * perPage;
+      const targetCard = cards[targetIndex];
+      if (targetCard) {
+        viewport.scrollTo({ left: targetCard.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+      }
+      updateDots();
+    };
+
+    if (prevBtn) prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+
+    buildDots();
+    goToPage(0);
+  });
+});
 </script>
+
+

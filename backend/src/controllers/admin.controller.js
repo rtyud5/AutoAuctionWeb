@@ -481,31 +481,73 @@ const listUpgradeRequests = async (req, res) => {
   }
 };
 
+
 const approveUpgradeRequest = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const req_row = await UpgradeRequest.findByPk(id);
-    if (!req_row) {
+    // 1️⃣ Kiểm tra request tồn tại
+    const reqRow = await UpgradeRequest.findByPk(id);
+    if (!reqRow) {
       return res
         .status(404)
         .json({ success: false, message: "Request not found" });
     }
-    if (req_row.status === "APPROVED") {
-      return res.json({ success: false, message: "Request already approved" });
+
+    // 2️⃣ Không duyệt lại request đã duyệt
+    if (reqRow.status === "APPROVED") {
+      return res.json({
+        success: false,
+        message: "Request already approved",
+      });
     }
 
-    await User.update({ role: "seller" }, { where: { id: req_row.user_id } });
-    await UpgradeRequest.update({ status: "APPROVED" }, { where: { id } });
+    // 3️⃣ Tính thời hạn seller = 7 ngày từ bây giờ
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    if (req.accepts("html"))
+    // Convert sang MySQL DATETIME: YYYY-MM-DD HH:mm:ss
+    const expiresStr = expiresAt
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+
+    // 4️⃣ Update user → seller + hạn
+    await db.query(
+      `
+      UPDATE users
+      SET role = ?, seller_expires_at = ?
+      WHERE id = ?
+      `,
+      {
+        replacements: ["seller", expiresStr, reqRow.user_id],
+        raw: true,
+      }
+    );
+
+    // 5️⃣ Update trạng thái request
+    await UpgradeRequest.update(
+      { status: "APPROVED" },
+      { where: { id } }
+    );
+
+    // 6️⃣ Response
+    if (req.accepts("html")) {
       return res.redirect("/admin/upgrade-requests-page");
-    return res.json({ success: true });
+    }
+
+    return res.json({
+      success: true,
+      message: "User upgraded to seller for 7 days",
+      seller_expires_at: expiresStr,
+    });
   } catch (err) {
     console.error("admin.approveUpgradeRequest", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error" });
   }
 };
+
 
 const rejectUpgradeRequest = async (req, res) => {
   try {
