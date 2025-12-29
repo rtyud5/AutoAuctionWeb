@@ -17,9 +17,9 @@
   </div>
 </div>
 
-        <p class="text-lg opacity-90 mb-2">Mô tả ngắn về hệ thống đấu giá trực tuyến...</p>
-        <p class="opacity-90">📞 1234567894</p>
-        <p class="opacity-90">🌐 https://daugia.asian/dau-gia</p>
+        <p class="text-lg opacity-90 mb-2">PTUDW 23KTPM1 TDSV Auction Website...</p>
+        <p class="opacity-90">🌐 Đây là website được tạo ra bởi nhóm sinh viên HCMUS - TDSV</p>
+        <p class="opacity-90">🌐 Mời thầy đọc những file tài liệu và README. Chúng em có mô tả chi tiết về web và cách sử dụng web và một số lưu ý ạ.</p>
     </div>
 
     <div class="banner-right mt-8 md:mt-0">
@@ -84,21 +84,23 @@ const sections = [
                                                 </p>
                                             <% } %>
                                             
-                                            <!-- Giá và số lượt đấu -->
-                                            <% if (product.current_price || product.start_price) { %>
-                                                <div class="mb-2 space-y-1">
-                                                    <p class="text-sm font-semibold text-green-600">
-                                                        <i class="fas fa-dollar-sign"></i> 
-                                                        Giá hiện tại: <%= (product.current_price || product.start_price || 0).toLocaleString('vi-VN') %> VNĐ
-                                                    </p>
-                                                    <% if (product.bid_count > 0) { %>
-                                                        <p class="text-xs text-gray-500">
-                                                            <i class="fas fa-gavel"></i> <%= product.bid_count %> lượt đấu giá
-                                                        </p>
-                                                    <% } %>
-                                                </div>
-                                            <% } %>
-                                            
+                      <!-- Giá và số lượt đấu -->
+                      <% if (product.current_price || product.start_price) { %>
+                        <div class="mb-2 space-y-1">
+                          <p class="text-sm font-semibold text-green-600">
+                            <i class="fas fa-dollar-sign"></i>
+                            Giá hiện tại: <%= Number(product.current_price || product.start_price || 0).toLocaleString('vi-VN') %> VNĐ
+                          </p>
+                          <% if (product.bid_count > 0) { %>
+                            <p class="text-xs text-gray-500">
+                              <i class="fas fa-gavel"></i> <%= product.bid_count %> lượt đấu giá
+                            </p>
+                          <% } %>
+                          <p class="text-xs text-gray-500" data-end-ms="<%= product.end_time_ms || '' %>">
+                            ⏰ Kết thúc: <span class="countdown-text"><%= product.end_time ? new Date(product.end_time).toLocaleString('vi-VN') : '—' %></span>
+                          </p>
+                        </div>
+                      <% } %>                   
                                             <p class="text-sm text-gray-500">
                                                 <i class="fas fa-tag"></i> <%= product.category_name || 'N/A' %>
                                             </p>
@@ -314,6 +316,42 @@ document.addEventListener('DOMContentLoaded', () => {
     buildDots();
     goToPage(0);
   });
+
+  /* ================= RELATED CARDS COUNTDOWN ================= */
+  (function startCardCountdowns() {
+    const els = Array.from(document.querySelectorAll('.countdown-text'));
+    const remainEls = Array.from(document.querySelectorAll('.time-remaining'));
+
+    function formatRemaining(diff) {
+      if (diff <= 0) return 'Đã kết thúc';
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      if (days > 0) return `${days}d ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+      return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }
+
+    function tick() {
+      const now = Date.now();
+      // update countdown-text elements (they show end timestamp already; keep them static)
+      // update remaining time elements
+      remainEls.forEach(el => {
+        const endMs = Number(el.getAttribute('data-end-ms')) || null;
+        const target = el.querySelector('.time-remaining-text');
+        if (!target) return;
+        if (!endMs) {
+          target.textContent = '—';
+          return;
+        }
+        const diff = endMs - now;
+        target.textContent = formatRemaining(diff);
+      });
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  })();
 });
 </script>
 

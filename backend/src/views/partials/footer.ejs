@@ -3,8 +3,29 @@
     <p>© <%= new Date().getFullYear() %> PTUDW Online Auction. All rights reserved.</p>
     <div class="flex items-center gap-4">
       <a href="/" class="hover:text-teal-600 transition-colors">Trang chủ</a>
-      <a href="/electronics" class="hover:text-teal-600 transition-colors">Điện tử</a>
-      <a href="/fashion" class="hover:text-teal-600 transition-colors">Thời trang</a>
+
+      <!-- Categories dropdown -->
+      <div class="relative group">
+        <button aria-haspopup="true" class="flex items-center gap-2 hover:text-teal-600 transition-colors">
+          Danh sách danh mục
+          <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+  <div class="absolute right-0 bottom-full mb-2 w-48 bg-white border border-slate-200 rounded shadow-lg hidden group-hover:block z-50">
+          <ul class="py-1">
+            <% (topCategories || []).forEach(cat => { %>
+              <li>
+                <a href="/categories/<%= cat.slug %>" class="block px-4 py-2 text-sm text-slate-700 hover:bg-gray-100">
+                  <%= cat.name %>
+                </a>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      </div>
+      <!-- end dropdown -->
     </div>
   </div>
 </footer>

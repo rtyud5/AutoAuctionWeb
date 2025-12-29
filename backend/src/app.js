@@ -50,6 +50,9 @@ app.use(attachUser);
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 app.use(reputationMiddleware);
+// Load top-level categories for footer/navigation
+import loadTopCategories from './middlewares/loadCategories.middleware.js';
+app.use(loadTopCategories);
 
 // Routes
 app.use("/", pageRoutes);

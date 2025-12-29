@@ -9,11 +9,11 @@ const index = async (req, res) => {
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
               c.name as category_name, u.name as seller_name,
               a.start_price, a.current_price, a.end_time,
-              (SELECT COUNT(*) FROM bids WHERE bids.auction_id = a.id) as bid_count
+              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) as bid_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
-       LEFT JOIN auctions a ON a.product_id = p.id AND a.status = 'RUNNING'
+       LEFT JOIN auctions a ON a.product_id = p.id
        WHERE p.status = 'APPROVED'
        ORDER BY p.created_at DESC 
        LIMIT 5`,
@@ -53,15 +53,35 @@ const index = async (req, res) => {
     );
 
     const fixImage = (p) => {
-      if (p.image && !p.image.includes("placeholder")) return;
+      if (p.image && !String(p.image).includes("placeholder")) return;
       p.image = `/uploads/products/${p.product_id}/0.jpg`;
     };
 
-    endingSoon.forEach(fixImage);
-    highestPrice.forEach(fixImage);
-    mostBids.forEach(fixImage);
+    const normalize = (p) => {
+      const obj = { ...p };
+      obj.product_id = p.product_id || p.id || null;
+      obj.image = p.image || p.thumbnail || null;
+      obj.start_price = Number(p.start_price || 0);
+      obj.current_price = typeof p.current_price !== 'undefined' && p.current_price !== null ? Number(p.current_price) : obj.start_price;
+      if (p.end_time) {
+        const d = new Date(p.end_time);
+        obj.end_time = isNaN(d.getTime()) ? null : d.toISOString();
+        obj.end_time_ms = isNaN(d.getTime()) ? null : d.getTime();
+      } else {
+        obj.end_time = null;
+        obj.end_time_ms = null;
+      }
+      obj.category_name = p.category_name || null;
+      obj.seller_name = p.seller_name || null;
+      fixImage(obj);
+      return obj;
+    };
 
-    auctions = { endingSoon, highestPrice, mostBids };
+    const s1 = (endingSoon || []).map(normalize);
+    const s2 = (highestPrice || []).map(normalize);
+    const s3 = (mostBids || []).map(normalize);
+
+    auctions = { endingSoon: s1, highestPrice: s2, mostBids: s3 };
   } catch (e) {
     console.error("Error in index controller:", e);
   }
