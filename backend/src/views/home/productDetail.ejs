@@ -241,7 +241,7 @@
                         <% if (user && user.id === product.seller_id) { %>
                             <div>
                                 <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-                                    onclick="rejectBidder(<%= bid.bidder_id %>, <%= product.auction_id %>)">
+                                    onclick="rejectBidder('<%= bid.bidder_id %>', '<%= product.auction_id %>')">
                                     Từ chối
                                 </button>
                             </div>
@@ -369,12 +369,21 @@
                             <img src="<%= imgSrc %>" alt="<%= related.title %>" class="w-full h-48 object-cover">
                             <div class="p-4">
                                 <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2"><%= related.title %></h3>
-                                <p class="text-sm text-gray-600 mb-1">
-                                    Giá hiện tại: <span class="font-bold text-red-600">
-                                    <%= Number(related.current_price || 0).toLocaleString('vi-VN') %>₫
-                                    </span>
-                                </p>
-                                <p class="text-sm text-green-600 mb-3" data-end-time="<%= related.end_time %>">Đang tính...</p>
+                                                                <p class="text-sm text-gray-600 mb-1">
+                                                                        Giá hiện tại: <span class="font-bold text-red-600">
+                                                                        <%= Number(related.current_price ?? related.start_price ?? 0).toLocaleString('vi-VN') %> VND
+                                                                        </span>
+                                                                </p>
+                                                                <% 
+                                                                    const relStatus = (related.auction_status || related.status || '').toString().toUpperCase();
+                                                                    const relEnd = related.end_time ? new Date(related.end_time) : null;
+                                                                    let statusText = 'Đang cập nhật';
+                                                                    const now = new Date();
+                                                                    if (relStatus === 'RUNNING' && relEnd && now < relEnd) statusText = 'Đang diễn ra';
+                                                                    else if (relStatus === 'ENDED' || (relEnd && now >= relEnd)) statusText = 'Đã kết thúc';
+                                                                    else if (relStatus === 'PENDING') statusText = 'Đang diễn ra';
+                                                                %>
+                                                                <p class="text-sm text-green-600 mb-3" data-end-time="<%= related.end_time %>"><%= statusText %></p>
                                 <button class="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 transition">
                                     Xem chi tiết
                                 </button>
@@ -537,13 +546,13 @@
 
 
 <script>
-    const AUCTION_ID = <%= product.auction_id ? Number(product.auction_id) : 'null' %>;
-    const IS_AUTH = <%= user ? 'true' : 'false' %>;
-    const USER_ID = <%= user ? Number(user.id) : 'null' %>;
-    const PRODUCT_ID = <%= product.id %>;
-    const HAD_AUTOBID = <%= myAutoBid ? 'true' : 'false' %>;
-    const BUY_NOW_PRICE = <%= Number(product.buy_now_price || (product.current_price * 1.5)) %>;
-    const IS_INTERACTION_BLOCKED = <%= (typeof interaction !== 'undefined' && interaction && interaction.blocked) ? 'true' : 'false' %>;
+    const AUCTION_ID = <%- JSON.stringify(product.auction_id || null) %>;
+    const IS_AUTH = <%- JSON.stringify(!!user) %>;
+    const USER_ID = <%- JSON.stringify(user ? Number(user.id) : null) %>;
+    const PRODUCT_ID = <%- JSON.stringify(product.id) %>;
+    const HAD_AUTOBID = <%- JSON.stringify(!!myAutoBid) %>;
+    const BUY_NOW_PRICE = <%- JSON.stringify(Number(product.buy_now_price || (product.current_price * 1.5))) %>;
+    const IS_INTERACTION_BLOCKED = <%- JSON.stringify(!!(typeof interaction !== 'undefined' && interaction && interaction.blocked)) %>;
     const INTERACTION_BLOCK_REASON = <%- JSON.stringify((typeof interaction !== 'undefined' && interaction && interaction.reason) ? interaction.reason : '') %>;
 
 

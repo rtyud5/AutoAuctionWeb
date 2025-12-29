@@ -25,13 +25,13 @@ const index = async (req, res) => {
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
               c.name as category_name, u.name as seller_name,
               a.start_price, a.current_price, a.end_time,
-              (SELECT COUNT(*) FROM bids WHERE bids.auction_id = a.id) as bid_count
+              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) as bid_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
-       INNER JOIN auctions a ON a.product_id = p.id AND a.status = 'RUNNING'
+       LEFT JOIN auctions a ON a.product_id = p.id
        WHERE p.status = 'APPROVED'
-       ORDER BY a.current_price DESC 
+       ORDER BY COALESCE(a.current_price, 0) DESC
        LIMIT 5`,
       { raw: true }
     );
@@ -41,14 +41,12 @@ const index = async (req, res) => {
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
               c.name as category_name, u.name as seller_name,
               a.start_price, a.current_price, a.end_time,
-              (SELECT COUNT(*) FROM bids WHERE bids.auction_id = a.id) as bid_count
+              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) as bid_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
-       INNER JOIN auctions a ON a.product_id = p.id AND a.status = 'RUNNING'
+       LEFT JOIN auctions a ON a.product_id = p.id
        WHERE p.status = 'APPROVED'
-       GROUP BY p.id, p.title, p.thumbnail, p.short_description, c.name, u.name,
-                a.start_price, a.current_price, a.end_time, a.id
        ORDER BY bid_count DESC
        LIMIT 5`,
       { raw: true }
@@ -719,8 +717,10 @@ const productDetailView = async (req, res) => {
     }));
 
     const [relatedProducts] = await db.query(
-      `SELECT p.id AS product_id, p.title, p.thumbnail as image, p.short_description
+      `SELECT p.id AS product_id, p.title, p.thumbnail as image, p.short_description,
+              a.id AS auction_id, a.start_price, a.current_price, a.end_time, a.status AS auction_status
        FROM products p
+       LEFT JOIN auctions a ON a.product_id = p.id
        WHERE p.category_id = ? AND p.id != ? AND p.status = 'APPROVED'
        ORDER BY p.created_at DESC
        LIMIT 4`,
@@ -909,8 +909,19 @@ const productDetailView = async (req, res) => {
         totalPages: Math.max(1, Math.ceil(totalQna / qlimit)),
       },
       relatedProducts: (relatedProducts || []).map((p) => ({
-        ...p,
-        end_time: new Date(Date.now() + 86400000).toISOString(),
+        id: p.product_id,
+        product_id: p.product_id,
+        title: p.title,
+        image: p.image,
+        thumbnail: p.image,
+        short_description: p.short_description,
+        auction_id: p.auction_id || null,
+        start_price: p.start_price || 0,
+        current_price: typeof p.current_price !== 'undefined' && p.current_price !== null ? p.current_price : null,
+        buy_now_price: Math.floor((p.current_price || p.start_price || 0) * 1.5),
+        end_time: p.end_time ? new Date(p.end_time).toISOString() : null,
+        end_time_ms: p.end_time ? new Date(p.end_time).getTime() : null,
+        auction_status: p.auction_status || 'PENDING',
       })),
     });
   } catch (error) {
