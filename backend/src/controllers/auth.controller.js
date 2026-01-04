@@ -8,6 +8,7 @@ import {
   sendOtpEmail,
   verifyOtpToken,
 } from "../services/otp.service.js";
+import { generateCaptcha } from '../utils/captcha.util.js';
 
 const COOKIE_NAME = "token";
 
@@ -51,18 +52,42 @@ const issueToken = (res, user) => {
 // Step 1: request OTP for registration (create pending payload + send email)
 const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body || {};
+    const { name, email, password, captcha } = req.body || {};
 
     if (!name || !email || !password) {
+      const { question } = generateCaptcha(req);
       return res.status(400).render("auth/register", {
         error: "Vui lòng nhập đầy đủ Họ tên, Email và Mật khẩu",
+        captchaQuestion: question,
+      });
+    }
+
+    // verify captcha (if provided) — utility will clear session value on verify
+    if (!captcha) {
+      const { question } = generateCaptcha(req);
+      return res.status(400).render("auth/register", {
+        error: "Vui lòng hoàn thành captcha",
+        captchaQuestion: question,
+      });
+    }
+
+    // lazy load to avoid circular deps at module load time
+    const { verifyCaptcha } = await import("../utils/captcha.util.js");
+    const okCaptcha = verifyCaptcha(req, captcha);
+    if (!okCaptcha) {
+      const { question } = generateCaptcha(req);
+      return res.status(400).render("auth/register", {
+        error: "Captcha không đúng. Vui lòng thử lại.",
+        captchaQuestion: question,
       });
     }
 
     const existing = await User.findOne({ where: { email } });
     if (existing) {
+      const { question } = generateCaptcha(req);
       return res.status(409).render("auth/register", {
         error: "Email đã tồn tại, vui lòng dùng email khác",
+        captchaQuestion: question,
       });
     }
 
@@ -100,7 +125,8 @@ const register = async (req, res) => {
       ? "Không gửi được email OTP. Vui lòng kiểm tra cấu hình email (MAIL_HOST/MAIL_PORT/MAIL_USER/MAIL_PASS, và MAIL_SECURE nếu dùng port 465)."
       : "Có lỗi hệ thống xảy ra khi đăng ký. Vui lòng thử lại.";
 
-    return res.status(500).render("auth/register", { error: friendly });
+    const { question } = generateCaptcha(req);
+    return res.status(500).render("auth/register", { error: friendly, captchaQuestion: question });
   }
 };
 
@@ -141,8 +167,10 @@ const verifyOtp = async (req, res) => {
       where: { email: payload.email || email },
     });
     if (existing) {
+      const { question } = generateCaptcha(req);
       return res.status(409).render("auth/register", {
         error: "Email đã tồn tại, vui lòng dùng email khác",
+        captchaQuestion: question,
       });
     }
 

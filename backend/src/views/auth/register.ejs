@@ -104,15 +104,15 @@
             <label for="togglePassword">Hiển thị mật khẩu</label>
           </div>
 
-          <!-- Dummy captcha -->
-          <div class="mt-2 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <div class="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500/70" />
-              <span>Tôi không phải là robot</span>
+          <!-- Simple arithmetic captcha -->
+          <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <label class="text-xs text-slate-600">Captcha: Vui lòng nhập kết quả</label>
+            <div class="mt-2 flex items-center gap-3">
+              <div class="p-2 rounded bg-white border text-sm font-medium" id="captchaQuestion"><%= captchaQuestion || '' %></div>
+              <input type="text" name="captcha" id="captchaInput" required class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/60 focus:border-teal-500" />
+              <button type="button" id="refreshCaptcha" class="text-xs px-2 py-1 bg-slate-100 rounded">Làm mới</button>
             </div>
-            <div class="text-[10px] text-slate-400 text-right leading-tight">
-              reCAPTCHA<br />Privacy • Terms
-            </div>
+            <div class="text-[10px] text-slate-400 mt-1">Captcha đơn giản (toán học) để tránh bot tự động.</div>
           </div>
 
           <!-- Submit -->
@@ -144,6 +144,22 @@
   if (form && firstNameInput && lastNameInput && fullNameInput) {
     form.addEventListener('submit', function() {
       fullNameInput.value = (lastNameInput.value + ' ' + firstNameInput.value).trim();
+    });
+  }
+
+  // Refresh captcha via simple fetch to endpoint that returns new question
+  const refreshBtn = document.getElementById('refreshCaptcha');
+  const captchaQuestionEl = document.getElementById('captchaQuestion');
+  if (refreshBtn && captchaQuestionEl) {
+    refreshBtn.addEventListener('click', async function() {
+      try {
+        const res = await fetch('/auth/captcha');
+        if (!res.ok) throw new Error('Failed');
+        const json = await res.json();
+        captchaQuestionEl.textContent = json.question || '';
+      } catch (e) {
+        console.warn('refresh captcha failed', e);
+      }
     });
   }
 

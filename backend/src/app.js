@@ -2,6 +2,7 @@ import express from "express";
 import expressLayouts from "express-ejs-layouts";
 import path from "path";
 import cookieParser from "cookie-parser";
+import session from 'express-session';
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import pageRoutes from "./routes/page.route.js";
@@ -44,6 +45,14 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Simple session support used for captcha and small transient data.
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'change-this-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { maxAge: 1000 * 60 * 15 } // 15 minutes session
+}));
 
 app.use(attachUser);
 

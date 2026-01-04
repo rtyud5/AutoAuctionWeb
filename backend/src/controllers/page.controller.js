@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import Rating from "../models/rating.model.js";
+import { generateCaptcha } from '../utils/captcha.util.js';
 
 const index = async (req, res) => {
   let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
@@ -100,8 +101,15 @@ const loginView = (req, res) => {
   return res.render("auth/login", { title: "Đăng nhập", error, adminError });
 };
 
-const registerView = (req, res) =>
-  res.render("auth/register", { title: "Đăng ký" });
+const registerView = (req, res) => {
+  try {
+    const { question } = generateCaptcha(req);
+    return res.render("auth/register", { title: "Đăng ký", captchaQuestion: question });
+  } catch (err) {
+    console.error('registerView captcha error', err);
+    return res.render("auth/register", { title: "Đăng ký", captchaQuestion: null });
+  }
+};
 
 const showAuction = async (req, res) => {
   const { id } = req.params;
