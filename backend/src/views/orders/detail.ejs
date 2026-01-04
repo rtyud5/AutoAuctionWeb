@@ -1,0 +1,93 @@
+<% layout('layouts/main') %>
+
+<section class="container mx-auto py-10">
+  <a href="/orders/list" class="text-sm text-teal-600 hover:underline">&larr; Quay lại Đơn hàng</a>
+  <h1 class="text-2xl font-semibold mt-3 mb-6">Đơn hàng #<%= order.id %></h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="md:col-span-2 bg-white p-4 rounded shadow">
+      <h2 class="font-medium">Hóa đơn & Sản phẩm</h2>
+      <table class="w-full mt-3 text-sm border-collapse">
+        <thead>
+          <tr class="text-left text-xs text-slate-500 border-b">
+            <th class="py-2">Sản phẩm</th>
+            <th class="py-2">Số lượng</th>
+            <th class="py-2">Đơn giá</th>
+            <th class="py-2">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% let total = 0; items.forEach(function(it) { %>
+            <tr class="border-b">
+              <td class="py-2"><%= it.title || ('#'+it.product_id) %></td>
+              <td class="py-2"><%= it.quantity %></td>
+              <td class="py-2"><%= it.price ? (new Intl.NumberFormat('vi-VN').format(it.price) + '₫') : '-' %></td>
+              <td class="py-2"><% const line = (it.price || 0) * (it.quantity || 1); total += line; %><%= new Intl.NumberFormat('vi-VN').format(line) %>₫</td>
+            </tr>
+          <% }); %>
+          <tr>
+            <td colspan="3" class="py-2 text-right font-semibold">Tổng cộng</td>
+            <td class="py-2 font-semibold"><%= new Intl.NumberFormat('vi-VN').format(total) %>₫</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="mt-4">
+        <h3 class="font-medium">Trạng thái: <span class="text-sm text-slate-600"><%= order.status %></span></h3>
+      </div>
+
+      <% if (isBuyer) { %>
+        <div class="mt-6 bg-slate-50 p-3 rounded">
+          <h3 class="font-medium mb-2">Thông tin giao hàng</h3>
+          <% if (buyerInfo) { %>
+            <div class="text-sm text-slate-700">Người nhận: <%= buyerInfo.name || buyerInfo.fullname || '' %></div>
+            <div class="text-sm text-slate-700">SĐT: <%= buyerInfo.phone || '' %></div>
+            <div class="text-sm text-slate-700">Địa chỉ: <%= buyerInfo.address || '' %></div>
+            <div class="text-sm text-slate-700">Ghi chú: <%= buyerInfo.note || '' %></div>
+            <div class="text-sm text-slate-700">Đơn hàng sẽ được giao trong vòng 7 ngày (trước <%= new Date(order.estimated_delivery || new Date(new Date(order.created_at).getTime() + 7*24*60*60*1000)).toLocaleDateString() %>)</div>
+          <% } else { %>
+            <div class="text-sm text-slate-500">Bạn chưa cung cấp thông tin giao hàng.</div>
+          <% } %>
+
+          <h3 class="font-medium mt-3">Hóa đơn thanh toán</h3>
+          <% if (paymentInfo) { %>
+            <div class="text-sm text-slate-700">Phương thức: <%= paymentInfo.method || '' %></div>
+            <div class="text-sm text-slate-700">Thời gian thanh toán: <%= paymentInfo.time || '' %></div>
+            <% if (order.payment_proof_url) { %>
+              <div class="mt-2"><a href="<%= order.payment_proof_url %>" target="_blank" class="text-teal-600">Xem chứng từ thanh toán</a></div>
+            <% } %>
+          <% } else { %>
+            <div class="text-sm text-slate-500">Chưa có thông tin thanh toán.</div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <% if (isSeller) { %>
+        <div class="mt-6 bg-slate-50 p-3 rounded">
+          <h3 class="font-medium">Hóa đơn nhận tiền (Seller)</h3>
+          <div class="text-sm text-slate-700">Người mua: <%= (buyerInfo && (buyerInfo.name || buyerInfo.fullname)) ? (buyerInfo.name || buyerInfo.fullname) : (buyer ? buyer.name : '') %> (<%= buyer ? buyer.email : '' %>)</div>
+          <div class="text-sm text-slate-700">Số tiền nhận: <strong><%= new Intl.NumberFormat('vi-VN').format(total) %>₫</strong></div>
+          <div class="mt-2 text-sm text-slate-700">Ngày nhận đơn: <%= new Date(order.created_at).toLocaleString() %></div>
+          <% if (order.tracking_number) { %>
+            <div class="text-sm text-slate-700">Mã vận đơn: <%= order.tracking_number %></div>
+          <% } %>
+          <% if (order.shipping_proof_url) { %>
+            <div class="mt-2"><a href="<%= order.shipping_proof_url %>" target="_blank" class="text-teal-600">Xem chứng từ giao hàng</a></div>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <aside class="bg-white p-4 rounded shadow">
+      <h3 class="font-medium mb-2">Thông tin người dùng</h3>
+      <div class="text-sm"><strong>Người bán:</strong> <%= seller ? seller.name : '' %></div>
+      <div class="text-sm"><strong>Email:</strong> <%= seller ? seller.email : '' %></div>
+      <hr class="my-3" />
+  <div class="text-sm"><strong>Người mua:</strong> <%= (buyerInfo && (buyerInfo.name || buyerInfo.fullname)) ? (buyerInfo.name || buyerInfo.fullname) : (buyer ? buyer.name : '') %></div>
+      <div class="text-sm"><strong>Email:</strong> <%= buyer ? buyer.email : '' %></div>
+      <hr class="my-3" />
+      <div class="text-sm"><strong>Ngày tạo đơn:</strong> <%= new Date(order.created_at).toLocaleString() %></div>
+      <div class="text-sm"><strong>Trạng thái:</strong> <%= order.status %></div>
+    </aside>
+  </div>
+</section>

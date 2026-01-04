@@ -1,6 +1,119 @@
 import db from "../config/db.js";
+import { QueryTypes } from 'sequelize';
 import Rating from "../models/rating.model.js";
 import { generateCaptcha } from '../utils/captcha.util.js';
+import User from '../models/user.model.js';
+
+// Orders page view: list buy orders (Đơn mua) and sell orders (Đơn bán)
+const ordersView = async (req, res) => {
+  if (!req.user) return res.redirect('/login');
+  try {
+    const userId = req.user.id;
+
+    // Buy orders where current user is buyer
+    const buyOrders = await db.query(
+      `SELECT o.id, o.auction_id, o.buyer_id, o.seller_id, o.status, o.created_at, o.updated_at,
+              COALESCE(o.payment_proof_url, '') AS payment_proof_url,
+              o.buyer_info,
+              u.name AS buyer_name, u.email AS buyer_email,
+              a.product_id, p.title AS product_title, a.current_price AS final_price
+       FROM orders o
+       LEFT JOIN auctions a ON a.id = o.auction_id
+       LEFT JOIN products p ON p.id = a.product_id
+       LEFT JOIN users u ON u.id = o.buyer_id
+       WHERE o.buyer_id = ?
+       ORDER BY o.created_at DESC
+       LIMIT 200`,
+      { replacements: [userId], type: QueryTypes.SELECT }
+    );
+
+    // Sell orders where current user is seller
+    const sellOrders = await db.query(
+      `SELECT o.id, o.auction_id, o.buyer_id, o.seller_id, o.status, o.created_at, o.updated_at,
+              COALESCE(o.shipping_proof_url, '') AS shipping_proof_url,
+              o.buyer_info,
+              u.name AS buyer_name, u.email AS buyer_email,
+              a.product_id, p.title AS product_title, a.current_price AS final_price
+       FROM orders o
+       LEFT JOIN auctions a ON a.id = o.auction_id
+       LEFT JOIN products p ON p.id = a.product_id
+       LEFT JOIN users u ON u.id = o.buyer_id
+       WHERE o.seller_id = ?
+       ORDER BY o.created_at DESC
+       LIMIT 200`,
+      { replacements: [userId], type: QueryTypes.SELECT }
+    );
+
+    // parse buyer_info JSON and compute estimated delivery (7 days after created_at)
+    const parseInfo = (o) => {
+      let info = null;
+      try { info = o.buyer_info ? JSON.parse(o.buyer_info) : null; } catch (e) { info = o.buyer_info; }
+      const created = new Date(o.created_at || Date.now());
+      const eta = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const note = info && (info.note || info.notes) ? (info.note || info.notes) : null;
+      const buyerName = (info && (info.name || info.fullname)) ? (info.name || info.fullname) : (o.buyer_name || null);
+      return Object.assign({}, o, { buyerInfo: info, note, buyer_name_resolved: buyerName, estimated_delivery: eta.toISOString() });
+    };
+
+    const buyOrdersFinal = buyOrders.map(parseInfo);
+    const sellOrdersFinal = sellOrders.map(parseInfo);
+
+    return res.render('orders/list', { title: 'Đơn hàng', buyOrders: buyOrdersFinal, sellOrders: sellOrdersFinal, user: req.user });
+  } catch (err) {
+    console.error('page.ordersView error', err);
+    if (process.env.NODE_ENV !== 'production') {
+      return res.status(500).send(`<h2>page.ordersView error</h2><pre>${(err && err.stack) || err}</pre>`);
+    }
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
+
+// Order detail page: show invoice/payment/shipping details depending on role
+const orderDetailView = async (req, res) => {
+  if (!req.user) return res.redirect('/login');
+  const id = req.params.id;
+  try {
+    const orderRows = await db.query('SELECT * FROM orders WHERE id = ? LIMIT 1', { replacements: [id], type: QueryTypes.SELECT });
+    const order = orderRows && orderRows.length ? orderRows[0] : null;
+    if (!order) return res.status(404).render('error/404', { title: 'Không tìm thấy' });
+  // fetch items
+  const items = await db.query('SELECT oi.*, p.title FROM order_items oi LEFT JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?', { replacements: [id], type: QueryTypes.SELECT });
+
+  // fetch buyer & seller basic info
+  const buyerRows = await db.query('SELECT id, name, email FROM users WHERE id = ? LIMIT 1', { replacements: [order.buyer_id], type: QueryTypes.SELECT });
+  const sellerRows = await db.query('SELECT id, name, email FROM users WHERE id = ? LIMIT 1', { replacements: [order.seller_id], type: QueryTypes.SELECT });
+  const buyer = buyerRows && buyerRows.length ? buyerRows[0] : null;
+  const seller = sellerRows && sellerRows.length ? sellerRows[0] : null;
+
+    // parse buyer_info/payment/shipping fields if stored as JSON
+    let buyerInfo = null;
+    try { buyerInfo = order.buyer_info ? JSON.parse(order.buyer_info) : null; } catch (e) { buyerInfo = order.buyer_info; }
+    let paymentInfo = null;
+    try { paymentInfo = order.payment_info ? JSON.parse(order.payment_info) : null; } catch (e) { paymentInfo = order.payment_info; }
+
+    const isBuyer = req.user.id === order.buyer_id;
+    const isSeller = req.user.id === order.seller_id;
+
+    return res.render('orders/detail', {
+      title: `Đơn #${order.id}`,
+      order,
+      items,
+      buyer: buyer || null,
+      seller: seller || null,
+      buyerInfo,
+      paymentInfo,
+      isBuyer,
+      isSeller,
+      user: req.user
+    });
+  } catch (err) {
+    console.error('page.orderDetailView error', err);
+    if (process.env.NODE_ENV !== 'production') {
+      return res.status(500).send(`<h2>page.orderDetailView error</h2><pre>${(err && err.stack) || err}</pre>`);
+    }
+    return res.status(500).render('error/500', { title: 'Lỗi server' });
+  }
+};
 
 const index = async (req, res) => {
   let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
@@ -1196,6 +1309,8 @@ export default {
   index,
   loginView,
   registerView,
+  ordersView,
+  orderDetailView,
   showAuction,
   categoryView,
   profileView,

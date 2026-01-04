@@ -22,6 +22,8 @@ const safe = (primaryName, fallbackName = null) => (req, res, next) => {
 router.get("/", safe("index"));
 router.get("/login", safe("loginView"));
 router.get("/register", safe("registerView"));
+router.get("/orders/list", safe("ordersView"));
+router.get("/orders/:id/view", safe("orderDetailView"));
 router.get("/setting", safe("profileView"));
 router.get("/review", safe("reviewView"));
 // Ưu tiên itemHistoryView (timeline mới), fallback về profileProductView (legacy)
