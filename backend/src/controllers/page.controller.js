@@ -119,49 +119,55 @@ const index = async (req, res) => {
   let auctions = { endingSoon: [], highestPrice: [], mostBids: [] };
   try {
     // 1. Sản phẩm mới nhất (theo created_at của product)
-    const [endingSoon] = await db.query(
-      `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
-              c.name as category_name, u.name as seller_name,
-              a.start_price, a.current_price, a.end_time,
-              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) as bid_count
-       FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
-       LEFT JOIN users u ON p.seller_id = u.id
-       LEFT JOIN auctions a ON a.product_id = p.id
-       WHERE p.status = 'APPROVED'
-       ORDER BY p.created_at DESC 
-       LIMIT 5`,
-      { raw: true }
-    );
-
-    // 2. Sản phẩm nổi bật (theo giá hiện tại cao nhất)
     const [highestPrice] = await db.query(
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
-              c.name as category_name, u.name as seller_name,
+              c.name AS category_name, u.name AS seller_name,
               a.start_price, a.current_price, a.end_time,
-              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) as bid_count
+              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) AS bid_count
        FROM products p
+       JOIN auctions a ON a.product_id = p.id
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
-       LEFT JOIN auctions a ON a.product_id = p.id
-       WHERE p.status = 'APPROVED'
+       WHERE p.status = 'APPROVED' AND a.end_time > NOW()
        ORDER BY COALESCE(a.current_price, 0) DESC
        LIMIT 5`,
       { raw: true }
     );
 
-    // 3. Sản phẩm đề xuất (theo số lượt đấu giá nhiều nhất)
-    const [mostBids] = await db.query(
+    // 2. Top 5 gần kết thúc (sắp xếp theo thời gian kết thúc giảm dần)
+    const [endingSoon] = await db.query(
       `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
-              c.name as category_name, u.name as seller_name,
+              c.name AS category_name, u.name AS seller_name,
               a.start_price, a.current_price, a.end_time,
-              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) as bid_count
+              (SELECT COUNT(*) FROM bids b JOIN auctions aa ON b.auction_id = aa.id WHERE aa.product_id = p.id) AS bid_count
        FROM products p
+       JOIN auctions a ON a.product_id = p.id
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN users u ON p.seller_id = u.id
-       LEFT JOIN auctions a ON a.product_id = p.id
-       WHERE p.status = 'APPROVED'
-       ORDER BY bid_count DESC
+       WHERE p.status = 'APPROVED' AND a.end_time > NOW()
+       ORDER BY a.end_time ASC
+       LIMIT 5`,
+      { raw: true }
+    );
+
+    // 3. Top 5 nhiều lượt ra giá nhất (giảm dần theo số lượt)
+    const [mostBids] = await db.query(
+      `SELECT p.id AS product_id, p.title, p.thumbnail AS image, p.short_description,
+              c.name AS category_name, u.name AS seller_name,
+              a.start_price, a.current_price, a.end_time,
+              COALESCE(bc.bid_count, 0) AS bid_count
+       FROM products p
+       JOIN auctions a ON a.product_id = p.id
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN users u ON p.seller_id = u.id
+       LEFT JOIN (
+         SELECT aa.product_id, COUNT(*) AS bid_count
+         FROM bids b
+         JOIN auctions aa ON b.auction_id = aa.id
+         GROUP BY aa.product_id
+       ) bc ON bc.product_id = p.id
+       WHERE p.status = 'APPROVED' AND a.end_time > NOW()
+       ORDER BY COALESCE(bc.bid_count, 0) DESC
        LIMIT 5`,
       { raw: true }
     );
@@ -243,23 +249,35 @@ export const categoryView = async (req, res) => {
     const slug = req.params.slug || null;
     const origin = `${req.protocol}://${req.get("host")}`;
 
+    // --- read client query params so server can forward them to API (sorting / paging) ---
+    const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit || '8', 10) || 8);
+    const sort = req.query.sort || 'ending_soon';
+    const newMinutes = Math.max(0, parseInt(req.query.newMinutes || '3600', 10) || 3600);
+
+    // load categories (no change)
     const catRes = await fetch(`${origin}/api/categories`);
     const catJson = await catRes.json();
-    const categories = Array.isArray(catJson)
-      ? catJson
-      : catJson.categories || [];
+    const categories = Array.isArray(catJson) ? catJson : catJson.categories || [];
+
+    // build API list URL with query string so API does actual sorting/paging
+    const qs = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      sort,
+      newMinutes: String(newMinutes),
+    }).toString();
 
     const listUrl = slug
-      ? `${origin}/api/categories/${slug}`
-      : `${origin}/api/auctions`;
+      ? `${origin}/api/categories/${encodeURIComponent(slug)}?${qs}`
+      : `${origin}/api/auctions?${qs}`;
+
     const aucRes = await fetch(listUrl);
     const aucJson = await aucRes.json();
-    const auctions = Array.isArray(aucJson.data)
-      ? aucJson.data
-      : aucJson.items || [];
+    const auctions = Array.isArray(aucJson.data) ? aucJson.data : aucJson.items || [];
     const pagination = aucJson.pagination || null;
 
-    // Tìm tên danh mục theo slug
+    // flatten categories and find title
     const flat = [];
     (function walk(arr = []) {
       arr.forEach((c) => {
@@ -279,6 +297,8 @@ export const categoryView = async (req, res) => {
       isAuthenticated: !!req.user,
       currentUser: req.user || null,
       role: (req.user?.role || "").toLowerCase(),
+      // forward current query values to view so client script can init selects/links
+      query: { page, limit, sort, newMinutes }
     });
   } catch (err) {
     console.error("page.categoryView", err);
@@ -291,6 +311,7 @@ export const categoryView = async (req, res) => {
       isAuthenticated: !!req.user,
       currentUser: req.user || null,
       role: (req.user?.role || "").toLowerCase(),
+      query: { page: 1, limit: 12, sort: 'ending_soon', newMinutes: 60 }
     });
   }
 };

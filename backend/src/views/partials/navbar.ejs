@@ -268,21 +268,18 @@
         if (!Array.isArray(cats) || !cats.length) {
           return '<div class="px-4 py-2 text-sm text-gray-500">Chưa có danh mục</div>';
         }
+        const qs = '?limit=8&newMinutes=3600&sort=ending_soon';
         return cats
           .map(
             (c) => `
         <div class="py-1 border-b border-slate-100">
-          <a href="/categories/${
-            c.slug
-          }" class="block px-4 py-2 text-sm hover:bg-slate-100 font-medium">${
-              c.name
-            }</a>
+          <a href="/categories/${c.slug}${qs}" class="block px-4 py-2 text-sm hover:bg-slate-100 font-medium">${c.name}</a>
           ${
             Array.isArray(c.children) && c.children.length
               ? c.children
                   .map(
                     (s) => `
-                <a href="/categories/${s.slug}" class="block pl-8 pr-4 py-2 text-sm hover:bg-slate-100">${s.name}</a>
+                 <a href="/categories/${s.slug}${qs}" class="block pl-8 pr-4 py-2 text-sm hover:bg-slate-100">${s.name}</a>
               `
                   )
                   .join("")

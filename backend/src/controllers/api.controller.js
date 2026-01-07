@@ -12,44 +12,44 @@ const listAuctions = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = (page - 1) * limit;
-    const sort = req.query.sort || "ending_soon";
+    const sort = (req.query.sort || "").trim() || "ending_soon";
+
+    // Số phút để coi là "MỚI"
+    const newMinutes = Math.max(0, parseInt(req.query.newMinutes) || 60);
 
     const sortMap = {
-      price_asc: "a.current_price ASC",
-      price_desc: "a.current_price DESC",
+      price_asc: "COALESCE(a.current_price, a.start_price) ASC",
+      price_desc: "COALESCE(a.current_price, a.start_price) DESC",
       ending_soon: "a.end_time ASC",
-      bids_desc: "COALESCE(a.bids_count, b.cnt) DESC",
+      ending_late: "a.end_time DESC",
+      bids_desc: "COALESCE(b.cnt, 0) DESC",
+      newest: "p.created_at DESC",
     };
     const orderBy = sortMap[sort] || sortMap.ending_soon;
-
     let where = ["1=1"];
     const params = [];
 
     if (q) {
-      where.push("(a.title LIKE ? OR a.description LIKE ?)");
-      params.push(`%${q}%`, `%${q}%`);
+      where.push("(a.title LIKE ? OR a.description LIKE ? OR p.title LIKE ?)");
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
 
     if (req.query.category) {
-      const [catRows] = await db.query(
+      const catRows = await db.query(
         "SELECT id FROM categories WHERE slug = ? LIMIT 1",
         { replacements: [req.query.category], type: QueryTypes.SELECT }
       );
       const cat = catRows?.[0];
       if (cat) {
-        const [childCats] = await db.query(
+        const childRows = await db.query(
           "SELECT id FROM categories WHERE parent_id = ?",
           { replacements: [cat.id], type: QueryTypes.SELECT }
         );
-        const catIds = [cat.id, ...childCats.map((c) => c.id)];
-        where.push(`a.category_id IN (${catIds.map(() => "?").join(",")})`);
+        const catIds = [cat.id, ...(childRows || []).map(c => c.id)];
+        where.push(`p.category_id IN (${catIds.map(() => "?").join(",")})`);
         params.push(...catIds);
       } else {
-        return res.json({
-          success: true,
-          data: [],
-          pagination: { page, limit, total: 0 },
-        });
+        return res.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
       }
     }
 
@@ -59,23 +59,36 @@ const listAuctions = async (req, res) => {
       `SELECT COUNT(*) AS cnt
        FROM auctions a
        LEFT JOIN (SELECT auction_id, COUNT(*) AS cnt FROM bids GROUP BY auction_id) b ON b.auction_id = a.id
+       LEFT JOIN products p ON p.id = a.product_id
        ${whereSQL}`,
       { replacements: params, type: QueryTypes.SELECT }
     );
     const total = countRows?.[0]?.cnt || 0;
 
     const rows = await db.query(
-      `SELECT a.id, a.product_id, a.title, a.current_price, a.start_price, a.end_time, 
-              COALESCE(b.cnt, 0) AS bids_count,
-              p.thumbnail, p.images
+      `SELECT 
+          a.id,
+          a.product_id,
+          COALESCE(a.title, p.title) AS title,
+          p.thumbnail,
+          p.images,
+          p.created_at AS product_created_at,
+          a.current_price,
+          a.start_price,
+          a.end_time,
+          a.current_winner_id,
+          w.name AS current_winner_name,
+          COALESCE(b.cnt, 0) AS bids_count
        FROM auctions a
-       LEFT JOIN (SELECT auction_id, COUNT(*) AS cnt FROM bids GROUP BY auction_id) b ON b.auction_id = a.id
        LEFT JOIN products p ON p.id = a.product_id
+       LEFT JOIN (SELECT auction_id, COUNT(*) AS cnt FROM bids GROUP BY auction_id) b ON b.auction_id = a.id
+       LEFT JOIN users w ON w.id = a.current_winner_id
        ${whereSQL}
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       { replacements: [...params, limit, offset], type: QueryTypes.SELECT }
     );
+    const now = Date.now();
 
     // Parse images từ JSON string thành array
     const data = rows.map((r) => {
@@ -88,21 +101,38 @@ const listAuctions = async (req, res) => {
         console.error("Failed to parse images JSON:", e);
       }
 
-      // Nếu có thumbnail, thêm vào đầu mảng images
       if (r.thumbnail && !imageArray.includes(r.thumbnail)) {
         imageArray = [r.thumbnail, ...imageArray];
       }
 
+      const endTimeMs = r.end_time ? new Date(r.end_time).getTime() : null;
+      const remaining_ms = endTimeMs ? Math.max(0, endTimeMs - now) : null;
+      const productCreatedMs = r.product_created_at ? new Date(r.product_created_at).getTime() : null;
+      const is_new = productCreatedMs ? (now - productCreatedMs) <= newMinutes * 60 * 1000 : false;
+
       return {
-        ...r,
+        id: r.id,
+        product_id: r.product_id,
+        title: r.title,
+        current_price: Number(r.current_price || r.start_price || 0),
+        start_price: Number(r.start_price || 0),
+        end_time: r.end_time,
+        end_time_ms: endTimeMs,
+        remaining_ms,
+        bids_count: Number(r.bids_count || 0),
+        current_winner_id: r.current_winner_id || null,
+        current_winner_name: r.current_winner_name || null,
         images: imageArray,
+        thumbnail: r.thumbnail || (imageArray[0] || null),
+        is_new,
+        product_created_at: r.product_created_at || null,
       };
     });
 
     return res.json({
       success: true,
       data,
-      pagination: { page, limit, total },
+      pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
     });
   } catch (e) {
     console.error(e);
@@ -207,13 +237,16 @@ const listAuctionsByCategory = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = (page - 1) * limit;
-    const sort = req.query.sort || "ending_soon";
+    const sort = (req.query.sort || "").trim() || "ending_soon";
+    const newMinutes = Math.max(0, parseInt(req.query.newMinutes) || 60);
 
     const sortMap = {
       price_asc: "a.current_price ASC",
       price_desc: "a.current_price DESC",
       ending_soon: "a.end_time ASC",
+      ending_late: "a.end_time DESC",
       bids_desc: "COALESCE(b.cnt, 0) DESC",
+      newest: "p.created_at DESC",
     };
     const orderBy = sortMap[sort] || sortMap.ending_soon;
 
@@ -247,7 +280,7 @@ const listAuctionsByCategory = async (req, res) => {
       return res.json({
         success: true,
         data: [],
-        pagination: { page, limit, total },
+        pagination: { page, limit, total, totalPages: 0 },
       });
     }
 
@@ -258,45 +291,61 @@ const listAuctionsByCategory = async (req, res) => {
           p.title,
           p.thumbnail,
           p.images,
+          p.created_at AS product_created_at,
           a.current_price,
           a.start_price,
           a.end_time,
+          a.current_winner_id,
+          w.name AS current_winner_name,
           COALESCE(b.cnt, 0) AS bids_count
        FROM products p
        JOIN auctions a ON a.product_id = p.id
        LEFT JOIN (SELECT auction_id, COUNT(*) AS cnt FROM bids GROUP BY auction_id) b ON b.auction_id = a.id
+       LEFT JOIN users w ON w.id = a.current_winner_id
        WHERE p.category_id IN (${placeholders})
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       { replacements: [...catIds, limit, offset], type: QueryTypes.SELECT }
     );
 
-    // Parse images từ JSON string thành array
+    const now = Date.now();
     const data = rows.map((r) => {
       let imageArray = [];
       try {
-        if (r.images) {
-          imageArray = JSON.parse(r.images);
-        }
+        if (r.images) imageArray = JSON.parse(r.images);
       } catch (e) {
-        console.error("Failed to parse images JSON:", e);
+        console.error("Failed parse images:", e);
       }
+      if (r.thumbnail && !imageArray.includes(r.thumbnail)) imageArray = [r.thumbnail, ...imageArray];
 
-      // Nếu có thumbnail, thêm vào đầu mảng images
-      if (r.thumbnail && !imageArray.includes(r.thumbnail)) {
-        imageArray = [r.thumbnail, ...imageArray];
-      }
+      const endTimeMs = r.end_time ? new Date(r.end_time).getTime() : null;
+      const remaining_ms = endTimeMs ? Math.max(0, endTimeMs - now) : null;
+      const productCreatedMs = r.product_created_at ? new Date(r.product_created_at).getTime() : null;
+      const is_new = productCreatedMs ? (now - productCreatedMs) <= newMinutes * 60 * 1000 : false;
 
       return {
-        ...r,
+        id: r.id,
+        product_id: r.product_id,
+        title: r.title,
+        current_price: Number(r.current_price || r.start_price || 0),
+        start_price: Number(r.start_price || 0),
+        end_time: r.end_time,
+        end_time_ms: endTimeMs,
+        remaining_ms,
+        bids_count: Number(r.bids_count || 0),
+        current_winner_id: r.current_winner_id || null,
+        current_winner_name: r.current_winner_name || null,
         images: imageArray,
+        thumbnail: r.thumbnail || (imageArray[0] || null),
+        is_new,
+        product_created_at: r.product_created_at || null,
       };
     });
 
     return res.json({
       success: true,
       data,
-      pagination: { page, limit, total },
+      pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
     });
   } catch (e) {
     console.error("listAuctionsByCategory error:", e.message);

@@ -26,6 +26,19 @@
   };
 
   const catList = Array.isArray(categories) ? categories : [];
+  const pag = pagination || null;
+  const currentQuery = query || {};
+  const baseUrl = categorySlug ? `/categories/${categorySlug}` : '/categories';
+  const buildSortLink = (sortVal) => {
+    const p = new URLSearchParams();
+    Object.entries(currentQuery).forEach(([k,v]) => {
+      if (k === 'page' || k === 'sort' || v === undefined || v === null || v === '') return;
+      p.set(k, v);
+    });
+    if (sortVal) p.set('sort', sortVal);
+    const qs = p.toString();
+    return qs ? `${baseUrl}?${qs}` : baseUrl;
+  };
 %>
 
 <main>
@@ -35,7 +48,7 @@
       <p class="text-gray-600">Chọn danh mục để xem phiên đấu giá tương ứng</p>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-3">
       <label for="catSelect" class="text-sm text-gray-700 font-medium">Danh mục:</label>
       <select id="catSelect" class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
         <option value="">Tất cả</option>
@@ -43,16 +56,40 @@
           <option value="<%= c.slug %>" <%= (categorySlug === c.slug) ? 'selected' : '' %>><%= c.name %></option>
         <% }) %>
       </select>
-    </div>
+
+      <label for="catSelect" class="text-sm text-gray-700 font-medium">Danh mục:</label>
+      <select id="catSelect" class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+        <option value="">Tất cả</option>
+        <% catList.forEach(c => { %>
+          <option value="<%= c.slug %>" <%= (categorySlug === c.slug) ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+
+      <div class="relative">
+        <button id="sortToggle" type="button" class="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white hover:bg-gray-50">
+          <span class="text-gray-700 font-medium">Sắp xếp</span>
+        </button>
+        <div id="sortMenu" class="absolute right-0 mt-2 w-44 bg-white border rounded shadow-lg py-2 z-10 hidden">
+          <a class="block px-3 py-2 text-sm <%= currentQuery.sort === 'ending_soon' ? 'text-teal-600 font-semibold' : 'text-gray-700' %>" href="<%= buildSortLink('ending_soon') %>">Kết thúc sớm</a>
+          <a class="block px-3 py-2 text-sm <%= currentQuery.sort === 'ending_late' ? 'text-teal-600 font-semibold' : 'text-gray-700' %>" href="<%= buildSortLink('ending_late') %>">Kết thúc muộn</a>
+          <a class="block px-3 py-2 text-sm <%= currentQuery.sort === 'price_asc' ? 'text-teal-600 font-semibold' : 'text-gray-700' %>" href="<%= buildSortLink('price_asc') %>">Giá tăng</a>
+          <a class="block px-3 py-2 text-sm <%= currentQuery.sort === 'price_desc' ? 'text-teal-600 font-semibold' : 'text-gray-700' %>" href="<%= buildSortLink('price_desc') %>">Giá giảm</a>
+          <a class="block px-3 py-2 text-sm <%= currentQuery.sort === 'bids_desc' ? 'text-teal-600 font-semibold' : 'text-gray-700' %>" href="<%= buildSortLink('bids_desc') %>">Nhiều lượt đấu</a>
+          <a class="block px-3 py-2 text-sm <%= currentQuery.sort === 'newest' ? 'text-teal-600 font-semibold' : 'text-gray-700' %>" href="<%= buildSortLink('newest') %>">Mới nhất</a>
+        </div>
+      </div>
   </section>
 
   <section id="auctionGrid" class="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
     <% if (Array.isArray(auctions) && auctions.length) { %>
       <% auctions.forEach(a => { %>
-        <article class="auction-item rounded-lg overflow-hidden bg-white shadow"
+        <article class="auction-item rounded-lg overflow-hidden bg-white shadow relative <%= a.is_new ? 'border-2 border-teal-400' : '' %>"
                  data-price="<%= a.current_price || 0 %>"
                  data-time="<%= a.end_time ? new Date(a.end_time).getTime() : 0 %>">
-          <div class="card-image-wrap" style="min-height:176px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+          <div class="card-image-wrap" style="min-height:176px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+            <% if (a.is_new) { %>
+              <span class="absolute top-2 left-2 bg-teal-600 text-white text-xs px-2 py-1 rounded">Mới</span>
+            <% } %>
             <a href="/auctions/<%= a.id %>" class="w-full h-full block" aria-label="<%= a.title || 'Sản phẩm' %>">
               <img src="<%= imgSrc(a.images, a.product_id) %>" alt="<%= a.title || 'No title' %>" style="width:100%;height:100%;object-fit:cover">
             </a>
@@ -68,7 +105,26 @@
             <p class="text-sm text-gray-800 font-semibold mt-2">
               Giá hiện tại: <span class="text-teal-600"><%= fmtPrice(a.current_price) %> VNĐ</span>
             </p>
-            <p class="text-sm text-gray-500 mt-1">Kết thúc: <%= fmtDate(a.end_time) %></p>
+
+            <p class="text-sm text-gray-500 mt-1">
+              Người giữ giá: <%= a.current_winner_name ? a.current_winner_name : '—' %>
+            </p>
+
+            <p class="text-sm text-gray-500 mt-1">
+              Số lượt đấu: <%= (a.bids_count || 0) %>
+            </p>
+
+            <p class="text-sm text-gray-500 mt-1">Còn lại: <%= (() => {
+              const ms = a.remaining_ms;
+              if (ms === null) return '';
+              if (ms <= 0) return 'Đã kết thúc';
+              const s = Math.floor(ms/1000);
+              const d = Math.floor(s/86400); const h = Math.floor((s%86400)/3600); const m = Math.floor((s%3600)/60); const ss = s%60;
+              if (d>0) return d+' ngày '+h+'h';
+              if (h>0) return h+'h '+m+'m';
+              if (m>0) return m+'m '+ss+'s';
+              return ss+'s';
+            })() %></p>
 
             <div class="mt-4">
               <a href="/product/<%= a.product_id %>" class="block text-center px-3 py-2 border rounded text-sm text-gray-700 hover:bg-gray-50">Xem chi tiết</a>
@@ -83,29 +139,74 @@
     <% } %>
   </section>
 
-  <% if (pagination && pagination.pages && pagination.pages.length) { %>
-    <nav class="py-6 flex justify-center items-center gap-2">
-      <% if (pagination.prev) { %>
-        <a href="<%= pagination.prev %>" class="w-10 h-10 flex items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50" aria-label="Trang trước">‹</a>
+  <% if (pag && pag.totalPages && pag.totalPages) { %>
+    <nav id="pagination" class="py-6 flex justify-center items-center gap-2" aria-label="Pagination">
+      <button data-page="<%= Math.max(1, (pag.page || 1) - 1) %>" class="page-btn w-10 h-10 flex items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50" aria-label="Trang trước">‹</button>
+
+      <% 
+        const current = pag.page || 1;
+        const totalPages = pag.totalPages;
+        // show window of pages around current
+        const windowSize = 5;
+        let start = Math.max(1, current - Math.floor(windowSize/2));
+        let end = Math.min(totalPages, start + windowSize - 1);
+        if (end - start + 1 < windowSize) start = Math.max(1, end - windowSize + 1);
+        for (let p = start; p <= end; p++) {
+      %>
+        <button data-page="<%= p %>" class="page-btn w-10 h-10 flex items-center justify-center rounded-full border <%= p === current ? 'bg-black text-white font-semibold' : 'text-gray-600 hover:bg-gray-50' %>"><%= p %></button>
       <% } %>
-      <% pagination.pages.forEach(p => { %>
-        <a href="<%= p.url %>" class="w-10 h-10 flex items-center justify-center rounded-full border <%= p.current ? 'bg-black text-white font-semibold' : 'text-gray-600 hover:bg-gray-50' %>"><%= p.num %></a>
-      <% }) %>
-      <% if (pagination.next) { %>
-        <a href="<%= pagination.next %>" class="w-10 h-10 flex items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50" aria-label="Trang sau">›</a>
-      <% } %>
+
+      <button data-page="<%= Math.min(pag.totalPages, (pag.page || 1) + 1) %>" class="page-btn w-10 h-10 flex items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50" aria-label="Trang sau">›</button>
     </nav>
   <% } %>
 </main>
 
 <script>
-(function(){
-  const catSelect = document.getElementById('catSelect');
-  if (!catSelect) return;
-  catSelect.addEventListener('change', (e) => {
-    const slug = e.target.value;
-    const url = slug ? `/categories/${slug}` : `/categories`;
-    window.location.href = url;
+(() => {
+  const catSelect   = document.getElementById('catSelect');
+  const pageButtons = document.querySelectorAll('.page-btn');
+  const sortToggle  = document.getElementById('sortToggle');
+  const sortMenu    = document.getElementById('sortMenu');
+
+  // Toggle sort dropdown
+  if (sortToggle && sortMenu) {
+    sortToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sortMenu.classList.toggle('hidden');
+    });
+    // Close when clicking outside
+    document.addEventListener('click', () => {
+      sortMenu.classList.add('hidden');
+    });
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') sortMenu.classList.add('hidden');
+    });
+    // Prevent closing when clicking inside menu
+    sortMenu.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  // Change category -> go to slug path, keep other query (except page)
+  if (catSelect) {
+    catSelect.addEventListener('change', (e) => {
+      const slug = e.target.value;
+      const cur  = new URL(window.location.href);
+      cur.searchParams.delete('page');
+      cur.searchParams.delete('category');
+      if (slug) cur.searchParams.set('category', slug);
+      const base = slug ? '/categories/' + encodeURIComponent(slug) : '/categories';
+      window.location.href = base + (cur.searchParams.toString() ? '?' + cur.searchParams.toString() : '');
+    });
+  }
+
+  // Pagination keep current query
+  pageButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = btn.getAttribute('data-page') || '1';
+      const cur = new URL(window.location.href);
+      cur.searchParams.set('page', p);
+      window.location.href = window.location.pathname + (cur.searchParams.toString() ? '?' + cur.searchParams.toString() : '');
+    });
   });
 })();
 </script>
