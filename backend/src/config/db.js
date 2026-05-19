@@ -5,15 +5,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Tạo instance Sequelize kết nối tới Railway
+// Ưu tiên các biến nội bộ của Railway (MYSQLHOST, MYSQLPORT, ...) nếu có
 const sequelize = new Sequelize(
-  process.env.DB_NAME, // railway
-  process.env.DB_USER, // root
-  process.env.DB_PASS, // password trong .env
+  process.env.MYSQLDATABASE || process.env.DB_NAME,
+  process.env.MYSQLUSER || process.env.DB_USER,
+  process.env.MYSQLPASSWORD || process.env.DB_PASS,
   {
-    host: process.env.DB_HOST, // shinkansen.proxy.rlwy.net
-    port: process.env.DB_PORT || 3306,
+    host: process.env.MYSQLHOST || process.env.DB_HOST,
+    port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
     dialect: "mysql",
-    logging: false, // đổi thành true nếu muốn xem câu SQL log ra console
+    logging: false,
     pool: {
       max: 5,
       min: 0,
