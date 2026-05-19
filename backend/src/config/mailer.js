@@ -55,3 +55,6 @@ export const transporter = nodemailer.createTransport({
   greetingTimeout: Number(process.env.MAIL_GREET_TIMEOUT || 20_000),
   socketTimeout: Number(process.env.MAIL_SOCKET_TIMEOUT || 30_000),
 });
+
+export default transporter;
+
