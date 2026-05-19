@@ -1,0 +1,13 @@
+{
+  "name": "online-auction-system-root",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "npm start --prefix backend",
+    "build": "npm install --prefix backend",
+    "install": "npm install --prefix backend"
+  }
+}
