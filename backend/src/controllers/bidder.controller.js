@@ -15,7 +15,7 @@ import {
   notifyAuctionEndedWithWinner,
 } from '../services/notification.service.js';
 
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 
 const toNum = (v) => {

@@ -1,5 +1,5 @@
 // backend/src/services/otp.service.js
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { Op } from "sequelize";
 import OtpToken from "../models/otpToken.model.js";

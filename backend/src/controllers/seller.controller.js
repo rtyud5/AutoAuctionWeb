@@ -1,5 +1,5 @@
 import db from "../config/db.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { QueryTypes } from "sequelize";
 import Product from "../models/product.model.js";
 import Auction from "../models/auction.model.js";

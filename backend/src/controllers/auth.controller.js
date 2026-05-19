@@ -1,5 +1,5 @@
 // backend/src/controllers/auth.controller.js
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { Op } from "sequelize";
 import User from "../models/user.model.js";
 import { signToken } from "../utils/token.util.js";
